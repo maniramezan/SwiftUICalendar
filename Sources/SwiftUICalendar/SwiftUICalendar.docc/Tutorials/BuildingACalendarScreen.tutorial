@@ -1,0 +1,53 @@
+@Tutorial(time: 15) {
+    @Intro(title: "Build a Calendar Screen") {
+        Create a SwiftUI screen that uses range selection, horizontal paging, and Persian secondary labels.
+
+        @Image(source: calendar-overview.svg, alt: "A calendar with selected range and alternate day labels")
+    }
+
+    @Section(title: "Create the State") {
+        @ContentAndMedia {
+            Keep `CalendarViewModel` in SwiftUI state. The model stores the visible month and selected dates.
+
+            @Image(source: selection-modes.svg, alt: "Single, range, and multiple selection states")
+        }
+
+        @Steps {
+            @Step {
+                Add a view model configured for range selection.
+
+                @Code(name: "BookingCalendar.swift", file: BookingCalendar-1.swift)
+            }
+        }
+    }
+
+    @Section(title: "Customize the Theme") {
+        @ContentAndMedia {
+            Configure horizontal paging and the square dual-calendar day renderer.
+
+            @Image(source: calendar-overview.svg, alt: "Horizontal calendar with square day cells")
+        }
+
+        @Steps {
+            @Step {
+                Create a fresh theme and pass it into `CalendarView`.
+
+                @Code(name: "BookingCalendar.swift", file: BookingCalendar-2.swift)
+            }
+        }
+    }
+
+    @Section(title: "Read the Selection") {
+        @ContentAndMedia {
+            React to the selected range by reading `calendar.selection`.
+        }
+
+        @Steps {
+            @Step {
+                Add a summary label for the current selection state.
+
+                @Code(name: "BookingCalendar.swift", file: BookingCalendar-3.swift)
+            }
+        }
+    }
+}
