@@ -25,7 +25,7 @@ let package = Package(
   targets: [
     .target(
       name: "SwiftUICalendar",
-      dependencies: ["SwiftCommons", "SwiftUIComponents"],
+      dependencies: ["SwiftCommons", .product(name: "Components", package: "SwiftUIComponents")],
       resources: [
         .process("Resources/Localizable.xcstrings")
       ]

@@ -1,5 +1,5 @@
 import SwiftUI
-import SwiftUIComponents
+import Components
 
 protocol CalendarHeaderItem: MenuPickerItem, Hashable, Identifiable where ID == Int {
 }

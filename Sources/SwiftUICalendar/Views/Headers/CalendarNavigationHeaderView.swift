@@ -1,5 +1,5 @@
 import SwiftUI
-import SwiftUIComponents
+import Components
 
 struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
   let items: [Item]
