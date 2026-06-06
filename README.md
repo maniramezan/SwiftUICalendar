@@ -13,7 +13,7 @@ SwiftUICalendar is a SwiftUI calendar package with single, range, and multiple s
 - Swift 6.2+
 - iOS 18+
 - macOS 15+
-- Xcode 26.4+ for the repository CI configuration
+- Xcode 26.3+ for the repository CI configuration
 
 ## Installation
 
@@ -95,12 +95,22 @@ CalendarView(
 )
 ```
 
+## Right-to-Left Support
+
+Calendars whose native script reads right-to-left — Persian, Hebrew, and the Islamic
+variants — automatically render with a mirrored, right-to-left layout, even on a left-to-right
+system locale. Gregorian and other left-to-right calendars are unaffected.
+
+```swift
+CalendarView(model: CalendarViewModel(calendarIdentifier: .hebrew))
+```
+
 ## Documentation
 
 Build DocC locally:
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode_26.4.app/Contents/Developer bash ./scripts/build-docs.sh
+DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer bash ./scripts/build-docs.sh
 ```
 
 The generated static documentation is written to `.build/docs`. CI publishes the same output to GitHub Pages on pushes to `main`.
@@ -114,3 +124,7 @@ swift test
 ```
 
 Snapshot references live in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__`. When recording snapshots, set `globalRecordMode = .all`, run the snapshot tests, then revert to `.missing` before committing.
+
+## License
+
+SwiftUICalendar is available under the MIT license. See [LICENSE](LICENSE) for details.

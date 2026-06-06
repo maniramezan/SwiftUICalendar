@@ -32,3 +32,21 @@ else
     "${archive_path}" \
     --output-path "${output_path}"
 fi
+
+# The DocC JS app does not auto-navigate from the site root, so a bare visit to the
+# GitHub Pages root would show "page not found". Write a meta-refresh redirect to the
+# documentation landing page.
+cat > "${output_path}/index.html" <<'EOF'
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0; url=documentation/swiftuicalendar">
+    <link rel="canonical" href="documentation/swiftuicalendar">
+    <title>SwiftUICalendar Documentation</title>
+  </head>
+  <body>
+    <p>Redirecting to <a href="documentation/swiftuicalendar">SwiftUICalendar documentation</a>…</p>
+  </body>
+</html>
+EOF

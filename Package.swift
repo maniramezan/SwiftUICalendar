@@ -15,8 +15,16 @@ let package = Package(
       targets: ["SwiftUICalendar"])
   ],
   dependencies: [
-    .package(url: "https://github.com/maniramezan/SwiftCommons.git", branch: "main"),
-    .package(url: "https://github.com/maniramezan/SwiftUIComponents", branch: "main"),
+    // Pinned to exact revisions for reproducible builds (these repos are not yet tagged).
+    // Switch to `from: "x.y.z"` once SwiftCommons / SwiftUIComponents publish versioned releases.
+    .package(
+      url: "https://github.com/maniramezan/SwiftCommons.git",
+      revision: "4c51afbf713a7b992fa38de03142fc3af84416a1"
+    ),
+    .package(
+      url: "https://github.com/maniramezan/SwiftUIComponents",
+      revision: "eea6f744700a9c11a83edc63ff418c977ca7ec0c"
+    ),
     .package(
       url: "https://github.com/pointfreeco/swift-snapshot-testing",
       from: "1.18.0"
