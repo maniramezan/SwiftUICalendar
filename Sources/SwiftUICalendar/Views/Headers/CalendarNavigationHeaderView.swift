@@ -17,7 +17,7 @@ struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
           .frame(width: 28, height: 28)
           .adaptiveGlass(shape: .circle, interactive: true)
       }
-      .accessibilityLabel("Previous")
+      .accessibilityLabel("Calendar.Navigation.Previous".localized)
       .opacity(isPreviousDisabled ? 0.4 : 1.0)
       .disabled(isPreviousDisabled)
 
@@ -29,7 +29,7 @@ struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
           .frame(width: 28, height: 28)
           .adaptiveGlass(shape: .circle, interactive: true)
       }
-      .accessibilityLabel("Next")
+      .accessibilityLabel("Calendar.Navigation.Next".localized)
       .opacity(isNextDisabled ? 0.4 : 1.0)
       .disabled(isNextDisabled)
     }

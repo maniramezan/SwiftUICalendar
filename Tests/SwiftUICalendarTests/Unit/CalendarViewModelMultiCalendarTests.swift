@@ -9,6 +9,7 @@ struct CalendarViewModelMultiCalendarTests {
 
   // MARK: - Persian
 
+  @MainActor
   @Suite("Persian")
   struct PersianTests {
 
@@ -103,16 +104,17 @@ struct CalendarViewModelMultiCalendarTests {
 
   // MARK: - Hebrew
 
+  @MainActor
   @Suite("Hebrew")
   struct HebrewTests {
 
     // Note: Locale(calendarIdentifier: .hebrew) returns the system locale with a Hebrew
-    // calendar override, so on a non-Hebrew system the language is LTR (e.g. English).
-    // Only the Persian calendar currently maps to its native RTL language (Farsi).
-    @Test("layoutDirection follows system locale (leftToRight on English system)")
-    func hebrewLayoutDirectionIsLTR() {
+    // The Hebrew calendar's native script is right-to-left, so the calendar lays out RTL even
+    // on a non-Hebrew system whose resolved locale language would otherwise report LTR.
+    @Test("layoutDirection is rightToLeft for the Hebrew calendar")
+    func hebrewLayoutDirectionIsRTL() {
       let vm = CalendarViewModel.test(identifier: .hebrew)
-      #expect(vm.layoutDirection == .leftToRight)
+      #expect(vm.layoutDirection == .rightToLeft)
     }
 
     @Test("year range is in Hebrew era (minYear > 5000, maxYear > 5000)")
@@ -177,15 +179,16 @@ struct CalendarViewModelMultiCalendarTests {
 
   // MARK: - Islamic (Umm al-Qura)
 
+  @MainActor
   @Suite("Islamic Umm al-Qura")
   struct IslamicTests {
 
-    // Note: Locale(calendarIdentifier: .islamicUmmAlQura) on an English system returns the
-    // system locale with an Islamic calendar override, so language is LTR (e.g. English).
-    @Test("layoutDirection follows system locale (leftToRight on English system)")
-    func islamicLayoutDirectionIsLTR() {
+    // The Islamic calendar's native script is right-to-left, so the calendar lays out RTL even
+    // on a non-Arabic system whose resolved locale language would otherwise report LTR.
+    @Test("layoutDirection is rightToLeft for the Islamic calendar")
+    func islamicLayoutDirectionIsRTL() {
       let vm = CalendarViewModel.test(identifier: .islamicUmmAlQura)
-      #expect(vm.layoutDirection == .leftToRight)
+      #expect(vm.layoutDirection == .rightToLeft)
     }
 
     @Test("year range is in Islamic era (minYear > 1300, maxYear > 1300)")
@@ -241,6 +244,7 @@ struct CalendarViewModelMultiCalendarTests {
 
   // MARK: - Chinese
 
+  @MainActor
   @Suite("Chinese")
   struct ChineseTests {
 

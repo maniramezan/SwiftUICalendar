@@ -2,6 +2,7 @@ import XCTest
 
 @testable import SwiftUICalendar
 
+@MainActor
 final class SwiftUICalendarTests: XCTestCase {
   func testMonthMetadataForLeapYearFebruary() throws {
     let model = CalendarViewModel(calendarIdentifier: .gregorian)

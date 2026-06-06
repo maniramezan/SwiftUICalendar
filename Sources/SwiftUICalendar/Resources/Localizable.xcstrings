@@ -1,6 +1,66 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Calendar.Day.Secondary" : {
+      "comment" : "VoiceOver description of a day cell's secondary (alternate calendar) label. %@ is the secondary label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secondary %@"
+          }
+        }
+      }
+    },
+    "Calendar.Day.Selected" : {
+      "comment" : "VoiceOver trait appended to a day cell that is currently selected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected"
+          }
+        }
+      }
+    },
+    "Calendar.Day.Today" : {
+      "comment" : "VoiceOver trait appended to the day cell representing today",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        }
+      }
+    },
+    "Calendar.Navigation.Next" : {
+      "comment" : "VoiceOver label for the button that advances to the next month/year",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        }
+      }
+    },
+    "Calendar.Navigation.Previous" : {
+      "comment" : "VoiceOver label for the button that returns to the previous month/year",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous"
+          }
+        }
+      }
+    },
     "Calendar.Today" : {
       "comment" : "Button to jump to today's date\"",
       "extractionState" : "manual",

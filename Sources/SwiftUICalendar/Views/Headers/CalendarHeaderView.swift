@@ -25,9 +25,9 @@ struct CalendarHeaderView: View {
   @ViewBuilder
   private var macOSTodayButton: some View {
     #if os(macOS)
+      // Navigate to today without mutating the user's selection, matching the iOS Today button.
       Button("Calendar.Today".localized) {
-        model.currentDate = Date()
-        model.select(model.currentDate)
+        model.goToToday()
       }
     #endif
   }

@@ -18,6 +18,7 @@ import SwiftUI
 ///     CalendarView(model: calendar)
 /// }
 /// ```
+@MainActor
 @Observable public class CalendarViewModel {
 
   // MARK: - Selection mode
@@ -100,6 +101,12 @@ import SwiftUI
   }
 
   var layoutDirection: LayoutDirection {
+    // Calendars whose native script is right-to-left (Hebrew, Islamic, Persian) lay out RTL
+    // regardless of the system locale's language. This keeps a Hebrew or Islamic calendar
+    // mirrored even on an English system, where the resolved locale would otherwise report LTR.
+    if calendarIdentifier.prefersRightToLeftLayout {
+      return .rightToLeft
+    }
     if let languageCode = locale.language.languageCode?.identifier {
       let direction = Locale.Language(identifier: languageCode).characterDirection
       return direction == .rightToLeft ? .rightToLeft : .leftToRight
@@ -394,22 +401,29 @@ import SwiftUI
     return months
   }
 
-  func date(for day: Int) -> Date {
+  /// Returns the absolute date for a day in the currently displayed month, or `nil` if the
+  /// components cannot be resolved in the active calendar.
+  func date(for day: Int) -> Date? {
     guard
       let date = calendar.date(
         from: DateComponents(year: currentYear, month: currentMonth, day: day))
     else {
       logger.error("Cannot create date from components for day: \(day)")
-      return Date()
+      return nil
     }
     return date
   }
 
-  func date(for day: Int, month: Int, year: Int) -> Date {
+  /// Returns the absolute date for a day/month/year in the active calendar, or `nil` if the
+  /// components cannot be resolved.
+  ///
+  /// Returns `nil` rather than a placeholder so callers never mistake a failed calculation for a
+  /// real (and possibly "today"/"selected") date.
+  func date(for day: Int, month: Int, year: Int) -> Date? {
     guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) else {
       logger.error(
         "Cannot create date from components for day: \(day) month: \(month) year: \(year)")
-      return Date()
+      return nil
     }
     return date
   }
@@ -476,7 +490,8 @@ import SwiftUI
   }
 
   func isSelected(_ day: Int) -> Bool {
-    isSelected(date: date(for: day))
+    guard let date = date(for: day) else { return false }
+    return isSelected(date: date)
   }
 
   func isSelected(date: Date) -> Bool {
@@ -569,6 +584,21 @@ import SwiftUI
       break
     }
     return locale
+  }
+}
+
+extension Calendar.Identifier {
+  /// Whether this calendar system's native script is written right-to-left.
+  ///
+  /// Used to drive `CalendarViewModel.layoutDirection` so calendars like Hebrew and Islamic stay
+  /// mirrored even when the resolved system locale reports a left-to-right language.
+  var prefersRightToLeftLayout: Bool {
+    switch self {
+    case .hebrew, .islamic, .islamicCivil, .islamicUmmAlQura, .islamicTabular, .persian:
+      return true
+    default:
+      return false
+    }
   }
 }
 

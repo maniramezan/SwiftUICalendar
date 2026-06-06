@@ -58,10 +58,10 @@ struct CircleDayView: CalendarDayView {
   private var accessibilityLabel: String {
     var components = [context.date.formatted(date: .abbreviated, time: .omitted)]
     if context.isToday {
-      components.append("Today")
+      components.append("Calendar.Day.Today".localized)
     }
     if context.isSelected {
-      components.append("Selected")
+      components.append("Calendar.Day.Selected".localized)
     }
     return components.joined(separator: ", ")
   }

@@ -17,6 +17,9 @@ struct CalendarBodyView: View {
   private let displayYear: Int?
   private let showWeekdayHeader: Bool
   private let hideOverflowDays: Bool
+  /// When `true`, tapping a day outside the displayed month navigates the calendar to that month.
+  /// Set to `false` for scroll modes where the adjacent month is already visible.
+  private let navigatesOnOverflowTap: Bool
 
   private var minCalendarWidth: CGFloat {
     (7 * Self.minCellSize) + (6 * Self.itemSpacing)
@@ -81,22 +84,23 @@ struct CalendarBodyView: View {
       let targetYear: Int
       let isToday: Bool
       let isSelected: Bool
-      let date: Date
+      let date: Date?
 
       if isCurrentMonth {
         day = index - leadingEmptyDaysCount + 1
         targetMonth = activeMonth
         targetYear = activeYear
         date = viewModel.date(for: day, month: targetMonth, year: targetYear)
-        isToday = viewModel.isToday(day: day, month: targetMonth, year: targetYear)
-        isSelected = viewModel.isSelected(date: date)
+        isToday =
+          date != nil && viewModel.isToday(day: day, month: targetMonth, year: targetYear)
+        isSelected = date.map { viewModel.isSelected(date: $0) } ?? false
       } else {
         day = previousMonthStartingDay + index
         targetMonth = previousMonthMetadata.month
         targetYear = previousMonthMetadata.year
         date = viewModel.date(for: day, month: targetMonth, year: targetYear)
         isToday = false
-        isSelected = viewModel.isSelected(date: date)
+        isSelected = date.map { viewModel.isSelected(date: $0) } ?? false
       }
 
       dayLabel = NumberFormatter.formatDay(day, locale: viewModel.locale)
@@ -130,7 +134,7 @@ struct CalendarBodyView: View {
           targetYear: targetYear,
           isCurrentMonth: false,
           isToday: false,
-          isSelected: viewModel.isSelected(date: date)
+          isSelected: date.map { viewModel.isSelected(date: $0) } ?? false
         )
       }
       items.append(contentsOf: trailingItems)
@@ -207,13 +211,9 @@ struct CalendarBodyView: View {
         spacing: Self.rowSpacing
       ) {
         ForEach(orderedDayItems) { item in
-          if hideOverflowDays && !item.isCurrentMonth {
-            Color.clear
-              .frame(maxWidth: .infinity)
-              .frame(height: cellSize)
-          } else {
+          if let date = item.date, !(hideOverflowDays && !item.isCurrentMonth) {
             let context = CalendarDayContext(
-              date: item.date,
+              date: date,
               day: item.day,
               dayLabel: item.dayLabel,
               isToday: item.isToday,
@@ -224,7 +224,7 @@ struct CalendarBodyView: View {
               onSelect: { selectedDate in
                 handleSelection(for: item, selectedDate: selectedDate)
               },
-              secondaryLabel: resolveSecondaryLabel(for: item.date)
+              secondaryLabel: resolveSecondaryLabel(for: date)
             )
 
             AnyView(theme.day.dayContent(context))
@@ -233,6 +233,11 @@ struct CalendarBodyView: View {
               .frame(height: cellSize)
               .foregroundStyle(item.isCurrentMonth ? Color.primary : Color.gray)
               .contentShape(Rectangle())
+          } else {
+            // Hidden overflow day, or a date that could not be resolved.
+            Color.clear
+              .frame(maxWidth: .infinity)
+              .frame(height: cellSize)
           }
         }
       }
@@ -252,19 +257,13 @@ struct CalendarBodyView: View {
 
   init(
     displayMonth: Int? = nil, displayYear: Int? = nil, showWeekdayHeader: Bool = true,
-    hideOverflowDays: Bool = false
+    hideOverflowDays: Bool = false, navigatesOnOverflowTap: Bool = true
   ) {
     self.displayMonth = displayMonth
     self.displayYear = displayYear
     self.showWeekdayHeader = showWeekdayHeader
     self.hideOverflowDays = hideOverflowDays
-  }
-}
-
-private struct CellWidthPreferenceKey: PreferenceKey {
-  static let defaultValue: CGFloat? = nil
-  static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
-    if let next = nextValue() { value = next }
+    self.navigatesOnOverflowTap = navigatesOnOverflowTap
   }
 }
 
@@ -272,7 +271,7 @@ private struct DayRenderItem: Identifiable {
   let id: String
   let day: Int
   let dayLabel: String
-  let date: Date
+  let date: Date?
   let targetMonth: Int
   let targetYear: Int
   let isCurrentMonth: Bool
@@ -294,12 +293,15 @@ extension CalendarBodyView {
     return theme.day.secondaryLabelMode.label(for: date)
   }
 
-  fileprivate func handleSelection(for item: DayRenderItem, selectedDate: Date? = nil) {
-    if !item.isCurrentMonth {
+  fileprivate func handleSelection(for item: DayRenderItem, selectedDate: Date) {
+    // Tapping a day from an adjacent month navigates the calendar to that month — but only when
+    // navigation is allowed. In a vertical scroll the target month is already on screen, so
+    // mutating `currentDate` here would trigger an unwanted scroll jump.
+    if navigatesOnOverflowTap, !item.isCurrentMonth {
       viewModel.currentYear = item.targetYear
       viewModel.currentMonth = item.targetMonth
     }
-    viewModel.select(selectedDate ?? item.date)
+    viewModel.select(selectedDate)
   }
 
   fileprivate func fallbackMetadata(month baseMonth: Int, year baseYear: Int, offset: Int)

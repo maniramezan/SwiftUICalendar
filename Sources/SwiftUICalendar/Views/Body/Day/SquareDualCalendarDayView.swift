@@ -85,13 +85,13 @@ struct SquareDualCalendarDayView: CalendarDayView {
     var components: [String] = []
     components.append("\(context.date.formatted(date: .abbreviated, time: .omitted))")
     if context.isToday {
-      components.append("Today")
+      components.append("Calendar.Day.Today".localized)
     }
     if context.isSelected {
-      components.append("Selected")
+      components.append("Calendar.Day.Selected".localized)
     }
     if let secondary = context.secondaryLabel {
-      components.append("Secondary \(secondary)")
+      components.append("Calendar.Day.Secondary".localized(with: secondary))
     }
     return components.joined(separator: ", ")
   }

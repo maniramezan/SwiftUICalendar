@@ -26,9 +26,13 @@ struct CalendarBodyVerticalView: View {
               }
               .frame(maxWidth: .infinity, alignment: .leading)
 
-              CalendarBodyView(displayMonth: item.month, displayYear: item.year)
-                .environment(theme)
-                .environment(typography)
+              CalendarBodyView(
+                displayMonth: item.month,
+                displayYear: item.year,
+                navigatesOnOverflowTap: false
+              )
+              .environment(theme)
+              .environment(typography)
             }
             .id(item.id)
           }

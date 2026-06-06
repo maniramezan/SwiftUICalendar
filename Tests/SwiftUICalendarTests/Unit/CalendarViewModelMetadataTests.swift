@@ -124,10 +124,10 @@ struct CalendarViewModelMetadataTests {
   // MARK: - date(for:) and date(for:month:year:)
 
   @Test("date(for:) constructs correct date for current month")
-  func dateForDayInCurrentMonth() {
+  func dateForDayInCurrentMonth() throws {
     let vm = CalendarViewModel.test()
     vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
-    let date = vm.date(for: 15)
+    let date = try #require(vm.date(for: 15))
     let cal = Calendar(identifier: .gregorian)
     #expect(cal.component(.day, from: date) == 15)
     #expect(cal.component(.month, from: date) == 6)
@@ -135,9 +135,9 @@ struct CalendarViewModelMetadataTests {
   }
 
   @Test("date(for:month:year:) constructs correct date for arbitrary month/year")
-  func dateForDayMonthYear() {
+  func dateForDayMonthYear() throws {
     let vm = CalendarViewModel.test()
-    let date = vm.date(for: 20, month: 3, year: 2024)
+    let date = try #require(vm.date(for: 20, month: 3, year: 2024))
     let cal = Calendar(identifier: .gregorian)
     #expect(cal.component(.day, from: date) == 20)
     #expect(cal.component(.month, from: date) == 3)
