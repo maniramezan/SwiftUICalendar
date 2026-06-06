@@ -9,12 +9,13 @@ This file contains only Claude-specific workflow instructions.
 1. Check `.claude/settings.local.json` is in `.gitignore`. Add it if missing.
 2. Read `DEVELOPMENT.md` before starting any task.
 
-## Commit Co-authorship
+## Commits
+
+- Use the user's identity only. Never add a `Co-Authored-By: Claude` (or any
+  Claude/Anthropic) trailer to commits.
 
 ```bash
-git commit -m "message
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
+git commit -m "message"
 ```
 
 ## Logging Guardrails
