@@ -127,6 +127,17 @@ struct CalendarViewModelNavigationTests {
     #expect(vm.currentYear == 2025)
   }
 
+  @Test("currentMonth setter ignores invalid month")
+  func currentMonthSetterIgnoresInvalidMonth() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
+
+    vm.currentMonth = 13
+
+    #expect(vm.currentMonth == 6)
+    #expect(vm.currentYear == 2025)
+  }
+
   @Test("currentYear setter ignores values outside supported range")
   func currentYearSetterIgnoresOutOfRangeValue() {
     let vm = CalendarViewModel.test()
@@ -135,6 +146,66 @@ struct CalendarViewModelNavigationTests {
     vm.currentYear = 2101
 
     #expect(vm.currentYear == 2025)
+    #expect(vm.currentMonth == 6)
+  }
+
+  @Test("Next year: advances year while preserving month")
+  func nextYearAdvancesYear() throws {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
+
+    try vm.updateYearToNextYear()
+
+    #expect(vm.currentYear == 2026)
+    #expect(vm.currentMonth == 6)
+  }
+
+  @Test("Previous year: retreats year while preserving month")
+  func previousYearRetreatsYear() throws {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
+
+    try vm.updateYearToPreviousYear()
+
+    #expect(vm.currentYear == 2024)
+    #expect(vm.currentMonth == 6)
+  }
+
+  @Test("Next year: stops at max supported year")
+  func nextYearStopsAtMaxSupportedYear() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2100, month: 6, day: 1)
+
+    #expect(!vm.canNavigateToNextYear)
+    #expect(throws: Error.self) {
+      try vm.updateYearToNextYear()
+    }
+    #expect(vm.currentYear == 2100)
+    #expect(vm.currentMonth == 6)
+  }
+
+  @Test("updateMonth(byAdding:) rejects out-of-range offset")
+  func updateMonthByAddingRejectsOutOfRangeOffset() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2100, month: 12, day: 1)
+
+    #expect(throws: Error.self) {
+      try vm.updateMonth(byAdding: 1)
+    }
+    #expect(vm.currentYear == 2100)
+    #expect(vm.currentMonth == 12)
+  }
+
+  @Test("Previous year: stops at min supported year")
+  func previousYearStopsAtMinSupportedYear() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 1900, month: 6, day: 1)
+
+    #expect(!vm.canNavigateToPreviousYear)
+    #expect(throws: Error.self) {
+      try vm.updateYearToPreviousYear()
+    }
+    #expect(vm.currentYear == 1900)
     #expect(vm.currentMonth == 6)
   }
 

@@ -124,6 +124,7 @@ SwiftUICalendar starts at `0.1.0` and follows semantic versioning for tagged rel
 swift package resolve
 swift build -c debug
 swift test
+MINIMUM_COVERAGE=80 bash ./scripts/check-coverage.sh
 bash ./scripts/build-docs.sh
 ```
 

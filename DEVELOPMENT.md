@@ -42,6 +42,7 @@ Every PR that touches `Sources/` MUST include corresponding tests:
 swift package resolve         # after Package.swift changes
 swift build -c debug          # quick compile check
 swift test                    # all tests
+MINIMUM_COVERAGE=80 bash ./scripts/check-coverage.sh
 swift test --filter CalendarViewModel  # model logic tests only
 swift test --filter Snapshot  # snapshot tests only
 bash ./scripts/build-docs.sh  # build static DocC output
@@ -49,7 +50,7 @@ bash ./scripts/build-docs.sh  # build static DocC output
 
 ## Release Checklist
 - Confirm `README.md` installation examples point at the next tag, starting with `0.1.0`.
-- Run `bash ./scripts/lint.sh`, `swift build -c debug`, `swift test`, and `bash ./scripts/build-docs.sh`.
+- Run `bash ./scripts/lint.sh`, `swift build -c debug`, `swift test`, `MINIMUM_COVERAGE=80 bash ./scripts/check-coverage.sh`, and `bash ./scripts/build-docs.sh`.
 - Create a GitHub release for the tag, for example `0.1.0`, and use GitHub Releases for release notes.
 
 ## Required Test Runs

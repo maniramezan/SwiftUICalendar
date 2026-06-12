@@ -20,4 +20,31 @@ struct ThemeTests {
     #expect(second.horizontalHeightMode == .sixRows)
     #expect(second.day.emptyDayBorderColorWidth == 0)
   }
+
+  @Test("useSquareDualCalendarDayView applies optional secondary label mode")
+  func useSquareDualCalendarDayViewAppliesSecondaryLabelMode() {
+    let theme = Theme()
+
+    theme.day.useSquareDualCalendarDayView(secondaryLabel: .hebrew)
+
+    let date = Calendar(identifier: .gregorian).date(
+      from: DateComponents(year: 2025, month: 6, day: 15)
+    )!
+    #expect(theme.day.secondaryLabelMode.label(for: date) != nil)
+  }
+
+  @Test("SecondaryLabelMode resolves expected labels")
+  func secondaryLabelModesResolveLabels() {
+    let date = Calendar(identifier: .gregorian).date(
+      from: DateComponents(year: 2025, month: 6, day: 15)
+    )!
+
+    #expect(Theme.Day.SecondaryLabelMode.none.label(for: date) == nil)
+    #expect(Theme.Day.SecondaryLabelMode.calendar(.gregorian).label(for: date) == "15")
+    #expect(Theme.Day.SecondaryLabelMode.custom { _ in "custom" }.label(for: date) == "custom")
+    #expect(Theme.Day.SecondaryLabelMode.persian.label(for: date) != nil)
+    #expect(Theme.Day.SecondaryLabelMode.hebrew.label(for: date) != nil)
+    #expect(Theme.Day.SecondaryLabelMode.islamic.label(for: date) != nil)
+    #expect(Theme.Day.SecondaryLabelMode.japanese.label(for: date) != nil)
+  }
 }

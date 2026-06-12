@@ -178,6 +178,14 @@ struct CalendarViewModelMetadataTests {
     #expect(vm.monthSymbols.count == 12)
   }
 
+  @Test("startOfMonthDay exposes current month weekday offset")
+  func startOfMonthDayExposesCurrentMonthWeekdayOffset() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 15)
+
+    #expect(vm.startOfMonthDay == 1)
+  }
+
   @Test("Hebrew months(in:) includes month 13 in a common year")
   func hebrewMonthsIncludeMonthThirteen() {
     let vm = CalendarViewModel.test(identifier: .hebrew)
@@ -201,5 +209,22 @@ struct CalendarViewModelMetadataTests {
     let vm = CalendarViewModel.test(identifier: .hebrew)
 
     #expect(vm.monthSymbol(for: 13, year: 5785) == "Elul")
+  }
+
+  @Test("monthSymbol resolves current year overload")
+  func monthSymbolCurrentYearOverload() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
+
+    #expect(vm.monthSymbol(for: 6) == "June")
+  }
+
+  @Test("Overflow month metadata normalizes into next year")
+  func overflowMonthMetadataNormalizesIntoNextYear() {
+    let vm = CalendarViewModel.test()
+
+    #expect(vm.monthMetadata(month: 13, year: 2025) == nil)
+    #expect(vm.monthMetadata(month: 13, year: 2025, offset: 1)?.month == 2)
+    #expect(vm.monthMetadata(month: 13, year: 2025, offset: 1)?.year == 2026)
   }
 }

@@ -107,6 +107,22 @@ struct CalendarViewModelSelectionTests {
     #expect(vm.isSelected(date: mid))
   }
 
+  @Test("Range: isSelected reflects start-only range")
+  func rangeIsSelectedForStartOnlyRange() {
+    let start = makeDate(year: 2025, month: 6, day: 10)
+    let vm = CalendarViewModel.test(selection: .range(start, nil))
+
+    #expect(vm.isSelected(date: start))
+    #expect(!vm.isSelected(date: makeDate(year: 2025, month: 6, day: 11)))
+  }
+
+  @Test("Range: empty range selects no dates")
+  func emptyRangeSelectsNoDates() {
+    let vm = CalendarViewModel.test(selection: .range(nil, nil))
+
+    #expect(!vm.isSelected(date: makeDate(year: 2025, month: 6, day: 10)))
+  }
+
   @Test("Range: isSelected outside range")
   func rangeIsNotSelectedOutsideRange() {
     let start = makeDate(year: 2025, month: 6, day: 1)
