@@ -9,6 +9,15 @@
         "branch" : "main",
         "revision" : "4c51afbf713a7b992fa38de03142fc3af84416a1"
       }
+    },
+    {
+      "identity" : "swiftuicomponents",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/maniramezan/SwiftUIComponents",
+      "state" : {
+        "branch" : "main",
+        "revision" : "c759d86769e85ffa7d830b636707ea962e02582f"
+      }
     }
   ],
   "version" : 3

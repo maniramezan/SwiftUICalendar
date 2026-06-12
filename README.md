@@ -13,14 +13,13 @@ SwiftUICalendar is a SwiftUI calendar package with single, range, and multiple s
 - Swift 6.2+
 - iOS 18+
 - macOS 15+
-- Xcode 26.3+ for the repository CI configuration
 
 ## Installation
 
 Add SwiftUICalendar with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", branch: "main")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "0.1.0")
 ```
 
 Then add the product to your target:
@@ -110,10 +109,14 @@ CalendarView(model: CalendarViewModel(calendarIdentifier: .hebrew))
 Build DocC locally:
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer bash ./scripts/build-docs.sh
+bash ./scripts/build-docs.sh
 ```
 
-The generated static documentation is written to `.build/docs`. CI publishes the same output to GitHub Pages on pushes to `main`.
+The generated static documentation is written to `.build/docs`. CI validates DocC on pull requests and publishes the same output to GitHub Pages on pushes to `main`.
+
+## Versioning
+
+SwiftUICalendar starts at `0.1.0` and follows semantic versioning for tagged releases. Before `1.0.0`, minor versions may include source-breaking API refinements.
 
 ## Development
 
@@ -121,6 +124,7 @@ The generated static documentation is written to `.build/docs`. CI publishes the
 swift package resolve
 swift build -c debug
 swift test
+bash ./scripts/build-docs.sh
 ```
 
 Snapshot references live in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__`. When recording snapshots, set `globalRecordMode = .all`, run the snapshot tests, then revert to `.missing` before committing.

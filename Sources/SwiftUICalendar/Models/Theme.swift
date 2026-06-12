@@ -93,20 +93,6 @@ extension Theme {
         CircleDayView(context: context)
       }
 
-    /// Deprecated: Use `secondaryLabelMode` for type-safe configuration.
-    @available(*, deprecated, message: "Use secondaryLabelMode for type-safe configuration")
-    public var secondaryLabelProvider: ((Date) -> String?)? = nil {
-      didSet {
-        guard let provider = secondaryLabelProvider else {
-          if case .custom = secondaryLabelMode {
-            secondaryLabelMode = .none
-          }
-          return
-        }
-        secondaryLabelMode = .custom(provider)
-      }
-    }
-
     /// Mode for displaying secondary labels on day views that support them.
     public var secondaryLabelMode: SecondaryLabelMode = .none
 

@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-: "${DEVELOPER_DIR:?DEVELOPER_DIR must be set to an Xcode developer directory}"
-
 derived_data_path=".build/DerivedData"
 archive_path="${derived_data_path}/Build/Products/Debug/SwiftUICalendar.doccarchive"
 output_path=".build/docs"

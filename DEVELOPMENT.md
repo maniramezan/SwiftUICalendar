@@ -9,7 +9,7 @@
 ## Build, Test, and Development Commands
 - Run `swift package resolve` when the sibling packages `../SwiftCommons` and `../SwiftUIComponents` change.
 - Use `swift build -c debug` for quick package builds.
-- Use `swift test` for all package-level XCTest targets.
+- Use `swift test` for all package-level test targets.
 - Use `swift run SwiftUICalendar` for ad-hoc previews or CLI diagnostics when adding executable entry points.
 
 ## Testing Guidelines
@@ -28,7 +28,7 @@ Every PR that touches `Sources/` MUST include corresponding tests:
 - **New public API method** → positive case + edge/nil case.
 
 ### Snapshot Tests
-- Reference images stored in `Tests/SwiftUICalendarTests/__Snapshots__/`.
+- Reference images stored in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__/`.
 - To record: set `globalRecordMode = .all` in `SnapshotConfiguration.swift`, run tests, **revert to `.missing`**, commit reference images alongside code.
 - Never commit with `globalRecordMode = .all`.
 
@@ -42,9 +42,15 @@ Every PR that touches `Sources/` MUST include corresponding tests:
 swift package resolve         # after Package.swift changes
 swift build -c debug          # quick compile check
 swift test                    # all tests
-swift test --filter Unit      # unit tests only
+swift test --filter CalendarViewModel  # model logic tests only
 swift test --filter Snapshot  # snapshot tests only
+bash ./scripts/build-docs.sh  # build static DocC output
 ```
+
+## Release Checklist
+- Confirm `README.md` installation examples point at the next tag, starting with `0.1.0`.
+- Run `bash ./scripts/lint.sh`, `swift build -c debug`, `swift test`, and `bash ./scripts/build-docs.sh`.
+- Create a GitHub release for the tag, for example `0.1.0`, and use GitHub Releases for release notes.
 
 ## Required Test Runs
 - Package changes (`Sources/`, `Tests/`, `Package.swift`, or shared resources): run `swift test`.
