@@ -29,6 +29,7 @@ struct CalendarBodyVerticalView: View {
               CalendarBodyView(
                 displayMonth: item.month,
                 displayYear: item.year,
+                hideOverflowDays: true,
                 navigatesOnOverflowTap: false
               )
               .environment(theme)
