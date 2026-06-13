@@ -46,9 +46,22 @@ func assertCalendarSnapshot<V: View>(
     #if os(macOS)
       let targetHeight = height ?? 460
       let size = CGSize(width: width, height: targetHeight)
-      let hosting = NSHostingView(rootView: view.frame(width: width))
+      let hosting = NSHostingView(rootView: view.frame(width: width, height: targetHeight))
       hosting.frame = CGRect(origin: .zero, size: size)
+      let window = NSWindow(
+        contentRect: CGRect(origin: .zero, size: size),
+        styleMask: [],
+        backing: .buffered,
+        defer: false
+      )
+      window.contentView = hosting
+      window.layoutIfNeeded()
       hosting.layoutSubtreeIfNeeded()
+      if let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) {
+        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+      } else {
+        hosting.displayIfNeeded()
+      }
     #else
       _ = view.frame(width: width, height: height ?? 460)
     #endif
