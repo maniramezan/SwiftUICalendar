@@ -48,6 +48,8 @@ jobs:
         run: swift build -c debug
 
       - name: Check test coverage
+        env:
+          MINIMUM_COVERAGE: 79.5
         run: bash ./scripts/check-coverage.sh
 
       - name: Build DocC documentation
@@ -93,6 +95,8 @@ jobs:
         run: swift test
 
       - name: Check test coverage
+        env:
+          MINIMUM_COVERAGE: 79.5
         run: bash ./scripts/check-coverage.sh
 
       - name: Build DocC documentation

@@ -60,7 +60,20 @@ struct ThemeTests {
 
     let hosting = NSHostingView(rootView: view)
     hosting.frame = CGRect(origin: .zero, size: CGSize(width: 220, height: 80))
+    let window = NSWindow(
+      contentRect: hosting.frame,
+      styleMask: [],
+      backing: .buffered,
+      defer: false
+    )
+    window.contentView = hosting
+    window.layoutIfNeeded()
     hosting.layoutSubtreeIfNeeded()
+    if let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) {
+      hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+    } else {
+      hosting.displayIfNeeded()
+    }
 
     #expect(hosting.fittingSize.width >= 0)
   }
