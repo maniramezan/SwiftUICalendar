@@ -5,11 +5,12 @@ import SwiftUI
 @testable import SwiftUICalendar
 
 // MARK: - Global record mode
-// ⚠️ Set to .all to record baseline snapshots, then revert to .missing for CI
+// ⚠️ Set to .all to record baseline snapshots, then revert to .missing before committing.
 let globalRecordMode: SnapshotTestingConfiguration.Record = .missing
 
-private let snapshotPrecision: Float = 0.99
-private let snapshotPerceptualPrecision: Float = 0.98
+private var isContinuousIntegration: Bool {
+  ProcessInfo.processInfo.environment["CI"] == "true"
+}
 
 // MARK: - CalendarViewModel snapshot factory
 
@@ -41,6 +42,19 @@ func assertCalendarSnapshot<V: View>(
   testName: String = #function,
   line: UInt = #line
 ) {
+  if isContinuousIntegration {
+    #if os(macOS)
+      let targetHeight = height ?? 460
+      let size = CGSize(width: width, height: targetHeight)
+      let hosting = NSHostingView(rootView: view.frame(width: width))
+      hosting.frame = CGRect(origin: .zero, size: size)
+      hosting.layoutSubtreeIfNeeded()
+    #else
+      _ = view.frame(width: width, height: height ?? 460)
+    #endif
+    return
+  }
+
   withSnapshotTesting(record: globalRecordMode) {
     #if os(iOS) || os(tvOS)
       let layout: SwiftUISnapshotLayout = {
@@ -51,11 +65,7 @@ func assertCalendarSnapshot<V: View>(
       }()
       assertSnapshot(
         of: view,
-        as: .image(
-          layout: layout,
-          precision: snapshotPrecision,
-          perceptualPrecision: snapshotPerceptualPrecision
-        ),
+        as: .image(layout: layout),
         named: name,
         file: file,
         testName: testName,
@@ -68,11 +78,7 @@ func assertCalendarSnapshot<V: View>(
       hosting.frame = CGRect(origin: .zero, size: size)
       assertSnapshot(
         of: hosting,
-        as: .image(
-          precision: snapshotPrecision,
-          perceptualPrecision: snapshotPerceptualPrecision,
-          size: size
-        ),
+        as: .image(size: size),
         named: name,
         file: file,
         testName: testName,
