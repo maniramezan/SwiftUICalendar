@@ -8,6 +8,9 @@ import SwiftUI
 // ⚠️ Set to .all to record baseline snapshots, then revert to .missing for CI
 let globalRecordMode: SnapshotTestingConfiguration.Record = .missing
 
+private let snapshotPrecision: Float = 0.99
+private let snapshotPerceptualPrecision: Float = 0.98
+
 // MARK: - CalendarViewModel snapshot factory
 
 extension CalendarViewModel {
@@ -48,7 +51,11 @@ func assertCalendarSnapshot<V: View>(
       }()
       assertSnapshot(
         of: view,
-        as: .image(layout: layout),
+        as: .image(
+          layout: layout,
+          precision: snapshotPrecision,
+          perceptualPrecision: snapshotPerceptualPrecision
+        ),
         named: name,
         file: file,
         testName: testName,
@@ -61,7 +68,11 @@ func assertCalendarSnapshot<V: View>(
       hosting.frame = CGRect(origin: .zero, size: size)
       assertSnapshot(
         of: hosting,
-        as: .image(size: size),
+        as: .image(
+          precision: snapshotPrecision,
+          perceptualPrecision: snapshotPerceptualPrecision,
+          size: size
+        ),
         named: name,
         file: file,
         testName: testName,

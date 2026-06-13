@@ -227,4 +227,17 @@ struct CalendarViewModelMetadataTests {
     #expect(vm.monthMetadata(month: 13, year: 2025, offset: 1)?.month == 2)
     #expect(vm.monthMetadata(month: 13, year: 2025, offset: 1)?.year == 2026)
   }
+
+  @Test("Displayed month metadata offset keeps previous and next in chronological order")
+  func displayedMonthMetadataOffsetKeepsChronologicalOrder() {
+    let vm = CalendarViewModel.test()
+
+    let previous = vm.monthMetadata(month: 6, year: 2026, offset: -1)
+    let next = vm.monthMetadata(month: 6, year: 2026, offset: 1)
+
+    #expect(previous?.month == 5)
+    #expect(previous?.year == 2026)
+    #expect(next?.month == 7)
+    #expect(next?.year == 2026)
+  }
 }

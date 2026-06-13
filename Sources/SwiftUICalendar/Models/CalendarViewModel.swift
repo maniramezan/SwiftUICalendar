@@ -161,14 +161,14 @@ import SwiftUI
   }
 
   var canNavigateToPreviousMonth: Bool {
-    guard let updatedDate = try? calendar.sameDay(currentDate, byAddingMonths: -1) else {
+    guard let updatedDate = date(byAddingMonths: -1, to: currentDate) else {
       return false
     }
     return isWithinSupportedYear(updatedDate)
   }
 
   var canNavigateToNextMonth: Bool {
-    guard let updatedDate = try? calendar.sameDay(currentDate, byAddingMonths: 1) else {
+    guard let updatedDate = date(byAddingMonths: 1, to: currentDate) else {
       return false
     }
     return isWithinSupportedYear(updatedDate)
@@ -295,7 +295,9 @@ import SwiftUI
   }
 
   func updateMonth(byAdding months: Int) throws {
-    let updatedDate = try calendar.sameDay(currentDate, byAddingMonths: months)
+    guard let updatedDate = date(byAddingMonths: months, to: currentDate) else {
+      throw Calendar.CalendarError.cannotCalculateDate
+    }
     guard isWithinSupportedYear(updatedDate) else {
       throw Calendar.CalendarError.cannotCalculateDate
     }
@@ -350,7 +352,7 @@ import SwiftUI
         numberOfDays: numberOfDaysInMonth
       )
     }
-    guard let targetDate = try? calendar.sameDay(currentDate, byAddingMonths: offset) else {
+    guard let targetDate = date(byAddingMonths: offset, to: currentDate) else {
       return nil
     }
     let month = calendar.month(from: targetDate)
@@ -365,7 +367,7 @@ import SwiftUI
 
   func monthMetadata(month: Int, year: Int, offset: Int) -> MonthMetadata? {
     guard let date = firstDate(month: month, year: year),
-      let targetDate = try? calendar.sameDay(date, byAddingMonths: offset)
+      let targetDate = self.date(byAddingMonths: offset, to: date)
     else {
       return nil
     }
@@ -474,6 +476,10 @@ import SwiftUI
     let numberOfDays = (try? calendar.numberOfDays(for: startOfMonth)) ?? 1
     let clampedDay = min(max(preferredDay, 1), numberOfDays)
     return calendar.date(from: DateComponents(year: year, month: month, day: clampedDay))
+  }
+
+  private func date(byAddingMonths months: Int, to date: Date) -> Date? {
+    calendar.date(byAdding: .month, value: months, to: date)
   }
 
   private func isWithinSupportedYear(_ date: Date) -> Bool {
