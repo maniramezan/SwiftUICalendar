@@ -52,6 +52,15 @@ struct CalendarViewModelNavigationTests {
     #expect(vm.currentYear == 2025)
   }
 
+  @Test("Month navigation availability is true away from year boundaries")
+  func monthNavigationAvailabilityIsTrueAwayFromBoundaries() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
+
+    #expect(vm.canNavigateToPreviousMonth)
+    #expect(vm.canNavigateToNextMonth)
+  }
+
   @Test("Next month: wraps December to January of next year")
   func nextMonthWrapsDecToJan() throws {
     let vm = CalendarViewModel.test()
@@ -158,6 +167,15 @@ struct CalendarViewModelNavigationTests {
 
     #expect(vm.currentYear == 2026)
     #expect(vm.currentMonth == 6)
+  }
+
+  @Test("Year navigation availability is true away from year boundaries")
+  func yearNavigationAvailabilityIsTrueAwayFromBoundaries() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
+
+    #expect(vm.canNavigateToPreviousYear)
+    #expect(vm.canNavigateToNextYear)
   }
 
   @Test("Previous year: retreats year while preserving month")
