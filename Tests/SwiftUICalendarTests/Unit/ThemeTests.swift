@@ -47,4 +47,21 @@ struct ThemeTests {
     #expect(Theme.Day.SecondaryLabelMode.islamic.label(for: date) != nil)
     #expect(Theme.Day.SecondaryLabelMode.japanese.label(for: date) != nil)
   }
+
+  @Test("adaptiveGlass renders fallback shape variants")
+  func adaptiveGlassRendersFallbackShapeVariants() {
+    let view = HStack {
+      Text("Capsule")
+        .adaptiveGlass(shape: .capsule)
+      Text("Rounded")
+        .adaptiveGlass(shape: .roundedRectangle(cornerRadius: 8))
+    }
+    .frame(width: 220, height: 80)
+
+    let hosting = NSHostingView(rootView: view)
+    hosting.frame = CGRect(origin: .zero, size: CGSize(width: 220, height: 80))
+    hosting.layoutSubtreeIfNeeded()
+
+    #expect(hosting.fittingSize.width >= 0)
+  }
 }
