@@ -5,55 +5,49 @@ struct CalendarBodyVerticalView: View {
   @Environment(CalendarViewModel.self) var viewModel
   @Environment(Theme.self) var theme
   @Environment(Typography.self) var typography
-  @State private var hasScrolledToCurrentMonth = false
+  @State private var scrollPosition: MonthIdentifier?
 
   var body: some View {
-    ScrollViewReader { reader in
-      ScrollView(.vertical, showsIndicators: true) {
-        LazyVStack(spacing: 24) {
-          ForEach(monthItems) { item in
-            VStack(spacing: 8) {
-              // Month and year header for each month
-              HStack {
-                Text(item.monthTitle)
-                  .font(typography.monthHeaderFont)
-                Text(
-                  NumberFormatter.formatYear(
-                    item.year,
-                    locale: viewModel.locale)
-                )
+    ScrollView(.vertical, showsIndicators: true) {
+      LazyVStack(spacing: 24) {
+        ForEach(monthItems) { item in
+          VStack(spacing: 8) {
+            // Month and year header for each month
+            HStack {
+              Text(item.monthTitle)
                 .font(typography.monthHeaderFont)
-              }
-              .frame(maxWidth: .infinity, alignment: .leading)
-
-              CalendarBodyView(
-                displayMonth: item.month,
-                displayYear: item.year,
-                hideOverflowDays: true,
-                navigatesOnOverflowTap: false
+              Text(
+                NumberFormatter.formatYear(
+                  item.year,
+                  locale: viewModel.locale)
               )
-              .environment(theme)
-              .environment(typography)
+              .font(typography.monthHeaderFont)
             }
-            .id(item.id)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            CalendarBodyView(
+              displayMonth: item.month,
+              displayYear: item.year,
+              hideOverflowDays: true,
+              navigatesOnOverflowTap: false
+            )
+            .environment(theme)
+            .environment(typography)
           }
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal)
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-      .onAppear {
-        // Delay scroll to ensure content is laid out
-        if !hasScrolledToCurrentMonth {
-          DispatchQueue.main.async {
-            scrollToCurrentMonth(using: reader, animated: false)
-          }
+          .id(item.id)
         }
       }
-      .onChange(of: viewModel.currentDate) { _, _ in
-        DispatchQueue.main.async {
-          scrollToCurrentMonth(using: reader, animated: true)
-        }
+      .padding(.vertical, 8)
+      .padding(.horizontal)
+    }
+    .scrollPosition(id: $scrollPosition, anchor: .top)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .onAppear {
+      scrollPosition = currentMonthIdentifier
+    }
+    .onChange(of: viewModel.currentDate) { _, _ in
+      withAnimation {
+        scrollPosition = currentMonthIdentifier
       }
     }
   }
@@ -80,16 +74,8 @@ struct CalendarBodyVerticalView: View {
     return items
   }
 
-  private func scrollToCurrentMonth(using reader: ScrollViewProxy, animated: Bool) {
-    let target = MonthIdentifier(month: viewModel.currentMonth, year: viewModel.currentYear)
-    if animated {
-      withAnimation {
-        reader.scrollTo(target, anchor: .top)
-      }
-    } else {
-      reader.scrollTo(target, anchor: .top)
-    }
-    hasScrolledToCurrentMonth = true
+  private var currentMonthIdentifier: MonthIdentifier {
+    MonthIdentifier(month: viewModel.currentMonth, year: viewModel.currentYear)
   }
 }
 
