@@ -10,7 +10,17 @@ Build configurable SwiftUI calendars with modern selection, scrolling, and alter
 
 SwiftUICalendar provides a SwiftUI-first calendar component for apps that need more than a static month grid. The package includes a stateful `CalendarViewModel`, a composable `CalendarView`, built-in day renderers, and theme and typography models that can be customized without forking the view implementation.
 
-![SwiftUICalendar overview](calendar-overview)
+### Normal
+
+![Normal SwiftUICalendar view](calendar-normal)
+
+### Horizontal
+
+![Horizontal SwiftUICalendar view](calendar-horizontal)
+
+### Vertical
+
+![Vertical SwiftUICalendar view](calendar-vertical)
 
 Use the package when you need:
 

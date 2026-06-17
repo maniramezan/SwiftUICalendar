@@ -2,11 +2,11 @@
     @Intro(title: "Build calendar experiences with SwiftUICalendar") {
         Learn how to install the package, display a calendar, customize selection, and publish documentation.
 
-        @Image(source: calendar-overview.svg, alt: "A stylized calendar grid with highlighted dates")
+        @Image(source: calendar-normal.png, alt: "The actual normal SwiftUICalendar view")
     }
 
     @Chapter(name: "Calendar Screens") {
-        @Image(source: calendar-overview.svg, alt: "Calendar UI overview")
+        @Image(source: calendar-horizontal.png, alt: "The actual horizontal SwiftUICalendar view")
         @TutorialReference(tutorial: "doc:BuildingACalendarScreen")
     }
 }
