@@ -8,6 +8,14 @@
 
 SwiftUICalendar is a SwiftUI calendar package with single, range, and multiple selection modes, built-in Gregorian and non-Gregorian calendar support, configurable scrolling, and customizable day rendering.
 
+## Calendar Modes
+
+These images are generated from the package snapshot references for the actual `CalendarView`.
+
+| Normal | Horizontal | Vertical |
+| --- | --- | --- |
+| ![Normal SwiftUICalendar view](Sources/SwiftUICalendar/SwiftUICalendar.docc/Resources/calendar-normal.png) | ![Horizontal SwiftUICalendar view](Sources/SwiftUICalendar/SwiftUICalendar.docc/Resources/calendar-horizontal.png) | ![Vertical SwiftUICalendar view](Sources/SwiftUICalendar/SwiftUICalendar.docc/Resources/calendar-vertical.png) |
+
 ## Requirements
 
 - Swift 6.2+
