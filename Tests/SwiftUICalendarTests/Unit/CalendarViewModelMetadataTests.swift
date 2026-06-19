@@ -240,4 +240,17 @@ struct CalendarViewModelMetadataTests {
     #expect(next?.month == 7)
     #expect(next?.year == 2026)
   }
+
+  @Test("monthMetadata(month:year:) returns the requested month with its day count")
+  func monthMetadataByMonthYear() {
+    let vm = CalendarViewModel.test()
+
+    let february = vm.monthMetadata(month: 2, year: 2024)
+    #expect(february?.month == 2)
+    #expect(february?.year == 2024)
+    #expect(february?.numberOfDays == 29)  // 2024 is a leap year
+
+    // A month index outside the calendar's range does not resolve.
+    #expect(vm.monthMetadata(month: 13, year: 2024) == nil)
+  }
 }

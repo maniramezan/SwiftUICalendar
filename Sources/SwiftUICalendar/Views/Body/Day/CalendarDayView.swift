@@ -1,10 +1,3 @@
-//
-//  CalendarDayView.swift
-//  SwiftUICalendar
-//
-//  Created by Mani Ramezan on 12/22/25.
-//
-
 import SwiftUI
 
 /// Context passed to day views to render a specific date.
@@ -32,7 +25,10 @@ import SwiftUI
 public struct CalendarDayContext {
   /// The underlying absolute date represented by the cell.
   public let date: Date
-  /// The day number within the active calendar month.
+  /// The raw day number within the active calendar month.
+  ///
+  /// Prefer ``dayLabel`` for display: rendering this integer directly shows Western digits even in
+  /// calendars that use other numbering systems (e.g. Persian or Arabic). Use `day` for logic.
   public let day: Int
   /// Localized day label for display.
   ///
@@ -94,6 +90,27 @@ public struct CalendarDayContext {
     self.typography = typography
     self.onSelect = onSelect
     self.secondaryLabel = secondaryLabel
+  }
+}
+
+extension CalendarDayContext {
+  /// Builds a VoiceOver label for the cell: the formatted date plus today/selected state, and
+  /// optionally a secondary alternate-calendar label for day views that display one.
+  ///
+  /// - Parameter includeSecondaryLabel: Append the secondary label when present. Day views that
+  ///   do not render a secondary label (e.g. the circular cell) pass `false`.
+  public func accessibilityLabel(includeSecondaryLabel: Bool = false) -> String {
+    var components = [date.formatted(date: .abbreviated, time: .omitted)]
+    if isToday {
+      components.append("Calendar.Day.Today".localized)
+    }
+    if isSelected {
+      components.append("Calendar.Day.Selected".localized)
+    }
+    if includeSecondaryLabel, let secondaryLabel {
+      components.append("Calendar.Day.Secondary".localized(with: secondaryLabel))
+    }
+    return components.joined(separator: ", ")
   }
 }
 

@@ -1,10 +1,3 @@
-//
-//  CalendarStrings.swift
-//  SwiftUICalendar
-//
-//  Created by Mani Ramezan on 9/9/25.
-//
-
 import Foundation
 import SwiftUI
 

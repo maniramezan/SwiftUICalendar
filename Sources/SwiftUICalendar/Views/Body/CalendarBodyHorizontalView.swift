@@ -1,12 +1,6 @@
 import SwiftUI
 
 struct CalendarBodyHorizontalView: View {
-  private static let itemSpacing: CGFloat = 8
-  private static let rowSpacing: CGFloat = 10
-  private static let minCellSize: CGFloat = SizingClass.Day.minimumWidth
-  private static let headerHeightRatio: CGFloat = 0.45
-  private static let minHeaderHeight: CGFloat = 24
-  private static let heightCeilingPadding: CGFloat = 2
   private static let swipeThresholdRatio: CGFloat = 0.25
   private static let minimumSwipeThreshold: CGFloat = 56
   private static let pagingAnimation = Animation.interactiveSpring(
@@ -34,35 +28,16 @@ struct CalendarBodyHorizontalView: View {
   @State private var measuredHeight: CGFloat = 0
   @State private var isNavigating = false
 
-  private var minCalendarWidth: CGFloat {
-    (7 * Self.minCellSize) + (6 * Self.itemSpacing)
+  private var metrics: CalendarGridMetrics {
+    CalendarGridMetrics(containerWidth: containerWidth)
   }
 
   private var layoutWidth: CGFloat {
-    max(containerWidth, minCalendarWidth)
-  }
-
-  private var cellSize: CGFloat {
-    let totalInteritemSpacing = Self.itemSpacing * 6
-    let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
-    let columnWidth = widthForCells / 7
-    return max(Self.minCellSize, columnWidth)
-  }
-
-  private var weekdayHeaderHeight: CGFloat {
-    max(Self.headerHeightRatio * cellSize, Self.minHeaderHeight)
-  }
-
-  private var columns: [GridItem] {
-    Array(
-      repeating: GridItem(
-        .flexible(minimum: Self.minCellSize), spacing: Self.itemSpacing, alignment: .center),
-      count: 7
-    )
+    metrics.layoutWidth
   }
 
   private var calendarHeight: CGFloat {
-    height(forRowCount: rowCountForHeight)
+    metrics.paddedGridHeight(rowCount: rowCountForHeight)
   }
 
   /// `1` for LTR, `-1` for RTL.
@@ -89,20 +64,15 @@ struct CalendarBodyHorizontalView: View {
   }
 
   var body: some View {
-    VStack(spacing: Self.rowSpacing) {
+    VStack(spacing: CalendarGridMetrics.rowSpacing) {
       // Static weekday header — does not scroll with the carousel
-      LazyVGrid(columns: columns, alignment: .center, spacing: 0) {
-        ForEach(Array(viewModel.headerTitles.enumerated()), id: \.offset) { _, day in
-          Text(day)
-            .font(typography.weekdayHeaderFont)
-            .lineLimit(1)
-            .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
-            .frame(height: weekdayHeaderHeight)
-            .frame(maxWidth: .infinity)
-        }
-      }
+      WeekdayHeaderRow(
+        titles: viewModel.headerTitles,
+        height: metrics.weekdayHeaderHeight,
+        font: typography.weekdayHeaderFont,
+        minScaleFactor: typography.minScaleFactor ?? 1.0
+      )
       .frame(width: layoutWidth)
-      .accessibilityHidden(true)
 
       // Day-grid carousel.
       // Swipe semantics are fixed across locales:
@@ -205,15 +175,7 @@ struct CalendarBodyHorizontalView: View {
             }
           }
       )
-      .background(
-        GeometryReader { geometry in
-          Color.clear
-            .onAppear { containerWidth = geometry.size.width }
-            .onChange(of: geometry.size.width) { _, newWidth in
-              containerWidth = newWidth
-            }
-        }
-      )
+      .measuringContainerWidth($containerWidth)
     }
   }
 
@@ -247,17 +209,6 @@ struct CalendarBodyHorizontalView: View {
     case .sixRows:
       return 6
     }
-  }
-
-  private func height(forRowCount rowCount: Int) -> CGFloat {
-    let totalInteritemSpacing = Self.itemSpacing * 6
-    let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
-    let columnWidth = widthForCells / 7
-    let cs = max(Self.minCellSize, columnWidth)
-    // Grid only: (rowCount - 1) spacings between rows (header is static above carousel)
-    let totalRowSpacing = Self.rowSpacing * CGFloat(rowCount - 1)
-    let h = (CGFloat(rowCount) * cs) + totalRowSpacing
-    return ceil(h) + Self.heightCeilingPadding
   }
 
   /// Swipe LEFT: next month slides in from the right.
@@ -298,22 +249,12 @@ struct CalendarBodyHorizontalView: View {
 
   private func finishNavigation(monthDelta: Int, savedCurrent: CalendarViewModel) {
     guard monthDelta == 1 || monthDelta == -1 else {
-      withTransaction(Transaction(animation: nil)) {
-        offset = 0
-        dragOffset = 0
-      }
-      isNavigating = false
-      syncFromBinding()
+      resetCarousel()
       return
     }
 
-    if (try? viewModel.updateMonth(byAdding: monthDelta)) == nil {
-      withTransaction(Transaction(animation: nil)) {
-        offset = 0
-        dragOffset = 0
-      }
-      isNavigating = false
-      syncFromBinding()
+    guard (try? viewModel.updateMonth(byAdding: monthDelta)) != nil else {
+      resetCarousel()
       return
     }
 
@@ -327,11 +268,15 @@ struct CalendarBodyHorizontalView: View {
       previousViewModel = (try? viewModel.copy(addMonths: -1)) ?? viewModel
     }
 
+    resetCarousel()
+  }
+
+  /// Snaps the carousel back to its rest position and re-syncs the parked months.
+  private func resetCarousel() {
     withTransaction(Transaction(animation: nil)) {
       offset = 0
       dragOffset = 0
     }
-
     isNavigating = false
     syncFromBinding()
   }

@@ -81,15 +81,4 @@ struct CalendarViewSnapshotTests {
       named: "calendar-header-persian"
     )
   }
-
-  @Test("CalendarWeekHeaderView renders localized weekdays")
-  func calendarWeekHeader() {
-    let vm = CalendarViewModel.snapshot(identifier: .persian, selection: .single(nil))
-    assertCalendarSnapshot(
-      of: CalendarWeekHeaderView(weekDays: vm.headerTitles),
-      width: snapshotWidth,
-      height: 48,
-      named: "calendar-week-header-persian"
-    )
-  }
 }

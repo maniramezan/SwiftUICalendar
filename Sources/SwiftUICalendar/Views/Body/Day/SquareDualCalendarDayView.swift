@@ -78,22 +78,7 @@ struct SquareDualCalendarDayView: CalendarDayView {
     .onTapGesture {
       context.onSelect(context.date)
     }
-    .accessibilityLabel(accessibilityLabel)
-  }
-
-  private var accessibilityLabel: String {
-    var components: [String] = []
-    components.append("\(context.date.formatted(date: .abbreviated, time: .omitted))")
-    if context.isToday {
-      components.append("Calendar.Day.Today".localized)
-    }
-    if context.isSelected {
-      components.append("Calendar.Day.Selected".localized)
-    }
-    if let secondary = context.secondaryLabel {
-      components.append("Calendar.Day.Secondary".localized(with: secondary))
-    }
-    return components.joined(separator: ", ")
+    .accessibilityLabel(context.accessibilityLabel(includeSecondaryLabel: true))
   }
 }
 
