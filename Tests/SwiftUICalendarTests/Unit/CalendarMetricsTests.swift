@@ -19,8 +19,6 @@ struct CalendarMetricsTests {
     #expect(metrics.monthSpacing == 24)
     // 7 * 44 + 6 * 8
     #expect(metrics.minCalendarWidth == 356)
-    // 7 * 64 + 6 * 8
-    #expect(metrics.maxCalendarWidth == 496)
   }
 
   // MARK: - Custom theme flows through
@@ -37,8 +35,6 @@ struct CalendarMetricsTests {
     #expect(metrics.minCellSize == 50)
     #expect(metrics.maxCellSize == 80)
     #expect(metrics.monthSpacing == 36)
-    // 7 * 80 + 6 * 10
-    #expect(metrics.maxCalendarWidth == 620)
   }
 
   // MARK: - Cap relationship
@@ -46,6 +42,5 @@ struct CalendarMetricsTests {
   @Test("Maximum cell size never falls below the minimum hit target")
   func maximumExceedsMinimum() {
     #expect(CalendarMetrics.default.maxCellSize >= CalendarMetrics.default.minCellSize)
-    #expect(CalendarMetrics.default.maxCalendarWidth >= CalendarMetrics.default.minCalendarWidth)
   }
 }

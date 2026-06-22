@@ -237,9 +237,8 @@ struct CalendarBodyView: View {
       }
     }
     .frame(height: calendarHeight, alignment: .top)
-    // Cap the grid's width so cells stop growing, then center the capped grid in the container.
-    .frame(maxWidth: metrics.maxCalendarWidth, alignment: .top)
-    .frame(maxWidth: .infinity, alignment: .center)
+    // Fill the available width; cells spread to fill while row height stays capped (see cellSize).
+    .frame(maxWidth: .infinity, alignment: .top)
     .background(
       GeometryReader { geometry in
         Color.clear

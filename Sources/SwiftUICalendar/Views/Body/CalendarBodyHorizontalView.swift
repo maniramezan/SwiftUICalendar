@@ -33,9 +33,7 @@ struct CalendarBodyHorizontalView: View {
   @State private var isNavigating = false
 
   private var layoutWidth: CGFloat {
-    // Cap the carousel width so cells stop growing on wide windows; the ZStack's
-    // `.frame(maxWidth: .infinity)` then centers the capped months in the container.
-    min(max(containerWidth, metrics.minCalendarWidth), metrics.maxCalendarWidth)
+    max(containerWidth, metrics.minCalendarWidth)
   }
 
   private var cellSize: CGFloat {

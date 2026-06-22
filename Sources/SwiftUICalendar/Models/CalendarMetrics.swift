@@ -4,8 +4,9 @@ import SwiftUI
 /// Layout metrics for the calendar grid, resolved from the shared `DesignSystem` tokens.
 ///
 /// Centralizing these values keeps magic numbers out of the body views and ties calendar spacing
-/// and cell sizing to the design system. The maximum cell size is intentionally *derived* here
-/// rather than added as a global design token: a cell's ceiling is a component-level layout
+/// and cell sizing to the design system. Columns fill the available width, while `maxCellSize` caps
+/// the row height so cells never balloon on wide (macOS) windows. The cap is intentionally *derived*
+/// here rather than added as a global design token: a cell's ceiling is a component-level layout
 /// decision, and `motion.minimumHitTarget` (44) is an iOS touch floor — not a macOS sizing rule.
 ///
 /// This is the only file in the package that imports `DesignSystem`. The module's `Theme` and
@@ -19,16 +20,13 @@ struct CalendarMetrics: Equatable, Sendable {
   let rowSpacing: CGFloat
   /// Lower bound for a day cell's side length.
   let minCellSize: CGFloat
-  /// Upper bound for a day cell's side length; stops cells ballooning on wide (macOS) windows.
+  /// Upper bound for a day cell's row height; stops cells ballooning on wide (macOS) windows.
   let maxCellSize: CGFloat
   /// Vertical gap between months in the vertically scrolling calendar.
   let monthSpacing: CGFloat
 
   /// Narrowest the seven-column grid can be.
   var minCalendarWidth: CGFloat { (7 * minCellSize) + (6 * itemSpacing) }
-
-  /// Widest the seven-column grid renders before it is centered within its container.
-  var maxCalendarWidth: CGFloat { (7 * maxCellSize) + (6 * itemSpacing) }
 
   /// Resolves metrics from a design theme's spacing and motion tokens.
   init(theme: any DesignSystem.Theme) {

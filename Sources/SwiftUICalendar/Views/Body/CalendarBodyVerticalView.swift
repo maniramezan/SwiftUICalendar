@@ -35,8 +35,6 @@ struct CalendarBodyVerticalView: View {
             .environment(theme)
             .environment(typography)
           }
-          // Cap each month column and center it so the header aligns with the capped grid.
-          .frame(maxWidth: metrics.maxCalendarWidth)
           .id(item.id)
         }
       }
