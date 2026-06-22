@@ -41,6 +41,26 @@ struct CalendarViewModelNavigationTests {
     #expect(date != nil)
   }
 
+  @Test("goToToday: selects today using the active calendar")
+  func goToTodaySelectsTodayUsingActiveCalendar() {
+    let calendar = Calendar(identifier: .persian)
+    let selected = makeDate(year: 2020, month: 1, day: 15)
+    let vm = CalendarViewModel.test(identifier: .persian, selection: .single(selected))
+    vm.currentDate = makeDate(year: 2020, month: 1, day: 1)
+
+    vm.goToToday()
+
+    #expect(vm.calendarIdentifier == .persian)
+    #expect(vm.currentYear == calendar.component(.year, from: Date()))
+    #expect(vm.currentMonth == calendar.component(.month, from: Date()))
+    guard case .single(let date) = vm.selection else {
+      Issue.record("Expected single selection to remain active")
+      return
+    }
+    #expect(date == calendar.startOfDay(for: Date()))
+    #expect(vm.isSelected(date: Date()))
+  }
+
   @Test("goToToday: preserves range selection")
   func goToTodayPreservesRangeSelection() {
     let start = makeDate(year: 2020, month: 1, day: 15)

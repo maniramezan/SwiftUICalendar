@@ -88,7 +88,7 @@ import SwiftUI
     calendar.locale ?? Locale(calendarIdentifier: calendar.identifier)
   }
 
-  var calendarIdentifier: Calendar.Identifier {
+  public var calendarIdentifier: Calendar.Identifier {
     calendar.identifier
   }
 
