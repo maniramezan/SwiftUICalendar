@@ -12,7 +12,7 @@ struct CalendarViewModelCalendarSwitchTests {
 
   @Test(
     "init: requested calendar owns initial current date",
-    arguments: [Calendar.Identifier.gregorian, .persian, .hebrew, .islamicUmmAlQura]
+    arguments: [Calendar.Identifier.gregorian, .buddhist, .hebrew, .islamicUmmAlQura, .japanese, .persian]
   )
   func initUsesRequestedCalendarForCurrentDate(identifier: Calendar.Identifier) {
     let calendar = Calendar(identifier: identifier)
@@ -21,7 +21,20 @@ struct CalendarViewModelCalendarSwitchTests {
     #expect(vm.calendarIdentifier == identifier)
     #expect(vm.currentYear == calendar.component(.year, from: Date()))
     #expect(vm.currentMonth == calendar.component(.month, from: Date()))
+    #expect((vm.minYear...vm.maxYear).contains(vm.currentYear))
     #expect(vm.months(in: vm.currentYear).contains { $0.month == vm.currentMonth })
+  }
+
+  @Test("Japanese: current era year is included in vertical scroll range")
+  func japaneseCurrentEraYearIsIncludedInSupportedRange() {
+    let calendar = Calendar(identifier: .japanese)
+    let vm = CalendarViewModel.test(identifier: .japanese)
+
+    let currentYear = calendar.component(.year, from: Date())
+    #expect(vm.currentYear == currentYear)
+    #expect(vm.minYear <= currentYear)
+    #expect(vm.maxYear >= currentYear)
+    #expect(vm.months(in: currentYear).contains { $0.month == vm.currentMonth })
   }
 
   @Test("updateCalendar: Gregorian and Persian produce different month names")

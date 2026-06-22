@@ -202,7 +202,11 @@ import SwiftUI
   ///
   /// The day component is preserved when possible during navigation. Assigning a new date moves
   /// the calendar to that date's month in the active calendar system.
-  public var currentDate: Date
+  public var currentDate: Date {
+    didSet {
+      updateYearBoundaries()
+    }
+  }
 
   /// Creates a view model for a given calendar system and selection mode.
   ///
@@ -244,12 +248,14 @@ import SwiftUI
     guard let minYear = try? convertGregorianYearToCurrentCalendar(Self.minYear) else {
       return
     }
-    self.minYear = minYear
 
     guard let maxYear = try? convertGregorianYearToCurrentCalendar(Self.maxYear) else {
       return
     }
-    self.maxYear = maxYear
+
+    let currentYear = calendar.year(from: currentDate)
+    self.minYear = min(minYear, currentYear)
+    self.maxYear = max(maxYear, currentYear)
   }
 
   func convertGregorianYearToCurrentCalendar(_ year: Int) throws -> Int {
