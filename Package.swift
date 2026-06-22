@@ -23,7 +23,7 @@ let package = Package(
     ),
     .package(
       url: "https://github.com/maniramezan/SwiftUIComponents",
-      revision: "eea6f744700a9c11a83edc63ff418c977ca7ec0c"
+      revision: "7875857c811b254590aafacfaf13041eca83ad6d"
     ),
     .package(
       url: "https://github.com/pointfreeco/swift-snapshot-testing",
@@ -33,7 +33,11 @@ let package = Package(
   targets: [
     .target(
       name: "SwiftUICalendar",
-      dependencies: ["SwiftCommons", .product(name: "Components", package: "SwiftUIComponents")],
+      dependencies: [
+        "SwiftCommons",
+        .product(name: "Components", package: "SwiftUIComponents"),
+        .product(name: "DesignSystem", package: "SwiftUIComponents"),
+      ],
       resources: [
         .process("Resources/Localizable.xcstrings")
       ]

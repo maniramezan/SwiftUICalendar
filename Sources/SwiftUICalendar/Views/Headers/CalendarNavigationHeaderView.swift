@@ -17,6 +17,9 @@ struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
           .frame(width: 28, height: 28)
           .adaptiveGlass(shape: .circle, interactive: true)
       }
+      // Plain style so the glass circle is the only chrome; macOS otherwise draws a bordered
+      // push-button background around it.
+      .buttonStyle(.plain)
       .accessibilityLabel("Calendar.Navigation.Previous".localized)
       .opacity(isPreviousDisabled ? 0.4 : 1.0)
       .disabled(isPreviousDisabled)
@@ -29,6 +32,9 @@ struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
           .frame(width: 28, height: 28)
           .adaptiveGlass(shape: .circle, interactive: true)
       }
+      // Plain style so the glass circle is the only chrome; macOS otherwise draws a bordered
+      // push-button background around it.
+      .buttonStyle(.plain)
       .accessibilityLabel("Calendar.Navigation.Next".localized)
       .opacity(isNextDisabled ? 0.4 : 1.0)
       .disabled(isNextDisabled)

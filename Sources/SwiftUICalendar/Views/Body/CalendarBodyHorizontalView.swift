@@ -1,9 +1,6 @@
 import SwiftUI
 
 struct CalendarBodyHorizontalView: View {
-  private static let itemSpacing: CGFloat = 8
-  private static let rowSpacing: CGFloat = 10
-  private static let minCellSize: CGFloat = SizingClass.Day.minimumWidth
   private static let headerHeightRatio: CGFloat = 0.45
   private static let minHeaderHeight: CGFloat = 24
   private static let heightCeilingPadding: CGFloat = 2
@@ -22,6 +19,7 @@ struct CalendarBodyHorizontalView: View {
 
   @Environment(Theme.self) var theme
   @Environment(Typography.self) var typography
+  @Environment(\.calendarMetrics) private var metrics
   @Environment(\.layoutDirection) private var layoutDirection
   let viewModel: CalendarViewModel
 
@@ -34,19 +32,17 @@ struct CalendarBodyHorizontalView: View {
   @State private var measuredHeight: CGFloat = 0
   @State private var isNavigating = false
 
-  private var minCalendarWidth: CGFloat {
-    (7 * Self.minCellSize) + (6 * Self.itemSpacing)
-  }
-
   private var layoutWidth: CGFloat {
-    max(containerWidth, minCalendarWidth)
+    // Cap the carousel width so cells stop growing on wide windows; the ZStack's
+    // `.frame(maxWidth: .infinity)` then centers the capped months in the container.
+    min(max(containerWidth, metrics.minCalendarWidth), metrics.maxCalendarWidth)
   }
 
   private var cellSize: CGFloat {
-    let totalInteritemSpacing = Self.itemSpacing * 6
+    let totalInteritemSpacing = metrics.itemSpacing * 6
     let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
     let columnWidth = widthForCells / 7
-    return max(Self.minCellSize, columnWidth)
+    return min(metrics.maxCellSize, max(metrics.minCellSize, columnWidth))
   }
 
   private var weekdayHeaderHeight: CGFloat {
@@ -56,7 +52,7 @@ struct CalendarBodyHorizontalView: View {
   private var columns: [GridItem] {
     Array(
       repeating: GridItem(
-        .flexible(minimum: Self.minCellSize), spacing: Self.itemSpacing, alignment: .center),
+        .flexible(minimum: metrics.minCellSize), spacing: metrics.itemSpacing, alignment: .center),
       count: 7
     )
   }
@@ -89,7 +85,7 @@ struct CalendarBodyHorizontalView: View {
   }
 
   var body: some View {
-    VStack(spacing: Self.rowSpacing) {
+    VStack(spacing: metrics.rowSpacing) {
       // Static weekday header — does not scroll with the carousel
       LazyVGrid(columns: columns, alignment: .center, spacing: 0) {
         ForEach(Array(viewModel.headerTitles.enumerated()), id: \.offset) { _, day in
@@ -250,12 +246,12 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private func height(forRowCount rowCount: Int) -> CGFloat {
-    let totalInteritemSpacing = Self.itemSpacing * 6
+    let totalInteritemSpacing = metrics.itemSpacing * 6
     let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
     let columnWidth = widthForCells / 7
-    let cs = max(Self.minCellSize, columnWidth)
+    let cs = min(metrics.maxCellSize, max(metrics.minCellSize, columnWidth))
     // Grid only: (rowCount - 1) spacings between rows (header is static above carousel)
-    let totalRowSpacing = Self.rowSpacing * CGFloat(rowCount - 1)
+    let totalRowSpacing = metrics.rowSpacing * CGFloat(rowCount - 1)
     let h = (CGFloat(rowCount) * cs) + totalRowSpacing
     return ceil(h) + Self.heightCeilingPadding
   }

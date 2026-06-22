@@ -5,13 +5,14 @@ struct CalendarBodyVerticalView: View {
   @Environment(CalendarViewModel.self) var viewModel
   @Environment(Theme.self) var theme
   @Environment(Typography.self) var typography
+  @Environment(\.calendarMetrics) private var metrics
   @State private var scrollPosition: MonthIdentifier?
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: true) {
-      LazyVStack(spacing: 24) {
+      LazyVStack(spacing: metrics.monthSpacing) {
         ForEach(monthItems) { item in
-          VStack(spacing: 8) {
+          VStack(spacing: metrics.itemSpacing) {
             // Month and year header for each month
             HStack {
               Text(item.monthTitle)
@@ -34,10 +35,12 @@ struct CalendarBodyVerticalView: View {
             .environment(theme)
             .environment(typography)
           }
+          // Cap each month column and center it so the header aligns with the capped grid.
+          .frame(maxWidth: metrics.maxCalendarWidth)
           .id(item.id)
         }
       }
-      .padding(.vertical, 8)
+      .padding(.vertical, metrics.itemSpacing)
       .padding(.horizontal)
     }
     .scrollPosition(id: $scrollPosition, anchor: .top)
@@ -49,6 +52,13 @@ struct CalendarBodyVerticalView: View {
       withAnimation {
         scrollPosition = currentMonthIdentifier
       }
+    }
+    .onChange(of: scrollPosition) { _, newPosition in
+      guard let position = newPosition,
+        position.month != viewModel.currentMonth || position.year != viewModel.currentYear,
+        let date = viewModel.firstDate(month: position.month, year: position.year)
+      else { return }
+      viewModel.currentDate = date
     }
   }
 

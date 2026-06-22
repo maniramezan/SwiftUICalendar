@@ -2,15 +2,13 @@ import SwiftCommons
 import SwiftUI
 
 struct CalendarBodyView: View {
-  private static let itemSpacing: CGFloat = 8
-  private static let rowSpacing: CGFloat = 10
-  private static let minCellSize: CGFloat = SizingClass.Day.minimumWidth
   private static let headerHeightRatio: CGFloat = 0.45
   private static let minHeaderHeight: CGFloat = 24
 
   @Environment(CalendarViewModel.self) var viewModel
   @Environment(Theme.self) var theme
   @Environment(Typography.self) var typography
+  @Environment(\.calendarMetrics) private var metrics
   @Environment(\.layoutDirection) private var layoutDirection
   @State private var containerWidth: CGFloat = 0
   private let displayMonth: Int?
@@ -21,19 +19,15 @@ struct CalendarBodyView: View {
   /// Set to `false` for scroll modes where the adjacent month is already visible.
   private let navigatesOnOverflowTap: Bool
 
-  private var minCalendarWidth: CGFloat {
-    (7 * Self.minCellSize) + (6 * Self.itemSpacing)
-  }
-
   private var layoutWidth: CGFloat {
-    max(containerWidth, minCalendarWidth)
+    max(containerWidth, metrics.minCalendarWidth)
   }
 
   private var cellSize: CGFloat {
-    let totalInteritemSpacing = Self.itemSpacing * 6
+    let totalInteritemSpacing = metrics.itemSpacing * 6
     let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
     let columnWidth = widthForCells / 7
-    return max(Self.minCellSize, columnWidth)
+    return min(metrics.maxCellSize, max(metrics.minCellSize, columnWidth))
   }
 
   private var headerHeight: CGFloat {
@@ -43,7 +37,7 @@ struct CalendarBodyView: View {
   private var columns: [GridItem] {
     Array(
       repeating: GridItem(
-        .flexible(minimum: Self.minCellSize), spacing: Self.itemSpacing, alignment: .center),
+        .flexible(minimum: metrics.minCellSize), spacing: metrics.itemSpacing, alignment: .center),
       count: 7
     )
   }
@@ -179,16 +173,16 @@ struct CalendarBodyView: View {
   private var calendarHeight: CGFloat {
     if showWeekdayHeader {
       // Row spacings: 1 between header and days + (rowCount - 1) between day rows
-      let totalRowSpacing = Self.rowSpacing * CGFloat(rowCount)
+      let totalRowSpacing = metrics.rowSpacing * CGFloat(rowCount)
       return headerHeight + (CGFloat(rowCount) * cellSize) + totalRowSpacing
     } else {
       // Grid only: (rowCount - 1) spacings between rows
-      return CGFloat(rowCount) * cellSize + CGFloat(rowCount - 1) * Self.rowSpacing
+      return CGFloat(rowCount) * cellSize + CGFloat(rowCount - 1) * metrics.rowSpacing
     }
   }
 
   var body: some View {
-    VStack(spacing: Self.rowSpacing) {
+    VStack(spacing: metrics.rowSpacing) {
       // Weekday headers
       if showWeekdayHeader {
         LazyVGrid(columns: columns, alignment: .center, spacing: 0) {
@@ -208,7 +202,7 @@ struct CalendarBodyView: View {
       LazyVGrid(
         columns: columns,
         alignment: .center,
-        spacing: Self.rowSpacing
+        spacing: metrics.rowSpacing
       ) {
         ForEach(orderedDayItems) { item in
           if let date = item.date, !(hideOverflowDays && !item.isCurrentMonth) {
@@ -243,7 +237,9 @@ struct CalendarBodyView: View {
       }
     }
     .frame(height: calendarHeight, alignment: .top)
-    .frame(maxWidth: .infinity, alignment: .top)
+    // Cap the grid's width so cells stop growing, then center the capped grid in the container.
+    .frame(maxWidth: metrics.maxCalendarWidth, alignment: .top)
+    .frame(maxWidth: .infinity, alignment: .center)
     .background(
       GeometryReader { geometry in
         Color.clear

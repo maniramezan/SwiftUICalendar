@@ -55,7 +55,7 @@ struct ContentView: View {
       }
 
       CalendarView(model: viewModel, theme: theme, typography: typography)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .id("\(scrollMode)-\(dayViewMode)-\(calendarIdentifier)")
     }
     .padding()

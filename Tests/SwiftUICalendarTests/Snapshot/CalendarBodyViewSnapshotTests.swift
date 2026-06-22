@@ -34,6 +34,15 @@ struct CalendarBodyViewSnapshotTests {
     assertCalendarSnapshot(of: calendarBodyView(vm: vm), named: "no-selection")
   }
 
+  // MARK: - Wide window (macOS) — cap + center
+
+  @Test("Wide window caps cell size and centers the grid")
+  func wideWindowCapsAndCenters() {
+    let vm = CalendarViewModel.snapshot(selection: .single(nil))
+    // 700 pt exceeds maxCalendarWidth (496), so the grid should cap and center rather than balloon.
+    assertCalendarSnapshot(of: calendarBodyView(vm: vm), width: 700, named: "wide-700-capped")
+  }
+
   @Test("Single date selected")
   func singleDateSelected() {
     let selected = makeSelectedDate(day: 15)

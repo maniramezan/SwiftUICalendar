@@ -85,7 +85,7 @@ public struct CalendarView: View {
         CalendarHeaderView()
       }
       calendarBodyContent
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: fillsAvailableHeight ? .infinity : nil, alignment: .top)
         .layoutPriority(1)
     }
     .safeAreaPadding(10)
@@ -94,7 +94,16 @@ public struct CalendarView: View {
     .environment(typography)
     .environment(\.locale, viewModel.locale)
     .environment(\.layoutDirection, viewModel.layoutDirection)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .resolveCalendarMetrics()
+    // Scroll modes own their scrolling and fill the offered height. The fixed single-month layout
+    // hugs its content so the host can place it freely (e.g. center it) instead of being pinned.
+    .frame(maxWidth: .infinity, maxHeight: fillsAvailableHeight ? .infinity : nil, alignment: .top)
+  }
+
+  /// Whether the body should expand to fill the offered height. True for scrolling modes; false for
+  /// the fixed single-month layout, which hugs its content.
+  private var fillsAvailableHeight: Bool {
+    theme.scrollMode != .none
   }
 }
 
