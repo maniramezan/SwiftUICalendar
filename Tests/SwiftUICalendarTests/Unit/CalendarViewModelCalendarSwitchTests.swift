@@ -12,7 +12,14 @@ struct CalendarViewModelCalendarSwitchTests {
 
   @Test(
     "init: requested calendar owns initial current date",
-    arguments: [Calendar.Identifier.gregorian, .buddhist, .hebrew, .islamicUmmAlQura, .japanese, .persian]
+    arguments: [
+      Calendar.Identifier.gregorian,
+      .buddhist,
+      .hebrew,
+      .islamicUmmAlQura,
+      .japanese,
+      .persian,
+    ]
   )
   func initUsesRequestedCalendarForCurrentDate(identifier: Calendar.Identifier) {
     let calendar = Calendar(identifier: identifier)
