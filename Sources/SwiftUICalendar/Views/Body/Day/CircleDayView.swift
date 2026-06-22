@@ -51,8 +51,19 @@ struct CircleDayView: CalendarDayView {
     .contentShape(Circle())
     .onTapGesture { context.onSelect(context.date) }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(context.accessibilityLabel())
+    .accessibilityLabel(accessibilityLabel)
     .accessibilityAddTraits(accessibilityTraits)
+  }
+
+  private var accessibilityLabel: String {
+    var components = [context.date.formatted(date: .abbreviated, time: .omitted)]
+    if context.isToday {
+      components.append("Calendar.Day.Today".localized)
+    }
+    if context.isSelected {
+      components.append("Calendar.Day.Selected".localized)
+    }
+    return components.joined(separator: ", ")
   }
 
   private var accessibilityTraits: AccessibilityTraits {

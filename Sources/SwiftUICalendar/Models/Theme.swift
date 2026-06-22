@@ -20,11 +20,7 @@ import SwiftUI
   public var day = Day()
   /// Controls whether the calendar scrolls vertically, horizontally, or stays fixed.
   public var scrollMode: ScrollMode = .none
-  /// Controls how horizontal (paging) calendars determine their height.
-  ///
-  /// Use ``HorizontalHeightMode/sixRows`` (the default) for a fixed height that never shifts as
-  /// the user pages between months, or ``HorizontalHeightMode/hugContent`` to size to the tallest
-  /// of the visible months. This only affects `ScrollMode.horizontal`.
+  /// Controls how horizontal calendars determine their height.
   public var horizontalHeightMode: HorizontalHeightMode = .sixRows
   /// A fresh default theme configuration.
   ///

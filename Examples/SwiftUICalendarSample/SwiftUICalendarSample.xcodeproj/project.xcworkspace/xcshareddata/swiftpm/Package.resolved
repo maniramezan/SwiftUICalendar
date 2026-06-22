@@ -6,7 +6,6 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftCommons.git",
       "state" : {
-        "branch" : "main",
         "revision" : "4c51afbf713a7b992fa38de03142fc3af84416a1"
       }
     },
@@ -15,8 +14,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftUIComponents",
       "state" : {
-        "branch" : "main",
-        "revision" : "c759d86769e85ffa7d830b636707ea962e02582f"
+        "revision" : "eea6f744700a9c11a83edc63ff418c977ca7ec0c"
       }
     }
   ],
