@@ -97,6 +97,11 @@ extension CalendarViewModel {
   // MARK: - Today navigation
 
   func goToToday() {
-    currentDate = Date()
+    let today = Date()
+    currentDate = today
+
+    if case .single = selection {
+      selection = .single(calendar.startOfDay(for: today))
+    }
   }
 }

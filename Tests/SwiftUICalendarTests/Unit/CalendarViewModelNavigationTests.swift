@@ -24,21 +24,38 @@ struct CalendarViewModelNavigationTests {
     #expect(vm.currentMonth == cal.component(.month, from: today))
   }
 
-  @Test("goToToday: navigation does not mutate the user's selection")
-  func goToTodayPreservesSelection() {
+  @Test("goToToday: selects today in single-selection mode")
+  func goToTodaySelectsTodayInSingleSelectionMode() {
     let selected = makeDate(year: 2020, month: 1, day: 15)
     let vm = CalendarViewModel.test(selection: .single(selected))
     vm.currentDate = makeDate(year: 2020, month: 1, day: 1)
 
     vm.goToToday()
 
-    // "Today" is navigation-only: it must not select today or clear the existing selection.
-    #expect(vm.isSelected(date: selected))
+    #expect(vm.isSelected(date: Date()))
+    #expect(!vm.isSelected(date: selected))
     guard case .single(let date) = vm.selection else {
-      Issue.record("Expected single selection to be preserved")
+      Issue.record("Expected single selection to remain active")
       return
     }
-    #expect(date == selected)
+    #expect(date != nil)
+  }
+
+  @Test("goToToday: preserves range selection")
+  func goToTodayPreservesRangeSelection() {
+    let start = makeDate(year: 2020, month: 1, day: 15)
+    let end = makeDate(year: 2020, month: 1, day: 20)
+    let vm = CalendarViewModel.test(selection: .range(start, end))
+    vm.currentDate = makeDate(year: 2020, month: 1, day: 1)
+
+    vm.goToToday()
+
+    guard case .range(let selectedStart, let selectedEnd) = vm.selection else {
+      Issue.record("Expected range selection to be preserved")
+      return
+    }
+    #expect(selectedStart == start)
+    #expect(selectedEnd == end)
   }
 
   // MARK: - updateMonthToNextMonth
