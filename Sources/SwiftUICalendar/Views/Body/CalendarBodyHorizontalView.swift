@@ -369,27 +369,20 @@ struct CalendarBodyHorizontalView: View {
 
     private func handleScrollWheel(_ event: NSEvent) {
       guard !isNavigating else { return }
-      // Ignore momentum so a single swipe pages predictably instead of running away.
-      guard event.momentumPhase == [] else { return }
-      let deltaX = event.scrollingDeltaX
-      let deltaY = event.scrollingDeltaY
-      // Only act on predominantly-horizontal scrolls.
-      guard abs(deltaX) > abs(deltaY), deltaX != 0 else { return }
-
-      if event.phase == .began { scrollAccumulator = 0 }
-      scrollAccumulator += deltaX
-
-      // Match the swipe semantics: leftward (negative) advances to the next month.
-      if scrollAccumulator <= -Self.scrollPageThreshold {
-        scrollAccumulator = 0
-        goToNext(width: layoutWidth)
-      } else if scrollAccumulator >= Self.scrollPageThreshold {
-        scrollAccumulator = 0
-        goToPrevious(width: layoutWidth)
-      }
-
-      if event.phase == .ended || event.phase == .cancelled {
-        scrollAccumulator = 0
+      let resolution = HorizontalScrollPagingResolver.resolve(
+        accumulated: scrollAccumulator,
+        deltaX: event.scrollingDeltaX,
+        deltaY: event.scrollingDeltaY,
+        isMomentum: event.momentumPhase != [],
+        didBegin: event.phase == .began,
+        didEnd: event.phase == .ended || event.phase == .cancelled,
+        threshold: Self.scrollPageThreshold
+      )
+      scrollAccumulator = resolution.accumulated
+      switch resolution.pageDelta {
+      case 1: goToNext(width: layoutWidth)
+      case -1: goToPrevious(width: layoutWidth)
+      default: break
       }
     }
   #endif
@@ -399,6 +392,39 @@ private enum HorizontalMonthPosition: Hashable {
   case previous
   case current
   case next
+}
+
+/// Pure decision logic for trackpad / scroll-wheel month paging on macOS.
+///
+/// Kept platform-independent (and free of `NSEvent`) so it can be unit tested. It mirrors the swipe
+/// semantics: a leftward (negative) scroll past the threshold advances to the next month.
+enum HorizontalScrollPagingResolver {
+  /// Folds a scroll event into the running horizontal accumulator.
+  ///
+  /// - Returns: the new `accumulated` delta and a `pageDelta` of `1` (next), `-1` (previous), or
+  ///   `nil` when the threshold has not been crossed.
+  static func resolve(
+    accumulated: CGFloat,
+    deltaX: CGFloat,
+    deltaY: CGFloat,
+    isMomentum: Bool,
+    didBegin: Bool,
+    didEnd: Bool,
+    threshold: CGFloat
+  ) -> (accumulated: CGFloat, pageDelta: Int?) {
+    // Ignore momentum so a single swipe pages predictably instead of running away.
+    if isMomentum { return (accumulated, nil) }
+    // Only act on predominantly-horizontal scrolls.
+    guard abs(deltaX) > abs(deltaY), deltaX != 0 else { return (accumulated, nil) }
+
+    var running = didBegin ? 0 : accumulated
+    running += deltaX
+
+    if running <= -threshold { return (0, 1) }
+    if running >= threshold { return (0, -1) }
+    if didEnd { return (0, nil) }
+    return (running, nil)
+  }
 }
 
 enum HorizontalMonthSwipeResolver {

@@ -106,3 +106,83 @@ struct CalendarBodyHorizontalSwipeResolverTests {
     #expect(resolved >= -390)
   }
 }
+
+// MARK: - Trackpad / scroll-wheel paging resolver
+
+@Suite("Horizontal Scroll Paging Resolver Tests")
+struct HorizontalScrollPagingResolverTests {
+
+  private let threshold: CGFloat = 30
+
+  @Test("Leftward scroll past threshold pages to the next month and resets")
+  func leftwardScrollPagesNext() {
+    let result = HorizontalScrollPagingResolver.resolve(
+      accumulated: -20, deltaX: -15, deltaY: 0,
+      isMomentum: false, didBegin: false, didEnd: false, threshold: threshold)
+    #expect(result.pageDelta == 1)
+    #expect(result.accumulated == 0)
+  }
+
+  @Test("Rightward scroll past threshold pages to the previous month and resets")
+  func rightwardScrollPagesPrevious() {
+    let result = HorizontalScrollPagingResolver.resolve(
+      accumulated: 20, deltaX: 15, deltaY: 0,
+      isMomentum: false, didBegin: false, didEnd: false, threshold: threshold)
+    #expect(result.pageDelta == -1)
+    #expect(result.accumulated == 0)
+  }
+
+  @Test("Small scroll below threshold accumulates without paging")
+  func belowThresholdAccumulates() {
+    let result = HorizontalScrollPagingResolver.resolve(
+      accumulated: -5, deltaX: -10, deltaY: 0,
+      isMomentum: false, didBegin: false, didEnd: false, threshold: threshold)
+    #expect(result.pageDelta == nil)
+    #expect(result.accumulated == -15)
+  }
+
+  @Test("Momentum events are ignored")
+  func momentumIgnored() {
+    let result = HorizontalScrollPagingResolver.resolve(
+      accumulated: -25, deltaX: -100, deltaY: 0,
+      isMomentum: true, didBegin: false, didEnd: false, threshold: threshold)
+    #expect(result.pageDelta == nil)
+    #expect(result.accumulated == -25)
+  }
+
+  @Test("Vertical-dominant scroll is ignored")
+  func verticalDominantIgnored() {
+    let result = HorizontalScrollPagingResolver.resolve(
+      accumulated: 0, deltaX: 5, deltaY: 40,
+      isMomentum: false, didBegin: false, didEnd: false, threshold: threshold)
+    #expect(result.pageDelta == nil)
+    #expect(result.accumulated == 0)
+  }
+
+  @Test("A new gesture (didBegin) resets the accumulator before adding")
+  func didBeginResetsAccumulator() {
+    let result = HorizontalScrollPagingResolver.resolve(
+      accumulated: 999, deltaX: -10, deltaY: 0,
+      isMomentum: false, didBegin: true, didEnd: false, threshold: threshold)
+    #expect(result.pageDelta == nil)
+    #expect(result.accumulated == -10)
+  }
+
+  @Test("Gesture end below threshold clears the accumulator")
+  func didEndResetsAccumulator() {
+    let result = HorizontalScrollPagingResolver.resolve(
+      accumulated: -10, deltaX: -5, deltaY: 0,
+      isMomentum: false, didBegin: false, didEnd: true, threshold: threshold)
+    #expect(result.pageDelta == nil)
+    #expect(result.accumulated == 0)
+  }
+
+  @Test("Zero horizontal delta is ignored")
+  func zeroDeltaIgnored() {
+    let result = HorizontalScrollPagingResolver.resolve(
+      accumulated: 12, deltaX: 0, deltaY: 0,
+      isMomentum: false, didBegin: false, didEnd: false, threshold: threshold)
+    #expect(result.pageDelta == nil)
+    #expect(result.accumulated == 12)
+  }
+}
