@@ -186,3 +186,52 @@ struct HorizontalScrollPagingResolverTests {
     #expect(result.accumulated == 12)
   }
 }
+
+#if os(macOS)
+  @MainActor
+  @Suite("Horizontal Scroll Wheel Monitor Tests")
+  struct HorizontalScrollWheelMonitorTests {
+
+    @Test("Leftward scroll past threshold emits a next-month page")
+    func leftwardEmitsNext() {
+      var pages: [Int] = []
+      let monitor = HorizontalScrollWheelMonitor(threshold: 30) { pages.append($0) }
+      monitor.fold(deltaX: -40, deltaY: 0, isMomentum: false, didBegin: true, didEnd: false)
+      #expect(pages == [1])
+    }
+
+    @Test("Rightward scroll past threshold emits a previous-month page")
+    func rightwardEmitsPrevious() {
+      var pages: [Int] = []
+      let monitor = HorizontalScrollWheelMonitor(threshold: 30) { pages.append($0) }
+      monitor.fold(deltaX: 40, deltaY: 0, isMomentum: false, didBegin: true, didEnd: false)
+      #expect(pages == [-1])
+    }
+
+    @Test("Small scrolls accumulate across samples before paging")
+    func accumulatesAcrossSamples() {
+      var pages: [Int] = []
+      let monitor = HorizontalScrollWheelMonitor(threshold: 30) { pages.append($0) }
+      monitor.fold(deltaX: -10, deltaY: 0, isMomentum: false, didBegin: true, didEnd: false)
+      monitor.fold(deltaX: -10, deltaY: 0, isMomentum: false, didBegin: false, didEnd: false)
+      #expect(pages.isEmpty)
+      monitor.fold(deltaX: -20, deltaY: 0, isMomentum: false, didBegin: false, didEnd: false)
+      #expect(pages == [1])
+    }
+
+    @Test("Momentum and vertical-dominant scrolls do not page")
+    func ignoresMomentumAndVertical() {
+      var pages: [Int] = []
+      let monitor = HorizontalScrollWheelMonitor(threshold: 30) { pages.append($0) }
+      monitor.fold(deltaX: -100, deltaY: 0, isMomentum: true, didBegin: false, didEnd: false)
+      monitor.fold(deltaX: 5, deltaY: 80, isMomentum: false, didBegin: false, didEnd: false)
+      #expect(pages.isEmpty)
+    }
+
+    @Test("stop without start is a no-op")
+    func stopWithoutStartIsNoop() {
+      let monitor = HorizontalScrollWheelMonitor(threshold: 30) { _ in }
+      monitor.stop()
+    }
+  }
+#endif

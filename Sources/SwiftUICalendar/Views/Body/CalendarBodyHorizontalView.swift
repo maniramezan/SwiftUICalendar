@@ -37,8 +37,7 @@ struct CalendarBodyHorizontalView: View {
   @State private var isNavigating = false
 
   #if os(macOS)
-    @State private var scrollMonitor: Any?
-    @State private var scrollAccumulator: CGFloat = 0
+    @State private var scrollMonitor: HorizontalScrollWheelMonitor?
   #endif
 
   private var layoutWidth: CGFloat {
@@ -351,39 +350,21 @@ struct CalendarBodyHorizontalView: View {
 
     private func installScrollMonitor() {
       guard scrollMonitor == nil else { return }
-      scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-        // Local scroll-wheel events are delivered on the main thread.
-        MainActor.assumeIsolated {
-          handleScrollWheel(event)
+      let monitor = HorizontalScrollWheelMonitor(threshold: Self.scrollPageThreshold) { delta in
+        guard !isNavigating else { return }
+        switch delta {
+        case 1: goToNext(width: layoutWidth)
+        case -1: goToPrevious(width: layoutWidth)
+        default: break
         }
-        return event
       }
+      monitor.start()
+      scrollMonitor = monitor
     }
 
     private func removeScrollMonitor() {
-      if let monitor = scrollMonitor {
-        NSEvent.removeMonitor(monitor)
-        scrollMonitor = nil
-      }
-    }
-
-    private func handleScrollWheel(_ event: NSEvent) {
-      guard !isNavigating else { return }
-      let resolution = HorizontalScrollPagingResolver.resolve(
-        accumulated: scrollAccumulator,
-        deltaX: event.scrollingDeltaX,
-        deltaY: event.scrollingDeltaY,
-        isMomentum: event.momentumPhase != [],
-        didBegin: event.phase == .began,
-        didEnd: event.phase == .ended || event.phase == .cancelled,
-        threshold: Self.scrollPageThreshold
-      )
-      scrollAccumulator = resolution.accumulated
-      switch resolution.pageDelta {
-      case 1: goToNext(width: layoutWidth)
-      case -1: goToPrevious(width: layoutWidth)
-      default: break
-      }
+      scrollMonitor?.stop()
+      scrollMonitor = nil
     }
   #endif
 }
@@ -393,6 +374,70 @@ private enum HorizontalMonthPosition: Hashable {
   case current
   case next
 }
+
+#if os(macOS)
+  /// Owns a local scroll-wheel monitor and folds horizontal trackpad scrolls into month-page
+  /// actions on macOS.
+  ///
+  /// The decision logic lives in `HorizontalScrollPagingResolver`; this type adds the AppKit
+  /// plumbing. `fold(deltaX:deltaY:isMomentum:didBegin:didEnd:)` is separated from `NSEvent` so it
+  /// can be unit tested without synthesizing events.
+  @MainActor
+  final class HorizontalScrollWheelMonitor {
+    private var monitor: Any?
+    private var accumulated: CGFloat = 0
+    private let threshold: CGFloat
+    private let onPage: (Int) -> Void
+
+    init(threshold: CGFloat, onPage: @escaping (Int) -> Void) {
+      self.threshold = threshold
+      self.onPage = onPage
+    }
+
+    /// Begins observing scroll-wheel events. Events are delivered on the main thread.
+    func start() {
+      guard monitor == nil else { return }
+      monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+        MainActor.assumeIsolated {
+          self?.fold(
+            deltaX: event.scrollingDeltaX,
+            deltaY: event.scrollingDeltaY,
+            isMomentum: event.momentumPhase != [],
+            didBegin: event.phase == .began,
+            didEnd: event.phase == .ended || event.phase == .cancelled
+          )
+        }
+        return event
+      }
+    }
+
+    /// Stops observing scroll-wheel events.
+    func stop() {
+      if let monitor {
+        NSEvent.removeMonitor(monitor)
+        self.monitor = nil
+      }
+    }
+
+    /// Folds one scroll sample into the running accumulator and emits a page delta
+    /// (`1` next, `-1` previous) when the threshold is crossed.
+    func fold(deltaX: CGFloat, deltaY: CGFloat, isMomentum: Bool, didBegin: Bool, didEnd: Bool) {
+      let result = HorizontalScrollPagingResolver.resolve(
+        accumulated: accumulated,
+        deltaX: deltaX,
+        deltaY: deltaY,
+        isMomentum: isMomentum,
+        didBegin: didBegin,
+        didEnd: didEnd,
+        threshold: threshold
+      )
+      accumulated = result.accumulated
+      if let delta = result.pageDelta {
+        onPage(delta)
+      }
+    }
+  }
+#endif
 
 /// Pure decision logic for trackpad / scroll-wheel month paging on macOS.
 ///
