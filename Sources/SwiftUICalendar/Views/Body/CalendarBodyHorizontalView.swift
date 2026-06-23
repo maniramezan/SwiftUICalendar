@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if os(macOS)
+  import AppKit
+#endif
+
 struct CalendarBodyHorizontalView: View {
   private static let headerHeightRatio: CGFloat = 0.45
   private static let minHeaderHeight: CGFloat = 24
@@ -31,6 +35,11 @@ struct CalendarBodyHorizontalView: View {
   @State private var containerWidth: CGFloat = 0
   @State private var measuredHeight: CGFloat = 0
   @State private var isNavigating = false
+
+  #if os(macOS)
+    @State private var scrollMonitor: Any?
+    @State private var scrollAccumulator: CGFloat = 0
+  #endif
 
   private var layoutWidth: CGFloat {
     max(containerWidth, metrics.minCalendarWidth)
@@ -209,6 +218,11 @@ struct CalendarBodyHorizontalView: View {
         }
       )
     }
+    #if os(macOS)
+      // Trackpad/scroll-wheel horizontal scrolling pages months on macOS, matching the iOS swipe.
+      .onAppear { installScrollMonitor() }
+      .onDisappear { removeScrollMonitor() }
+    #endif
   }
 
   private func heightReporter(for position: HorizontalMonthPosition) -> some View {
@@ -329,6 +343,56 @@ struct CalendarBodyHorizontalView: View {
     isNavigating = false
     syncFromBinding()
   }
+
+  #if os(macOS)
+    // MARK: - Trackpad / scroll-wheel paging (macOS)
+
+    private static let scrollPageThreshold: CGFloat = 30
+
+    private func installScrollMonitor() {
+      guard scrollMonitor == nil else { return }
+      scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+        // Local scroll-wheel events are delivered on the main thread.
+        MainActor.assumeIsolated {
+          handleScrollWheel(event)
+        }
+        return event
+      }
+    }
+
+    private func removeScrollMonitor() {
+      if let monitor = scrollMonitor {
+        NSEvent.removeMonitor(monitor)
+        scrollMonitor = nil
+      }
+    }
+
+    private func handleScrollWheel(_ event: NSEvent) {
+      guard !isNavigating else { return }
+      // Ignore momentum so a single swipe pages predictably instead of running away.
+      guard event.momentumPhase == [] else { return }
+      let deltaX = event.scrollingDeltaX
+      let deltaY = event.scrollingDeltaY
+      // Only act on predominantly-horizontal scrolls.
+      guard abs(deltaX) > abs(deltaY), deltaX != 0 else { return }
+
+      if event.phase == .began { scrollAccumulator = 0 }
+      scrollAccumulator += deltaX
+
+      // Match the swipe semantics: leftward (negative) advances to the next month.
+      if scrollAccumulator <= -Self.scrollPageThreshold {
+        scrollAccumulator = 0
+        goToNext(width: layoutWidth)
+      } else if scrollAccumulator >= Self.scrollPageThreshold {
+        scrollAccumulator = 0
+        goToPrevious(width: layoutWidth)
+      }
+
+      if event.phase == .ended || event.phase == .cancelled {
+        scrollAccumulator = 0
+      }
+    }
+  #endif
 }
 
 private enum HorizontalMonthPosition: Hashable {

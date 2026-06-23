@@ -223,8 +223,10 @@ struct CalendarBodyView: View {
 
             AnyView(theme.day.dayContent(context))
               .id(item.id)
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
-              .frame(height: cellSize)
+              // Keep the cell a square (cellSize × cellSize) and center it in the wider column so
+              // square day views stay square when the grid fills a wide window.
+              .frame(width: cellSize, height: cellSize)
+              .frame(maxWidth: .infinity)
               .foregroundStyle(item.isCurrentMonth ? Color.primary : Color.gray)
               .contentShape(Rectangle())
           } else {

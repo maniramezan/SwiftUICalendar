@@ -43,6 +43,18 @@ struct CalendarBodyViewSnapshotTests {
     assertCalendarSnapshot(of: calendarBodyView(vm: vm), width: 700, named: "wide-700-fill")
   }
 
+  @Test("Wide window keeps square day cells square")
+  func wideWindowSquareCellsStaySquare() {
+    let vm = CalendarViewModel.snapshot(selection: .single(nil))
+    let theme = Theme()
+    theme.day.useSquareDualCalendarDayView()
+    theme.day.emptyDayBorderColor = .pink
+    theme.day.emptyDayBorderColorWidth = 1
+    // At 700 pt the columns are wide; the square cell must stay a centered square, not a rectangle.
+    assertCalendarSnapshot(
+      of: calendarBodyView(vm: vm, theme: theme), width: 700, named: "wide-700-square")
+  }
+
   @Test("Single date selected")
   func singleDateSelected() {
     let selected = makeSelectedDate(day: 15)

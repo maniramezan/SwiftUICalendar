@@ -38,6 +38,8 @@ struct CalendarBodyVerticalView: View {
           .id(item.id)
         }
       }
+      // Required for `.scrollPosition(id:)` to report the visible month as the user scrolls.
+      .scrollTargetLayout()
       .padding(.vertical, metrics.itemSpacing)
       .padding(.horizontal)
     }

@@ -13,7 +13,7 @@ struct ContentView: View {
   @State private var typography = Typography.default
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .center, spacing: 16) {
       GroupBox("Settings") {
         VStack(alignment: .leading, spacing: 12) {
           Picker("Calendar", selection: $calendarIdentifier) {
