@@ -203,14 +203,30 @@ extension Theme.Day.SecondaryLabelMode {
   private static func formatDay(_ date: Date, calendar: Calendar) -> String {
     let formatter = DateFormatter()
     formatter.calendar = calendar
-    let locale = Locale(calendarIdentifier: calendar.identifier)
     switch calendar.identifier {
+    case .buddhist:
+      formatter.locale = Locale(identifier: "th_TH@calendar=buddhist")
+    case .hebrew:
+      formatter.locale = Locale(identifier: "he_IL@calendar=hebrew")
+    case .islamic:
+      formatter.locale = Locale(identifier: "ar_SA@calendar=islamic")
+        .withNumberingSystemIdentifier(.arab)
+    case .islamicCivil:
+      formatter.locale = Locale(identifier: "ar_SA@calendar=islamic-civil")
+        .withNumberingSystemIdentifier(.arab)
+    case .islamicTabular:
+      formatter.locale = Locale(identifier: "ar_SA@calendar=islamic-tbla")
+        .withNumberingSystemIdentifier(.arab)
+    case .islamicUmmAlQura:
+      formatter.locale = Locale(identifier: "ar_SA@calendar=islamic-umalqura")
+        .withNumberingSystemIdentifier(.arab)
+    case .japanese:
+      formatter.locale = Locale(identifier: "ja_JP@calendar=japanese")
     case .persian:
-      formatter.locale = locale.withNumberingSystemIdentifier(.arabExtended)
-    case .islamic, .islamicCivil, .islamicUmmAlQura, .islamicTabular:
-      formatter.locale = locale.withNumberingSystemIdentifier(.arab)
+      formatter.locale = Locale(identifier: "fa_IR@calendar=persian")
+        .withNumberingSystemIdentifier(.arabExtended)
     default:
-      formatter.locale = locale
+      formatter.locale = Locale(calendarIdentifier: calendar.identifier)
     }
     formatter.setLocalizedDateFormatFromTemplate("dd")
     return formatter.string(from: date)

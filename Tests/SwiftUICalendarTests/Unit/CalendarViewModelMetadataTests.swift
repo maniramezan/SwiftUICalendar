@@ -208,7 +208,7 @@ struct CalendarViewModelMetadataTests {
   func hebrewMonthSymbolForMonthThirteen() {
     let vm = CalendarViewModel.test(identifier: .hebrew)
 
-    #expect(vm.monthSymbol(for: 13, year: 5785) == "Elul")
+    #expect(vm.monthSymbol(for: 13, year: 5785) == "אלול")
   }
 
   @Test("monthSymbol resolves current year overload")

@@ -7,6 +7,27 @@ import Testing
 @Suite("CalendarViewModel Multi-Calendar Tests")
 struct CalendarViewModelMultiCalendarTests {
 
+  @Test(
+    "supported calendar identifiers use native presentation locales",
+    arguments: [
+      (Calendar.Identifier.buddhist, "มกราคม", "อา"),
+      (.hebrew, "תשרי", "א׳"),
+      (.islamicUmmAlQura, "محرم", "ح"),
+      (.japanese, "1月", "日"),
+      (.persian, "فروردین", "ی"),
+    ]
+  )
+  func supportedCalendarIdentifiersUseNativePresentationLocales(
+    identifier: Calendar.Identifier,
+    expectedFirstMonth: String,
+    expectedFirstWeekday: String
+  ) {
+    let vm = CalendarViewModel.test(identifier: identifier)
+
+    #expect(vm.monthSymbols.first == expectedFirstMonth)
+    #expect(vm.headerTitles.first == expectedFirstWeekday)
+  }
+
   // MARK: - Persian
 
   @MainActor

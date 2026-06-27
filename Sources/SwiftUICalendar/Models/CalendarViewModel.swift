@@ -591,16 +591,31 @@ import SwiftUI
   }
 
   private static func locale(for identifier: Calendar.Identifier) -> Locale {
-    var locale = Locale(calendarIdentifier: identifier)
     switch identifier {
+    case .buddhist:
+      return Locale(identifier: "th_TH@calendar=buddhist")
+    case .hebrew:
+      return Locale(identifier: "he_IL@calendar=hebrew")
+    case .islamic:
+      return Locale(identifier: "ar_SA@calendar=islamic")
+        .withNumberingSystemIdentifier(.arab)
+    case .islamicCivil:
+      return Locale(identifier: "ar_SA@calendar=islamic-civil")
+        .withNumberingSystemIdentifier(.arab)
+    case .islamicTabular:
+      return Locale(identifier: "ar_SA@calendar=islamic-tbla")
+        .withNumberingSystemIdentifier(.arab)
+    case .islamicUmmAlQura:
+      return Locale(identifier: "ar_SA@calendar=islamic-umalqura")
+        .withNumberingSystemIdentifier(.arab)
+    case .japanese:
+      return Locale(identifier: "ja_JP@calendar=japanese")
     case .persian:
-      locale = locale.withNumberingSystemIdentifier(.arabExtended)
-    case .islamic, .islamicCivil, .islamicUmmAlQura, .islamicTabular:
-      locale = locale.withNumberingSystemIdentifier(.arab)
+      return Locale(identifier: "fa_IR@calendar=persian")
+        .withNumberingSystemIdentifier(.arabExtended)
     default:
-      break
+      return Locale(calendarIdentifier: identifier)
     }
-    return locale
   }
 }
 
