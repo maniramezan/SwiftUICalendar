@@ -48,6 +48,25 @@ struct ThemeTests {
     #expect(Theme.Day.SecondaryLabelMode.japanese.label(for: date) != nil)
   }
 
+  @Test(
+    "calendar secondary labels support native locale branches",
+    arguments: [
+      Calendar.Identifier.buddhist,
+      .islamicCivil,
+      .islamicTabular,
+      .islamicUmmAlQura,
+    ]
+  )
+  func calendarSecondaryLabelsSupportNativeLocaleBranches(identifier: Calendar.Identifier) {
+    let date = Calendar(identifier: .gregorian).date(
+      from: DateComponents(year: 2025, month: 6, day: 15)
+    )!
+
+    let label = Theme.Day.SecondaryLabelMode.calendar(identifier).label(for: date)
+
+    #expect(label?.isEmpty == false)
+  }
+
   @Test("adaptiveGlass renders fallback shape variants")
   func adaptiveGlassRendersFallbackShapeVariants() {
     let view = HStack {
@@ -58,23 +77,8 @@ struct ThemeTests {
     }
     .frame(width: 220, height: 80)
 
-    let hosting = NSHostingView(rootView: view)
-    hosting.frame = CGRect(origin: .zero, size: CGSize(width: 220, height: 80))
-    let window = NSWindow(
-      contentRect: hosting.frame,
-      styleMask: [],
-      backing: .buffered,
-      defer: false
-    )
-    window.contentView = hosting
-    window.layoutIfNeeded()
-    hosting.layoutSubtreeIfNeeded()
-    if let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) {
-      hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
-    } else {
-      hosting.displayIfNeeded()
-    }
+    let hosted = hostView(view, size: CGSize(width: 220, height: 80))
 
-    #expect(hosting.fittingSize.width >= 0)
+    #expect(hosted.hosting.fittingSize.width >= 0)
   }
 }

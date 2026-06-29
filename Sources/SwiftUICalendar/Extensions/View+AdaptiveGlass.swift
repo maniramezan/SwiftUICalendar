@@ -6,19 +6,71 @@ enum AdaptiveGlassShape {
   case roundedRectangle(cornerRadius: CGFloat)
 }
 
+enum AdaptiveGlassRenderingMode {
+  case liquidGlass
+  case materialFallback
+}
+
+enum AdaptiveGlassMaterialStyle {
+  case regular
+  case ultraThin
+}
+
 struct AdaptiveGlassModifier: ViewModifier {
   let shape: AdaptiveGlassShape
   let interactive: Bool
   let tint: Color?
+  let supportsLiquidGlassOverride: Bool?
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
-  func body(content: Content) -> some View {
+  init(
+    shape: AdaptiveGlassShape,
+    interactive: Bool,
+    tint: Color?,
+    supportsLiquidGlassOverride: Bool? = nil
+  ) {
+    self.shape = shape
+    self.interactive = interactive
+    self.tint = tint
+    self.supportsLiquidGlassOverride = supportsLiquidGlassOverride
+  }
+
+  static var supportsLiquidGlass: Bool {
     if #available(iOS 26, macOS 26, *) {
-      content.modifier(
-        LiquidGlassModifier(
-          shape: shape, interactive: interactive,
-          tint: tint, reduceTransparency: reduceTransparency))
-    } else {
+      return true
+    }
+    return false
+  }
+
+  static func renderingMode(supportsLiquidGlass: Bool) -> AdaptiveGlassRenderingMode {
+    supportsLiquidGlass ? .liquidGlass : .materialFallback
+  }
+
+  static func shouldApplyTint(hasTint: Bool, reduceTransparency: Bool) -> Bool {
+    hasTint && !reduceTransparency
+  }
+
+  static func fallbackMaterialStyle(reduceTransparency: Bool) -> AdaptiveGlassMaterialStyle {
+    reduceTransparency ? .regular : .ultraThin
+  }
+
+  private var effectiveSupportsLiquidGlass: Bool {
+    supportsLiquidGlassOverride ?? Self.supportsLiquidGlass
+  }
+
+  func body(content: Content) -> some View {
+    switch Self.renderingMode(supportsLiquidGlass: effectiveSupportsLiquidGlass) {
+    case .liquidGlass:
+      if #available(iOS 26, macOS 26, *) {
+        content.modifier(
+          LiquidGlassModifier(
+            shape: shape, interactive: interactive,
+            tint: tint, reduceTransparency: reduceTransparency))
+      } else {
+        content.modifier(
+          MaterialFallbackModifier(shape: shape, reduceTransparency: reduceTransparency))
+      }
+    case .materialFallback:
       content.modifier(
         MaterialFallbackModifier(shape: shape, reduceTransparency: reduceTransparency))
     }
@@ -35,7 +87,7 @@ private struct LiquidGlassModifier: ViewModifier {
   private var effect: Glass {
     var e: Glass =
       reduceTransparency ? .identity : (interactive ? .regular.interactive() : .regular)
-    if let tint, !reduceTransparency {
+    if let tint, AdaptiveGlassModifier.shouldApplyTint(hasTint: true, reduceTransparency: reduceTransparency) {
       e = e.tint(tint)
     }
     return e
@@ -58,7 +110,18 @@ private struct MaterialFallbackModifier: ViewModifier {
   let shape: AdaptiveGlassShape
   let reduceTransparency: Bool
 
-  private var material: Material { reduceTransparency ? .regularMaterial : .ultraThinMaterial }
+  static func material(style: AdaptiveGlassMaterialStyle) -> Material {
+    switch style {
+    case .regular:
+      .regularMaterial
+    case .ultraThin:
+      .ultraThinMaterial
+    }
+  }
+
+  private var material: Material {
+    Self.material(style: AdaptiveGlassModifier.fallbackMaterialStyle(reduceTransparency: reduceTransparency))
+  }
 
   func body(content: Content) -> some View {
     switch shape {

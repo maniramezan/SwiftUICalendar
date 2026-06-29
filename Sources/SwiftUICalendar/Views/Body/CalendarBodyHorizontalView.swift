@@ -41,18 +41,20 @@ struct CalendarBodyHorizontalView: View {
   #endif
 
   private var layoutWidth: CGFloat {
-    max(containerWidth, metrics.minCalendarWidth)
+    Self.layoutWidth(containerWidth: containerWidth, minCalendarWidth: metrics.minCalendarWidth)
   }
 
   private var cellSize: CGFloat {
-    let totalInteritemSpacing = metrics.itemSpacing * 6
-    let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
-    let columnWidth = widthForCells / 7
-    return min(metrics.maxCellSize, max(metrics.minCellSize, columnWidth))
+    Self.cellSize(
+      layoutWidth: layoutWidth,
+      itemSpacing: metrics.itemSpacing,
+      minCellSize: metrics.minCellSize,
+      maxCellSize: metrics.maxCellSize
+    )
   }
 
   private var weekdayHeaderHeight: CGFloat {
-    max(Self.headerHeightRatio * cellSize, Self.minHeaderHeight)
+    Self.weekdayHeaderHeight(cellSize: cellSize)
   }
 
   private var columns: [GridItem] {
@@ -75,11 +77,11 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private var previousMonthBaseOffset: CGFloat {
-    -layoutWidth * layoutDirectionMultiplier
+    Self.previousMonthBaseOffset(layoutWidth: layoutWidth, layoutDirectionMultiplier: layoutDirectionMultiplier)
   }
 
   private var nextMonthBaseOffset: CGFloat {
-    layoutWidth * layoutDirectionMultiplier
+    Self.nextMonthBaseOffset(layoutWidth: layoutWidth, layoutDirectionMultiplier: layoutDirectionMultiplier)
   }
 
   init(viewModel: CalendarViewModel) {
@@ -88,6 +90,169 @@ struct CalendarBodyHorizontalView: View {
     self._currentViewModel = State(initialValue: vm)
     self._previousViewModel = State(initialValue: (try? vm.copy(addMonths: -1)) ?? vm)
     self._nextViewModel = State(initialValue: (try? vm.copy(addMonths: 1)) ?? vm)
+  }
+
+  static func layoutWidth(containerWidth: CGFloat, minCalendarWidth: CGFloat) -> CGFloat {
+    max(containerWidth, minCalendarWidth)
+  }
+
+  static func cellSize(
+    layoutWidth: CGFloat,
+    itemSpacing: CGFloat,
+    minCellSize: CGFloat,
+    maxCellSize: CGFloat
+  ) -> CGFloat {
+    let totalInteritemSpacing = itemSpacing * 6
+    let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
+    let columnWidth = widthForCells / 7
+    return min(maxCellSize, max(minCellSize, columnWidth))
+  }
+
+  static func weekdayHeaderHeight(cellSize: CGFloat) -> CGFloat {
+    max(Self.headerHeightRatio * cellSize, Self.minHeaderHeight)
+  }
+
+  static func previousMonthBaseOffset(layoutWidth: CGFloat, layoutDirectionMultiplier: CGFloat) -> CGFloat {
+    -layoutWidth * layoutDirectionMultiplier
+  }
+
+  static func nextMonthBaseOffset(layoutWidth: CGFloat, layoutDirectionMultiplier: CGFloat) -> CGFloat {
+    layoutWidth * layoutDirectionMultiplier
+  }
+
+  static func resolvedHeight(
+    rowCount: Int,
+    layoutWidth: CGFloat,
+    itemSpacing: CGFloat,
+    rowSpacing: CGFloat,
+    minCellSize: CGFloat,
+    maxCellSize: CGFloat
+  ) -> CGFloat {
+    let cs = cellSize(
+      layoutWidth: layoutWidth,
+      itemSpacing: itemSpacing,
+      minCellSize: minCellSize,
+      maxCellSize: maxCellSize
+    )
+    let totalRowSpacing = rowSpacing * CGFloat(rowCount - 1)
+    let h = (CGFloat(rowCount) * cs) + totalRowSpacing
+    return ceil(h) + Self.heightCeilingPadding
+  }
+
+  static func swipeThreshold(layoutWidth: CGFloat) -> CGFloat {
+    max(layoutWidth * Self.swipeThresholdRatio, Self.minimumSwipeThreshold)
+  }
+
+  static func nextDragOffset(
+    currentDragOffset: CGFloat,
+    translationWidth: CGFloat,
+    limit: CGFloat,
+    isNavigating: Bool
+  ) -> CGFloat {
+    guard !isNavigating else { return currentDragOffset }
+    return HorizontalMonthSwipeResolver.clampedTranslation(translationWidth, limit: limit)
+  }
+
+  static func resolvedMonthDelta(
+    translationWidth: CGFloat,
+    predictedEndTranslationWidth: CGFloat,
+    layoutDirectionMultiplier: CGFloat,
+    layoutWidth: CGFloat
+  ) -> Int? {
+    let resolvedTranslation = HorizontalMonthSwipeResolver.resolvedTranslation(
+      translation: translationWidth * layoutDirectionMultiplier,
+      predictedEndTranslation: predictedEndTranslationWidth * layoutDirectionMultiplier,
+      limit: layoutWidth
+    )
+    return HorizontalMonthSwipeResolver.monthDelta(
+      for: resolvedTranslation,
+      threshold: swipeThreshold(layoutWidth: layoutWidth)
+    )
+  }
+
+  static func resetNavigationState() -> (offset: CGFloat, dragOffset: CGFloat, isNavigating: Bool) {
+    (0, 0, false)
+  }
+
+  static func navigationTransition(
+    monthDelta: Int,
+    canUpdateMonth: Bool,
+    fallbackViewModel: CalendarViewModel,
+    savedCurrent: CalendarViewModel,
+    previousViewModel: CalendarViewModel,
+    currentViewModel: CalendarViewModel,
+    nextViewModel: CalendarViewModel,
+    replacementPrevious: CalendarViewModel?,
+    replacementNext: CalendarViewModel?
+  ) -> NavigationTransition {
+    let reset = resetNavigationState()
+
+    guard (monthDelta == 1 || monthDelta == -1), canUpdateMonth else {
+      return NavigationTransition(
+        previousViewModel: fallbackViewModel,
+        currentViewModel: fallbackViewModel,
+        nextViewModel: fallbackViewModel,
+        offset: reset.offset,
+        dragOffset: reset.dragOffset,
+        isNavigating: reset.isNavigating
+      )
+    }
+
+    if monthDelta == 1 {
+      return NavigationTransition(
+        previousViewModel: savedCurrent,
+        currentViewModel: nextViewModel,
+        nextViewModel: replacementNext ?? fallbackViewModel,
+        offset: reset.offset,
+        dragOffset: reset.dragOffset,
+        isNavigating: reset.isNavigating
+      )
+    }
+
+    return NavigationTransition(
+      previousViewModel: replacementPrevious ?? fallbackViewModel,
+      currentViewModel: previousViewModel,
+      nextViewModel: savedCurrent,
+      offset: reset.offset,
+      dragOffset: reset.dragOffset,
+      isNavigating: reset.isNavigating
+    )
+  }
+
+  static func synchronizedViewModels(
+    viewModel: CalendarViewModel,
+    isNavigating: Bool
+  ) -> (current: CalendarViewModel, previous: CalendarViewModel, next: CalendarViewModel)? {
+    guard !isNavigating else { return nil }
+    return (
+      current: viewModel,
+      previous: (try? viewModel.copy(addMonths: -1)) ?? viewModel,
+      next: (try? viewModel.copy(addMonths: 1)) ?? viewModel
+    )
+  }
+
+  static func pagerAction(for monthDelta: Int?) -> HorizontalPagerAction {
+    switch monthDelta {
+    case 1:
+      .next
+    case -1:
+      .previous
+    default:
+      .snapBack
+    }
+  }
+
+  static func nextOffset(currentOffset: CGFloat, width: CGFloat, layoutDirectionMultiplier: CGFloat) -> CGFloat {
+    currentOffset + (-width * layoutDirectionMultiplier)
+  }
+
+  static func previousOffset(currentOffset: CGFloat, width: CGFloat, layoutDirectionMultiplier: CGFloat) -> CGFloat {
+    currentOffset + (width * layoutDirectionMultiplier)
+  }
+
+  static func shouldHandleScrollPage(delta: Int, isNavigating: Bool) -> Bool {
+    guard !isNavigating else { return false }
+    return delta == 1 || delta == -1
   }
 
   var body: some View {
@@ -173,9 +338,11 @@ struct CalendarBodyHorizontalView: View {
               return
             }
 
-            dragOffset = HorizontalMonthSwipeResolver.clampedTranslation(
-              value.translation.width,
-              limit: layoutWidth
+            dragOffset = Self.nextDragOffset(
+              currentDragOffset: dragOffset,
+              translationWidth: value.translation.width,
+              limit: layoutWidth,
+              isNavigating: isNavigating
             )
           }
           .onEnded { value in
@@ -183,26 +350,19 @@ struct CalendarBodyHorizontalView: View {
               return
             }
 
-            let threshold = max(
-              layoutWidth * Self.swipeThresholdRatio,
-              Self.minimumSwipeThreshold
-            )
-            let resolvedTranslation = HorizontalMonthSwipeResolver.resolvedTranslation(
-              translation: value.translation.width * layoutDirectionMultiplier,
-              predictedEndTranslation: value.predictedEndTranslation.width
-                * layoutDirectionMultiplier,
-              limit: layoutWidth
-            )
-            let monthDelta = HorizontalMonthSwipeResolver.monthDelta(
-              for: resolvedTranslation,
-              threshold: threshold
+            let monthDelta = Self.resolvedMonthDelta(
+              translationWidth: value.translation.width,
+              predictedEndTranslationWidth: value.predictedEndTranslation.width,
+              layoutDirectionMultiplier: layoutDirectionMultiplier,
+              layoutWidth: layoutWidth
             )
 
-            if monthDelta == 1 {
+            switch Self.pagerAction(for: monthDelta) {
+            case .next:
               goToNext(width: layoutWidth)
-            } else if monthDelta == -1 {
+            case .previous:
               goToPrevious(width: layoutWidth)
-            } else {
+            case .snapBack:
               withAnimation(Self.snapBackAnimation) {
                 dragOffset = 0
               }
@@ -247,10 +407,11 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private func syncFromBinding() {
-    guard !isNavigating else { return }
-    currentViewModel = viewModel
-    previousViewModel = (try? viewModel.copy(addMonths: -1)) ?? viewModel
-    nextViewModel = (try? viewModel.copy(addMonths: 1)) ?? viewModel
+    guard let synchronized = Self.synchronizedViewModels(viewModel: viewModel, isNavigating: isNavigating)
+    else { return }
+    currentViewModel = synchronized.current
+    previousViewModel = synchronized.previous
+    nextViewModel = synchronized.next
   }
 
   private var rowCountForHeight: Int {
@@ -262,21 +423,39 @@ struct CalendarBodyHorizontalView: View {
         month: previousViewModel.currentMonth, year: previousViewModel.currentYear)
       let next = nextViewModel.rowCount(
         month: nextViewModel.currentMonth, year: nextViewModel.currentYear)
-      return max(current, previous, next)
+      return Self.rowCount(
+        mode: .hugContent, currentRows: current, previousRows: previous, nextRows: next)
     case .sixRows:
-      return 6
+      return Self.rowCount(mode: .sixRows, currentRows: 0, previousRows: 0, nextRows: 0)
+    }
+  }
+
+  /// Resolves the row count that drives the carousel height for a given height mode.
+  /// `.hugContent` uses the tallest of the three parked months so paging never clips;
+  /// `.sixRows` pins to a fixed six-row grid regardless of the months on screen.
+  static func rowCount(
+    mode: Theme.HorizontalHeightMode,
+    currentRows: Int,
+    previousRows: Int,
+    nextRows: Int
+  ) -> Int {
+    switch mode {
+    case .hugContent:
+      max(currentRows, max(previousRows, nextRows))
+    case .sixRows:
+      6
     }
   }
 
   private func height(forRowCount rowCount: Int) -> CGFloat {
-    let totalInteritemSpacing = metrics.itemSpacing * 6
-    let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
-    let columnWidth = widthForCells / 7
-    let cs = min(metrics.maxCellSize, max(metrics.minCellSize, columnWidth))
-    // Grid only: (rowCount - 1) spacings between rows (header is static above carousel)
-    let totalRowSpacing = metrics.rowSpacing * CGFloat(rowCount - 1)
-    let h = (CGFloat(rowCount) * cs) + totalRowSpacing
-    return ceil(h) + Self.heightCeilingPadding
+    Self.resolvedHeight(
+      rowCount: rowCount,
+      layoutWidth: layoutWidth,
+      itemSpacing: metrics.itemSpacing,
+      rowSpacing: metrics.rowSpacing,
+      minCellSize: metrics.minCellSize,
+      maxCellSize: metrics.maxCellSize
+    )
   }
 
   /// Swipe LEFT: next month slides in from the right.
@@ -290,7 +469,11 @@ struct CalendarBodyHorizontalView: View {
 
     withAnimation(Self.pagingAnimation, completionCriteria: .logicallyComplete) {
       // Move until the parked next month reaches center.
-      offset += -width * layoutDirectionMultiplier
+      offset = Self.nextOffset(
+        currentOffset: offset,
+        width: width,
+        layoutDirectionMultiplier: layoutDirectionMultiplier
+      )
       dragOffset = 0
     } completion: {
       finishNavigation(monthDelta: 1, savedCurrent: savedCurrent)
@@ -308,7 +491,11 @@ struct CalendarBodyHorizontalView: View {
 
     withAnimation(Self.pagingAnimation, completionCriteria: .logicallyComplete) {
       // Move until the parked previous month reaches center.
-      offset += width * layoutDirectionMultiplier
+      offset = Self.previousOffset(
+        currentOffset: offset,
+        width: width,
+        layoutDirectionMultiplier: layoutDirectionMultiplier
+      )
       dragOffset = 0
     } completion: {
       finishNavigation(monthDelta: -1, savedCurrent: savedCurrent)
@@ -316,42 +503,27 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private func finishNavigation(monthDelta: Int, savedCurrent: CalendarViewModel) {
-    guard monthDelta == 1 || monthDelta == -1 else {
-      withTransaction(Transaction(animation: nil)) {
-        offset = 0
-        dragOffset = 0
-      }
-      isNavigating = false
-      syncFromBinding()
-      return
-    }
+    let canUpdateMonth = (try? viewModel.updateMonth(byAdding: monthDelta)) != nil
+    let transition = Self.navigationTransition(
+      monthDelta: monthDelta,
+      canUpdateMonth: canUpdateMonth,
+      fallbackViewModel: viewModel,
+      savedCurrent: savedCurrent,
+      previousViewModel: previousViewModel,
+      currentViewModel: currentViewModel,
+      nextViewModel: nextViewModel,
+      replacementPrevious: try? viewModel.copy(addMonths: -1),
+      replacementNext: try? viewModel.copy(addMonths: 1)
+    )
 
-    if (try? viewModel.updateMonth(byAdding: monthDelta)) == nil {
-      withTransaction(Transaction(animation: nil)) {
-        offset = 0
-        dragOffset = 0
-      }
-      isNavigating = false
-      syncFromBinding()
-      return
-    }
-
-    if monthDelta == 1 {
-      previousViewModel = savedCurrent
-      currentViewModel = nextViewModel
-      nextViewModel = (try? viewModel.copy(addMonths: 1)) ?? viewModel
-    } else {
-      nextViewModel = savedCurrent
-      currentViewModel = previousViewModel
-      previousViewModel = (try? viewModel.copy(addMonths: -1)) ?? viewModel
-    }
-
+    previousViewModel = transition.previousViewModel
+    currentViewModel = transition.currentViewModel
+    nextViewModel = transition.nextViewModel
     withTransaction(Transaction(animation: nil)) {
-      offset = 0
-      dragOffset = 0
+      offset = transition.offset
+      dragOffset = transition.dragOffset
     }
-
-    isNavigating = false
+    isNavigating = transition.isNavigating
     syncFromBinding()
   }
 
@@ -363,7 +535,7 @@ struct CalendarBodyHorizontalView: View {
     private func installScrollMonitor() {
       guard scrollMonitor == nil else { return }
       let monitor = HorizontalScrollWheelMonitor(threshold: Self.scrollPageThreshold) { delta in
-        guard !isNavigating else { return }
+        guard Self.shouldHandleScrollPage(delta: delta, isNavigating: isNavigating) else { return }
         switch delta {
         case 1: goToNext(width: layoutWidth)
         case -1: goToPrevious(width: layoutWidth)
@@ -385,6 +557,23 @@ private enum HorizontalMonthPosition: Hashable {
   case previous
   case current
   case next
+}
+
+enum HorizontalPagerAction {
+  case next
+  case previous
+  case snapBack
+}
+
+/// Resolved outcome of a completed month-paging gesture: which view models occupy each
+/// carousel slot and the carousel's reset position. Always followed by a `syncFromBinding()`.
+struct NavigationTransition {
+  let previousViewModel: CalendarViewModel
+  let currentViewModel: CalendarViewModel
+  let nextViewModel: CalendarViewModel
+  let offset: CGFloat
+  let dragOffset: CGFloat
+  let isNavigating: Bool
 }
 
 #if os(macOS)
