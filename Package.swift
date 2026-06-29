@@ -15,11 +15,9 @@ let package = Package(
       targets: ["SwiftUICalendar"])
   ],
   dependencies: [
-    // Pinned to exact revisions for reproducible builds (these repos are not yet tagged).
-    // Switch to `from: "x.y.z"` once SwiftCommons / SwiftUIComponents publish versioned releases.
     .package(
       url: "https://github.com/maniramezan/SwiftCommons.git",
-      revision: "4c51afbf713a7b992fa38de03142fc3af84416a1"
+      .upToNextMajor(from: "0.2.0")
     ),
     .package(
       url: "https://github.com/maniramezan/SwiftUIComponents",
