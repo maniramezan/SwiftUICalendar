@@ -29,18 +29,6 @@ struct CalendarHeaderYearView: View {
     itemsById[currentYear] ?? items[0]
   }
 
-  static func selectYear(_ year: Int, on model: CalendarViewModel) {
-    model.currentYear = year
-  }
-
-  static func navigateToPreviousYear(on model: CalendarViewModel) throws {
-    try model.updateYearToPreviousYear()
-  }
-
-  static func navigateToNextYear(on model: CalendarViewModel) throws {
-    try model.updateYearToNextYear()
-  }
-
   var body: some View {
     CalendarNavigationHeaderView(
       items: yearItems,
@@ -53,19 +41,19 @@ struct CalendarHeaderYearView: View {
           )
         },
         set: { newItem in
-          Self.selectYear(newItem.id, on: model)
+          model.currentYear = newItem.id
         }
       ),
       onPrevious: {
         do {
-          try Self.navigateToPreviousYear(on: model)
+          try model.updateYearToPreviousYear()
         } catch {
           logger.error("Failed to navigate to previous year", error: error)
         }
       },
       onNext: {
         do {
-          try Self.navigateToNextYear(on: model)
+          try model.updateYearToNextYear()
         } catch {
           logger.error("Failed to navigate to next year", error: error)
         }

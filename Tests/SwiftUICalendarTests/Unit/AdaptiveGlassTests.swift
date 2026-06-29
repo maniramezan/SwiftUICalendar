@@ -29,38 +29,40 @@ struct AdaptiveGlassTests {
     #expect(regular == .ultraThin)
   }
 
-  @Test("Forced material fallback renders all supported shapes")
-  func forcedMaterialFallbackRendersAllSupportedShapes() {
-    let view = HStack {
-      Text("Circle")
-        .modifier(
-          AdaptiveGlassModifier(
-            shape: .circle,
-            interactive: false,
-            tint: nil,
-            supportsLiquidGlassOverride: false
-          ))
-      Text("Capsule")
-        .modifier(
-          AdaptiveGlassModifier(
-            shape: .capsule,
-            interactive: false,
-            tint: nil,
-            supportsLiquidGlassOverride: false
-          ))
-      Text("Rounded")
-        .modifier(
-          AdaptiveGlassModifier(
-            shape: .roundedRectangle(cornerRadius: 10),
-            interactive: false,
-            tint: nil,
-            supportsLiquidGlassOverride: false
-          ))
+  #if os(macOS)
+    @Test("Forced material fallback renders all supported shapes")
+    func forcedMaterialFallbackRendersAllSupportedShapes() {
+      let view = HStack {
+        Text("Circle")
+          .modifier(
+            AdaptiveGlassModifier(
+              shape: .circle,
+              interactive: false,
+              tint: nil,
+              supportsLiquidGlassOverride: false
+            ))
+        Text("Capsule")
+          .modifier(
+            AdaptiveGlassModifier(
+              shape: .capsule,
+              interactive: false,
+              tint: nil,
+              supportsLiquidGlassOverride: false
+            ))
+        Text("Rounded")
+          .modifier(
+            AdaptiveGlassModifier(
+              shape: .roundedRectangle(cornerRadius: 10),
+              interactive: false,
+              tint: nil,
+              supportsLiquidGlassOverride: false
+            ))
+      }
+      .frame(width: 320, height: 120)
+
+      let hosted = hostView(view, size: CGSize(width: 320, height: 120))
+
+      #expect(hosted.hosting.fittingSize.width >= 0)
     }
-    .frame(width: 320, height: 120)
-
-    let hosted = hostView(view, size: CGSize(width: 320, height: 120))
-
-    #expect(hosted.hosting.fittingSize.width >= 0)
-  }
+  #endif
 }

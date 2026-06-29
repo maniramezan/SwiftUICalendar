@@ -28,18 +28,6 @@ struct CalendarHeaderMonthView: View {
     itemsById[currentMonth] ?? items[0]
   }
 
-  static func selectMonth(_ month: Int, on model: CalendarViewModel) {
-    model.currentMonth = month
-  }
-
-  static func navigateToPreviousMonth(on model: CalendarViewModel) throws {
-    try model.updateMonthToPreviousMonth()
-  }
-
-  static func navigateToNextMonth(on model: CalendarViewModel) throws {
-    try model.updateMonthToNextMonth()
-  }
-
   var body: some View {
     CalendarNavigationHeaderView(
       items: monthItems,
@@ -52,19 +40,19 @@ struct CalendarHeaderMonthView: View {
           )
         },
         set: { newItem in
-          Self.selectMonth(newItem.id, on: model)
+          model.currentMonth = newItem.id
         }
       ),
       onPrevious: {
         do {
-          try Self.navigateToPreviousMonth(on: model)
+          try model.updateMonthToPreviousMonth()
         } catch {
           logger.error("Failed to navigate to previous month", error: error)
         }
       },
       onNext: {
         do {
-          try Self.navigateToNextMonth(on: model)
+          try model.updateMonthToNextMonth()
         } catch {
           logger.error("Failed to navigate to next month", error: error)
         }

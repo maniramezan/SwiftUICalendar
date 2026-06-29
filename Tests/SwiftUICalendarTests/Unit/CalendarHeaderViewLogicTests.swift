@@ -50,8 +50,10 @@ struct CalendarHeaderViewLogicTests {
     #expect(items.count == (viewModel.maxYear - viewModel.minYear + 1))
     #expect(items.first?.id == viewModel.minYear)
     #expect(items.last?.id == viewModel.maxYear)
-    #expect(items.first?.title == NumberFormatter.formatYear(viewModel.minYear, locale: viewModel.locale))
-    #expect(items.last?.title == NumberFormatter.formatYear(viewModel.maxYear, locale: viewModel.locale))
+    #expect(
+      items.first?.title == NumberFormatter.formatYear(viewModel.minYear, locale: viewModel.locale))
+    #expect(
+      items.last?.title == NumberFormatter.formatYear(viewModel.maxYear, locale: viewModel.locale))
   }
 
   @Test("Year header selection falls back to first item when current year is unavailable")
@@ -70,114 +72,5 @@ struct CalendarHeaderViewLogicTests {
 
     #expect(selected.id == 1403)
     #expect(selected.title == "1403")
-  }
-
-  @Test("Month header selection updates the view model month")
-  func monthHeaderSelectionUpdatesViewModelMonth() {
-    let viewModel = CalendarViewModel.test()
-
-    CalendarHeaderMonthView.selectMonth(8, on: viewModel)
-
-    #expect(viewModel.currentMonth == 8)
-  }
-
-  @Test("Month header previous navigation updates the model")
-  func monthHeaderPreviousNavigationUpdatesModel() throws {
-    let viewModel = CalendarViewModel.test()
-    viewModel.currentMonth = 6
-    viewModel.currentYear = 2025
-
-    try CalendarHeaderMonthView.navigateToPreviousMonth(on: viewModel)
-
-    #expect(viewModel.currentMonth == 5)
-    #expect(viewModel.currentYear == 2025)
-  }
-
-  @Test("Month header next navigation updates the model")
-  func monthHeaderNextNavigationUpdatesModel() throws {
-    let viewModel = CalendarViewModel.test()
-    viewModel.currentMonth = 6
-    viewModel.currentYear = 2025
-
-    try CalendarHeaderMonthView.navigateToNextMonth(on: viewModel)
-
-    #expect(viewModel.currentMonth == 7)
-    #expect(viewModel.currentYear == 2025)
-  }
-
-  @Test("Month header previous navigation throws at the lower bound")
-  func monthHeaderPreviousNavigationThrowsAtLowerBound() {
-    let viewModel = CalendarViewModel.test()
-    viewModel.currentYear = 1900
-    viewModel.currentMonth = 1
-
-    #expect(throws: Error.self) {
-      try CalendarHeaderMonthView.navigateToPreviousMonth(on: viewModel)
-    }
-  }
-
-  @Test("Month header next navigation throws at the upper bound")
-  func monthHeaderNextNavigationThrowsAtUpperBound() {
-    let viewModel = CalendarViewModel.test()
-    viewModel.currentYear = 2100
-    viewModel.currentMonth = 12
-
-    #expect(throws: Error.self) {
-      try CalendarHeaderMonthView.navigateToNextMonth(on: viewModel)
-    }
-  }
-
-  @Test("Year header selection updates the view model year")
-  func yearHeaderSelectionUpdatesViewModelYear() {
-    let viewModel = CalendarViewModel.test(identifier: .persian)
-    let targetYear = viewModel.currentYear + 1
-
-    CalendarHeaderYearView.selectYear(targetYear, on: viewModel)
-
-    #expect(viewModel.currentYear == targetYear)
-  }
-
-  @Test("Year header previous navigation updates the model")
-  func yearHeaderPreviousNavigationUpdatesModel() throws {
-    let viewModel = CalendarViewModel.test()
-    viewModel.currentYear = 2025
-    viewModel.currentMonth = 6
-
-    try CalendarHeaderYearView.navigateToPreviousYear(on: viewModel)
-
-    #expect(viewModel.currentYear == 2024)
-    #expect(viewModel.currentMonth == 6)
-  }
-
-  @Test("Year header next navigation updates the model")
-  func yearHeaderNextNavigationUpdatesModel() throws {
-    let viewModel = CalendarViewModel.test()
-    viewModel.currentYear = 2025
-    viewModel.currentMonth = 6
-
-    try CalendarHeaderYearView.navigateToNextYear(on: viewModel)
-
-    #expect(viewModel.currentYear == 2026)
-    #expect(viewModel.currentMonth == 6)
-  }
-
-  @Test("Year header previous navigation throws at the lower bound")
-  func yearHeaderPreviousNavigationThrowsAtLowerBound() {
-    let viewModel = CalendarViewModel.test()
-    viewModel.currentYear = 1900
-
-    #expect(throws: Error.self) {
-      try CalendarHeaderYearView.navigateToPreviousYear(on: viewModel)
-    }
-  }
-
-  @Test("Year header next navigation throws at the upper bound")
-  func yearHeaderNextNavigationThrowsAtUpperBound() {
-    let viewModel = CalendarViewModel.test()
-    viewModel.currentYear = 2100
-
-    #expect(throws: Error.self) {
-      try CalendarHeaderYearView.navigateToNextYear(on: viewModel)
-    }
   }
 }

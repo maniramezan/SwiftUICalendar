@@ -77,11 +77,13 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private var previousMonthBaseOffset: CGFloat {
-    Self.previousMonthBaseOffset(layoutWidth: layoutWidth, layoutDirectionMultiplier: layoutDirectionMultiplier)
+    Self.previousMonthBaseOffset(
+      layoutWidth: layoutWidth, layoutDirectionMultiplier: layoutDirectionMultiplier)
   }
 
   private var nextMonthBaseOffset: CGFloat {
-    Self.nextMonthBaseOffset(layoutWidth: layoutWidth, layoutDirectionMultiplier: layoutDirectionMultiplier)
+    Self.nextMonthBaseOffset(
+      layoutWidth: layoutWidth, layoutDirectionMultiplier: layoutDirectionMultiplier)
   }
 
   init(viewModel: CalendarViewModel) {
@@ -112,11 +114,15 @@ struct CalendarBodyHorizontalView: View {
     max(Self.headerHeightRatio * cellSize, Self.minHeaderHeight)
   }
 
-  static func previousMonthBaseOffset(layoutWidth: CGFloat, layoutDirectionMultiplier: CGFloat) -> CGFloat {
+  static func previousMonthBaseOffset(layoutWidth: CGFloat, layoutDirectionMultiplier: CGFloat)
+    -> CGFloat
+  {
     -layoutWidth * layoutDirectionMultiplier
   }
 
-  static func nextMonthBaseOffset(layoutWidth: CGFloat, layoutDirectionMultiplier: CGFloat) -> CGFloat {
+  static func nextMonthBaseOffset(layoutWidth: CGFloat, layoutDirectionMultiplier: CGFloat)
+    -> CGFloat
+  {
     layoutWidth * layoutDirectionMultiplier
   }
 
@@ -187,7 +193,7 @@ struct CalendarBodyHorizontalView: View {
   ) -> NavigationTransition {
     let reset = resetNavigationState()
 
-    guard (monthDelta == 1 || monthDelta == -1), canUpdateMonth else {
+    guard monthDelta == 1 || monthDelta == -1, canUpdateMonth else {
       return NavigationTransition(
         previousViewModel: fallbackViewModel,
         currentViewModel: fallbackViewModel,
@@ -242,11 +248,15 @@ struct CalendarBodyHorizontalView: View {
     }
   }
 
-  static func nextOffset(currentOffset: CGFloat, width: CGFloat, layoutDirectionMultiplier: CGFloat) -> CGFloat {
+  static func nextOffset(currentOffset: CGFloat, width: CGFloat, layoutDirectionMultiplier: CGFloat)
+    -> CGFloat
+  {
     currentOffset + (-width * layoutDirectionMultiplier)
   }
 
-  static func previousOffset(currentOffset: CGFloat, width: CGFloat, layoutDirectionMultiplier: CGFloat) -> CGFloat {
+  static func previousOffset(
+    currentOffset: CGFloat, width: CGFloat, layoutDirectionMultiplier: CGFloat
+  ) -> CGFloat {
     currentOffset + (width * layoutDirectionMultiplier)
   }
 
@@ -407,7 +417,9 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private func syncFromBinding() {
-    guard let synchronized = Self.synchronizedViewModels(viewModel: viewModel, isNavigating: isNavigating)
+    guard
+      let synchronized = Self.synchronizedViewModels(
+        viewModel: viewModel, isNavigating: isNavigating)
     else { return }
     currentViewModel = synchronized.current
     previousViewModel = synchronized.previous

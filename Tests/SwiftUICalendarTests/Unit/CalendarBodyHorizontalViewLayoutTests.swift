@@ -1,5 +1,5 @@
-import Testing
 import SwiftUI
+import Testing
 
 @testable import SwiftUICalendar
 
@@ -9,8 +9,10 @@ struct CalendarBodyHorizontalViewLayoutTests {
 
   @Test("layoutWidth respects the minimum calendar width")
   func layoutWidthRespectsMinimumCalendarWidth() {
-    #expect(CalendarBodyHorizontalView.layoutWidth(containerWidth: 320, minCalendarWidth: 356) == 356)
-    #expect(CalendarBodyHorizontalView.layoutWidth(containerWidth: 390, minCalendarWidth: 356) == 390)
+    #expect(
+      CalendarBodyHorizontalView.layoutWidth(containerWidth: 320, minCalendarWidth: 356) == 356)
+    #expect(
+      CalendarBodyHorizontalView.layoutWidth(containerWidth: 390, minCalendarWidth: 356) == 390)
   }
 
   @Test("cellSize clamps between minimum and maximum bounds")
@@ -352,19 +354,21 @@ struct CalendarBodyHorizontalViewLayoutTests {
     #expect(!CalendarBodyHorizontalView.shouldHandleScrollPage(delta: 1, isNavigating: true))
   }
 
-  @Test("hosted horizontal view runs lifecycle without crashing")
-  func hostedHorizontalViewRunsLifecycleWithoutCrashing() {
-    let viewModel = CalendarViewModel.snapshot(selection: .single(nil))
-    let theme = Theme()
-    let view = CalendarBodyHorizontalView(viewModel: viewModel)
-      .environment(theme)
-      .environment(Typography.default)
-      .environment(\.locale, viewModel.locale)
-      .environment(\.layoutDirection, viewModel.layoutDirection)
+  #if os(macOS)
+    @Test("hosted horizontal view runs lifecycle without crashing")
+    func hostedHorizontalViewRunsLifecycleWithoutCrashing() {
+      let viewModel = CalendarViewModel.snapshot(selection: .single(nil))
+      let theme = Theme()
+      let view = CalendarBodyHorizontalView(viewModel: viewModel)
+        .environment(theme)
+        .environment(Typography.default)
+        .environment(\.locale, viewModel.locale)
+        .environment(\.layoutDirection, viewModel.layoutDirection)
 
-    let hosted = hostView(view)
-    hosted.window.contentView = nil
+      let hosted = hostView(view)
+      hosted.window.contentView = nil
 
-    #expect(hosted.hosting.fittingSize.width >= 0)
-  }
+      #expect(hosted.hosting.fittingSize.width >= 0)
+    }
+  #endif
 }

@@ -87,7 +87,10 @@ private struct LiquidGlassModifier: ViewModifier {
   private var effect: Glass {
     var e: Glass =
       reduceTransparency ? .identity : (interactive ? .regular.interactive() : .regular)
-    if let tint, AdaptiveGlassModifier.shouldApplyTint(hasTint: true, reduceTransparency: reduceTransparency) {
+    if AdaptiveGlassModifier.shouldApplyTint(
+      hasTint: tint != nil, reduceTransparency: reduceTransparency),
+      let tint
+    {
       e = e.tint(tint)
     }
     return e
@@ -120,7 +123,8 @@ private struct MaterialFallbackModifier: ViewModifier {
   }
 
   private var material: Material {
-    Self.material(style: AdaptiveGlassModifier.fallbackMaterialStyle(reduceTransparency: reduceTransparency))
+    Self.material(
+      style: AdaptiveGlassModifier.fallbackMaterialStyle(reduceTransparency: reduceTransparency))
   }
 
   func body(content: Content) -> some View {

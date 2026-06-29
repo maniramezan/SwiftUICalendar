@@ -67,18 +67,20 @@ struct ThemeTests {
     #expect(label?.isEmpty == false)
   }
 
-  @Test("adaptiveGlass renders fallback shape variants")
-  func adaptiveGlassRendersFallbackShapeVariants() {
-    let view = HStack {
-      Text("Capsule")
-        .adaptiveGlass(shape: .capsule)
-      Text("Rounded")
-        .adaptiveGlass(shape: .roundedRectangle(cornerRadius: 8))
+  #if os(macOS)
+    @Test("adaptiveGlass renders fallback shape variants")
+    func adaptiveGlassRendersFallbackShapeVariants() {
+      let view = HStack {
+        Text("Capsule")
+          .adaptiveGlass(shape: .capsule)
+        Text("Rounded")
+          .adaptiveGlass(shape: .roundedRectangle(cornerRadius: 8))
+      }
+      .frame(width: 220, height: 80)
+
+      let hosted = hostView(view, size: CGSize(width: 220, height: 80))
+
+      #expect(hosted.hosting.fittingSize.width >= 0)
     }
-    .frame(width: 220, height: 80)
-
-    let hosted = hostView(view, size: CGSize(width: 220, height: 80))
-
-    #expect(hosted.hosting.fittingSize.width >= 0)
-  }
+  #endif
 }
