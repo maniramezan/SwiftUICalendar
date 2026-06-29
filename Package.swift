@@ -38,6 +38,7 @@ let package = Package(
         .product(name: "Components", package: "SwiftUIComponents"),
         .product(name: "DesignSystem", package: "SwiftUIComponents"),
       ],
+      exclude: ["SwiftUICalendar.docc"],
       resources: [
         .process("Resources/Localizable.xcstrings")
       ]

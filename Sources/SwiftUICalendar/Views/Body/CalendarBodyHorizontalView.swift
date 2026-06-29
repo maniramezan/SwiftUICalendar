@@ -149,8 +149,10 @@ struct CalendarBodyHorizontalView: View {
           .offset(x: nextMonthBaseOffset + offset + dragOffset)
       }
       .environment(\.layoutDirection, .leftToRight)
+      .frame(width: layoutWidth, alignment: .topLeading)
       .frame(minHeight: max(calendarHeight, measuredHeight), alignment: .topLeading)
-      .frame(maxWidth: .infinity)
+      .clipped()
+      .frame(maxWidth: .infinity, alignment: .top)
       .contentShape(Rectangle())
       .onChange(of: viewModel.currentDate) { _, _ in
         syncFromBinding()
@@ -162,7 +164,7 @@ struct CalendarBodyHorizontalView: View {
         syncFromBinding()
       }
       .onPreferenceChange(HorizontalMonthHeightPreferenceKey.self) { heights in
-        measuredHeight = heights.values.max() ?? 0
+        updateMeasuredHeight(heights.values.max() ?? 0)
       }
       .gesture(
         DragGesture()
@@ -210,9 +212,9 @@ struct CalendarBodyHorizontalView: View {
       .background(
         GeometryReader { geometry in
           Color.clear
-            .onAppear { containerWidth = geometry.size.width }
+            .onAppear { updateContainerWidth(geometry.size.width) }
             .onChange(of: geometry.size.width) { _, newWidth in
-              containerWidth = newWidth
+              updateContainerWidth(newWidth)
             }
         }
       )
@@ -232,6 +234,16 @@ struct CalendarBodyHorizontalView: View {
           value: [position: geometry.size.height]
         )
     }
+  }
+
+  private func updateContainerWidth(_ width: CGFloat) {
+    guard containerWidth != width else { return }
+    containerWidth = width
+  }
+
+  private func updateMeasuredHeight(_ height: CGFloat) {
+    guard measuredHeight != height else { return }
+    measuredHeight = height
   }
 
   private func syncFromBinding() {
