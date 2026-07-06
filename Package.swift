@@ -21,7 +21,7 @@ let package = Package(
     ),
     .package(
       url: "https://github.com/maniramezan/SwiftUIComponents",
-      revision: "7875857c811b254590aafacfaf13041eca83ad6d"
+      .upToNextMajor(from: "0.1.0")
     ),
     .package(
       url: "https://github.com/pointfreeco/swift-snapshot-testing",

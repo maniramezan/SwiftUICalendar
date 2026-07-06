@@ -49,9 +49,9 @@ bash ./scripts/build-docs.sh  # build static DocC output
 ```
 
 ## Release Checklist
-- Confirm `README.md` installation examples point at the next tag, starting with `0.1.0`.
+- Confirm `README.md` installation examples point at the current release tag.
 - Run `bash ./scripts/lint.sh`, `swift build -c debug`, `swift test`, `MINIMUM_COVERAGE=80 bash ./scripts/check-coverage.sh`, and `bash ./scripts/build-docs.sh`.
-- Create a GitHub release for the tag, for example `0.1.0`, and use GitHub Releases for release notes.
+- Create a GitHub release for the tag, for example `1.0.0`, and use GitHub Releases for release notes.
 
 ## Required Test Runs
 - Package changes (`Sources/`, `Tests/`, `Package.swift`, or shared resources): run `swift test`.

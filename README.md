@@ -27,7 +27,7 @@ These images are generated from the package snapshot references for the actual `
 Add SwiftUICalendar with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "0.1.0")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "1.0.0")
 ```
 
 Then add the product to your target:
@@ -124,7 +124,7 @@ The generated static documentation is written to `.build/docs`. CI validates Doc
 
 ## Versioning
 
-SwiftUICalendar starts at `0.1.0` and follows semantic versioning for tagged releases. Before `1.0.0`, minor versions may include source-breaking API refinements.
+SwiftUICalendar follows semantic versioning for tagged releases, starting at `1.0.0`. Source-breaking API changes only ship in major versions.
 
 ## Development
 
