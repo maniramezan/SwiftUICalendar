@@ -8,8 +8,12 @@ import SwiftUI
 // ⚠️ Set to .all to record baseline snapshots, then revert to .missing before committing.
 let globalRecordMode: SnapshotTestingConfiguration.Record = .missing
 
-private var isContinuousIntegration: Bool {
-  ProcessInfo.processInfo.environment["CI"] == "true"
+private var shouldAssertSnapshots: Bool {
+  ProcessInfo.processInfo.environment["SNAPSHOT_ASSERTIONS"] == "true"
+}
+
+private var shouldRenderSnapshots: Bool {
+  shouldAssertSnapshots || ProcessInfo.processInfo.environment["SNAPSHOT_RENDERING"] == "true"
 }
 
 // MARK: - CalendarViewModel snapshot factory
@@ -42,7 +46,11 @@ func assertCalendarSnapshot<V: View>(
   testName: String = #function,
   line: UInt = #line
 ) {
-  if isContinuousIntegration {
+  guard shouldRenderSnapshots else {
+    return
+  }
+
+  guard shouldAssertSnapshots else {
     #if os(macOS)
       let targetHeight = height ?? 460
       let size = CGSize(width: width, height: targetHeight)
@@ -57,11 +65,7 @@ func assertCalendarSnapshot<V: View>(
       window.contentView = hosting
       window.layoutIfNeeded()
       hosting.layoutSubtreeIfNeeded()
-      if let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) {
-        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
-      } else {
-        hosting.displayIfNeeded()
-      }
+      hosting.displayIfNeeded()
     #else
       _ = view.frame(width: width, height: height ?? 460)
     #endif

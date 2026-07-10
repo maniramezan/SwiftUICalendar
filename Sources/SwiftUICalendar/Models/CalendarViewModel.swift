@@ -67,8 +67,8 @@ import SwiftUI
   private static let minYear = 1900
   private static let maxYear = 2100
 
-  private(set) var minYear = CalendarViewModel.minYear
-  private(set) var maxYear = CalendarViewModel.maxYear
+  private(set) var minYear: Int
+  private(set) var maxYear: Int
 
   private let gregorianCalendar = Calendar(identifier: .gregorian)
 
@@ -76,7 +76,7 @@ import SwiftUI
 
   private var calendar: Calendar {
     didSet {
-      updateYearBoundaries()
+      updateYearBoundaries(including: currentDate)
     }
   }
 
@@ -88,6 +88,10 @@ import SwiftUI
     calendar.locale ?? Locale(calendarIdentifier: calendar.identifier)
   }
 
+  /// The identifier of the active calendar system.
+  ///
+  /// Call ``updateCalendar(identifier:)`` to change this value while preserving the represented
+  /// dates in the current selection.
   public var calendarIdentifier: Calendar.Identifier {
     calendar.identifier
   }
@@ -196,17 +200,31 @@ import SwiftUI
   /// ```swift
   /// calendar.selection = .multiple([])
   /// ```
-  public var selection: Selection
+  public var selection: Selection {
+    get { storedSelection }
+    set { storedSelection = normalizedSelection(newValue) }
+  }
+
+  private var storedSelection: Selection
 
   /// The date representing the currently visible month.
   ///
-  /// The day component is preserved when possible during navigation. Assigning a new date moves
-  /// the calendar to that date's month in the active calendar system.
+  /// The day component is preserved when possible during navigation. Assigning an in-range date
+  /// moves the calendar to that date's month in the active calendar system. Dates outside the
+  /// supported range (January 1, 1900 through December 31, 2100 in the Gregorian calendar) are
+  /// ignored.
   public var currentDate: Date {
-    didSet {
-      updateYearBoundaries()
+    get { storedCurrentDate }
+    set {
+      guard isWithinSupportedYear(newValue) else {
+        logger.error("Ignoring currentDate outside the supported calendar range")
+        return
+      }
+      storedCurrentDate = newValue
     }
   }
+
+  private var storedCurrentDate: Date
 
   /// Creates a view model for a given calendar system and selection mode.
   ///
@@ -237,14 +255,16 @@ import SwiftUI
   private init(calendar: Calendar, currentDate: Date, selection: Selection, locale: Locale) {
     var calendar = calendar
     calendar.locale = locale
+    self.minYear = Self.minYear
+    self.maxYear = Self.maxYear
     self.calendar = calendar
-    self.currentDate = currentDate
-    self.selection = selection
+    self.storedCurrentDate = currentDate
+    self.storedSelection = Self.normalizedSelection(selection, calendar: calendar)
 
-    updateYearBoundaries()
+    updateYearBoundaries(including: currentDate)
   }
 
-  private func updateYearBoundaries() {
+  private func updateYearBoundaries(including currentDate: Date? = nil) {
     guard let minYear = try? convertGregorianYearToCurrentCalendar(Self.minYear) else {
       return
     }
@@ -253,9 +273,14 @@ import SwiftUI
       return
     }
 
-    let currentYear = calendar.year(from: currentDate)
-    self.minYear = min(minYear, currentYear)
-    self.maxYear = max(maxYear, currentYear)
+    if let currentDate {
+      let currentYear = calendar.year(from: currentDate)
+      self.minYear = min(minYear, currentYear)
+      self.maxYear = max(maxYear, currentYear)
+    } else {
+      self.minYear = minYear
+      self.maxYear = maxYear
+    }
   }
 
   func convertGregorianYearToCurrentCalendar(_ year: Int) throws -> Int {
@@ -290,14 +315,7 @@ import SwiftUI
   }
 
   func updateMonthToNextMonth() throws {
-    guard let startOfCurrentMonth = firstDate(month: currentMonth, year: currentYear),
-      let updatedDate = calendar.date(byAdding: .month, value: 1, to: startOfCurrentMonth),
-      isWithinSupportedYear(updatedDate)
-    else {
-      throw Calendar.CalendarError.cannotCalculateNextMonthFirstDate
-    }
-
-    currentDate = updatedDate
+    try updateMonth(byAdding: 1)
   }
 
   func updateMonth(byAdding months: Int) throws {
@@ -312,14 +330,7 @@ import SwiftUI
   }
 
   func updateMonthToPreviousMonth() throws {
-    guard let startOfCurrentMonth = firstDate(month: currentMonth, year: currentYear),
-      let updatedDate = calendar.date(byAdding: .month, value: -1, to: startOfCurrentMonth),
-      isWithinSupportedYear(updatedDate)
-    else {
-      throw Calendar.CalendarError.cannotCalculatePreviousMonthFirstDate
-    }
-
-    currentDate = updatedDate
+    try updateMonth(byAdding: -1)
   }
 
   func updateYearToNextYear() throws {
@@ -489,8 +500,8 @@ import SwiftUI
   }
 
   private func isWithinSupportedYear(_ date: Date) -> Bool {
-    let year = calendar.year(from: date)
-    return (minYear...maxYear).contains(year)
+    let year = gregorianCalendar.component(.year, from: date)
+    return (Self.minYear...Self.maxYear).contains(year)
   }
 
   func isToday(_ day: Int) -> Bool {
@@ -588,6 +599,35 @@ import SwiftUI
 
   private func isSameDay(_ lhs: Date, _ rhs: Date) -> Bool {
     calendar.isDate(lhs, inSameDayAs: rhs)
+  }
+
+  private func normalizedSelection(_ selection: Selection) -> Selection {
+    Self.normalizedSelection(selection, calendar: calendar)
+  }
+
+  private static func normalizedSelection(_ selection: Selection, calendar: Calendar) -> Selection {
+    switch selection {
+    case .single(let date):
+      return .single(date.map(calendar.startOfDay(for:)))
+    case .range(let start, let end):
+      let normalizedStart = start.map(calendar.startOfDay(for:))
+      let normalizedEnd = end.map(calendar.startOfDay(for:))
+      guard let normalizedStart, let normalizedEnd else {
+        return .range(normalizedStart, normalizedEnd)
+      }
+      return normalizedStart <= normalizedEnd
+        ? .range(normalizedStart, normalizedEnd)
+        : .range(normalizedEnd, normalizedStart)
+    case .multiple(let dates):
+      var normalizedDates = Set<Date>()
+      for date in dates {
+        let normalizedDate = calendar.startOfDay(for: date)
+        if !normalizedDates.contains(where: { calendar.isDate($0, inSameDayAs: normalizedDate) }) {
+          normalizedDates.insert(normalizedDate)
+        }
+      }
+      return .multiple(normalizedDates)
+    }
   }
 
   private static func locale(for identifier: Calendar.Identifier) -> Locale {

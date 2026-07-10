@@ -81,11 +81,8 @@ extension Theme {
     /// The closure receives a `CalendarDayContext` for each visible date. Return a view that
     /// calls `context.onSelect(context.date)` when the user selects that date.
     ///
-    /// ```swift
-    /// theme.day.dayContent = { context in
-    ///     SquareDualCalendarDayView(context: context)
-    /// }
-    /// ```
+    /// Use ``useSquareDualCalendarDayView(secondaryLabel:)`` to select the built-in square style.
+    /// Assign a closure when your app provides a custom ``CalendarDayView`` implementation.
     public var dayContent:
       (
         CalendarDayContext

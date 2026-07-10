@@ -107,6 +107,17 @@ struct CalendarViewModelSelectionTests {
     #expect(vm.isSelected(date: mid))
   }
 
+  @Test("Programmatic range: normalizes an inverted range")
+  func programmaticRangeNormalizesInvertedDates() {
+    let vm = CalendarViewModel.test()
+    let start = makeDate(year: 2025, month: 6, day: 20)
+    let end = makeDate(year: 2025, month: 6, day: 10)
+
+    vm.selection = .range(start, end)
+
+    #expect(vm.isSelected(date: makeDate(year: 2025, month: 6, day: 15)))
+  }
+
   @Test("Range: isSelected reflects start-only range")
   func rangeIsSelectedForStartOnlyRange() {
     let start = makeDate(year: 2025, month: 6, day: 10)
@@ -168,6 +179,22 @@ struct CalendarViewModelSelectionTests {
     let date = makeDate(year: 2025, month: 6, day: 1)
     vm.select(date)
     vm.select(date)
+    guard case .multiple(let dates) = vm.selection else {
+      Issue.record("Expected multiple selection")
+      return
+    }
+    #expect(dates.isEmpty)
+  }
+
+  @Test("Programmatic multiple selection: deduplicates timestamps on the same day")
+  func programmaticMultipleSelectionDeduplicatesSameDay() {
+    let vm = CalendarViewModel.test()
+    let morning = makeDate(year: 2025, month: 6, day: 1)
+    let evening = morning.addingTimeInterval(60 * 60 * 12)
+
+    vm.selection = .multiple([morning, evening])
+    vm.select(morning)
+
     guard case .multiple(let dates) = vm.selection else {
       Issue.record("Expected multiple selection")
       return

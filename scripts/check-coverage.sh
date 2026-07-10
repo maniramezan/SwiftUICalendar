@@ -7,7 +7,7 @@ source_root="${SOURCE_ROOT:-Sources/SwiftUICalendar}"
 export MINIMUM_COVERAGE="${minimum_coverage}"
 export SOURCE_ROOT="${source_root}"
 
-swift test --enable-code-coverage
+SNAPSHOT_RENDERING=true swift test --enable-code-coverage
 
 coverage_path="$(swift test --show-codecov-path)"
 

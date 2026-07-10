@@ -26,6 +26,8 @@ struct SquareDualCalendarDayView: CalendarDayView {
       dayTheme.selectedBackgroundColor
     } else if context.isToday {
       dayTheme.todayBackgroundColor
+    } else if !context.isInCurrentMonth {
+      dayTheme.emptyDayBackgroundColor
     } else {
       Color.clear
     }
@@ -78,7 +80,9 @@ struct SquareDualCalendarDayView: CalendarDayView {
     .onTapGesture {
       context.onSelect(context.date)
     }
+    .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
+    .accessibilityAddTraits(accessibilityTraits)
   }
 
   private var accessibilityLabel: String {
@@ -94,6 +98,10 @@ struct SquareDualCalendarDayView: CalendarDayView {
       components.append("Calendar.Day.Secondary".localized(with: secondary))
     }
     return components.joined(separator: ", ")
+  }
+
+  private var accessibilityTraits: AccessibilityTraits {
+    context.isSelected ? [.isButton, .isSelected] : .isButton
   }
 }
 

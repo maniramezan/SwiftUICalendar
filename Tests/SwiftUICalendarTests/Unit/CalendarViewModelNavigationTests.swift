@@ -89,6 +89,19 @@ struct CalendarViewModelNavigationTests {
     #expect(vm.currentYear == 2025)
   }
 
+  @Test("Next month: preserves the day when possible and clamps it when necessary")
+  func nextMonthPreservesOrClampsDay() throws {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 1, day: 31)
+
+    try vm.updateMonthToNextMonth()
+
+    let calendar = Calendar(identifier: .gregorian)
+    #expect(calendar.component(.day, from: vm.currentDate) == 28)
+    try vm.updateMonthToNextMonth()
+    #expect(calendar.component(.day, from: vm.currentDate) == 28)
+  }
+
   @Test("Month navigation availability is true away from year boundaries")
   func monthNavigationAvailabilityIsTrueAwayFromBoundaries() {
     let vm = CalendarViewModel.test()
@@ -190,6 +203,17 @@ struct CalendarViewModelNavigationTests {
     vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
 
     vm.currentYear = 2101
+
+    #expect(vm.currentYear == 2025)
+    #expect(vm.currentMonth == 6)
+  }
+
+  @Test("currentDate setter ignores dates outside the supported range")
+  func currentDateSetterIgnoresOutOfRangeValue() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
+
+    vm.currentDate = makeDate(year: 2101, month: 1, day: 1)
 
     #expect(vm.currentYear == 2025)
     #expect(vm.currentMonth == 6)

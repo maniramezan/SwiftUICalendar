@@ -1,6 +1,6 @@
 @Tutorials(name: "SwiftUICalendar Tutorials") {
     @Intro(title: "Build calendar experiences with SwiftUICalendar") {
-        Learn how to install the package, display a calendar, customize selection, and publish documentation.
+        Learn how to build a calendar screen with selection and customization.
 
         @Image(source: calendar-normal.png, alt: "The actual normal SwiftUICalendar view")
     }

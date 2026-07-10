@@ -24,13 +24,31 @@ struct CircleDayView: CalendarDayView {
       dayTheme.selectedBackgroundColor
     } else if context.isToday {
       dayTheme.todayBackgroundColor
+    } else if !context.isInCurrentMonth {
+      dayTheme.emptyDayBackgroundColor
     } else {
       Color.clear
     }
   }
 
   private var strokeColor: Color {
-    context.isToday ? dayTheme.todayBorderColor : Color.clear
+    if context.isToday {
+      dayTheme.todayBorderColor
+    } else if !context.isInCurrentMonth {
+      dayTheme.emptyDayBorderColor
+    } else {
+      Color.clear
+    }
+  }
+
+  private var strokeWidth: CGFloat {
+    if context.isToday {
+      dayTheme.todayBorderColorWidth
+    } else if !context.isInCurrentMonth {
+      dayTheme.emptyDayBorderColorWidth
+    } else {
+      0
+    }
   }
 
   var body: some View {
@@ -42,7 +60,7 @@ struct CircleDayView: CalendarDayView {
       } else {
         Circle()
           .fill(backgroundColor)
-          .overlay(Circle().strokeBorder(strokeColor, lineWidth: dayTheme.todayBorderColorWidth))
+          .overlay(Circle().strokeBorder(strokeColor, lineWidth: strokeWidth))
       }
       Text(context.dayLabel)
         .font(dayTypography.primaryFont)

@@ -93,7 +93,7 @@ struct CalendarBodyView: View {
         targetMonth = previousMonthMetadata.month
         targetYear = previousMonthMetadata.year
         date = viewModel.date(for: day, month: targetMonth, year: targetYear)
-        isToday = false
+        isToday = date != nil && viewModel.isToday(day: day, month: targetMonth, year: targetYear)
         isSelected = date.map { viewModel.isSelected(date: $0) } ?? false
       }
 
@@ -127,7 +127,7 @@ struct CalendarBodyView: View {
           targetMonth: targetMonth,
           targetYear: targetYear,
           isCurrentMonth: false,
-          isToday: false,
+          isToday: date != nil && viewModel.isToday(day: day, month: targetMonth, year: targetYear),
           isSelected: date.map { viewModel.isSelected(date: $0) } ?? false
         )
       }

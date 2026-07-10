@@ -7,7 +7,7 @@ Install SwiftUICalendar and render your first calendar.
 Add the package in Xcode or in `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", branch: "main")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "1.0.0")
 ```
 
 Then link the product:

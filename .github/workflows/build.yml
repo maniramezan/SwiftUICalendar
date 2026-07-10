@@ -92,6 +92,8 @@ jobs:
         run: swift build -c debug
 
       - name: Run full tests
+        env:
+          SNAPSHOT_ASSERTIONS: true
         run: swift test
 
       - name: Check test coverage
