@@ -1,5 +1,5 @@
 {
-  "originHash" : "3aaaf27b1e10bfea1175bab4f8d004ea8e39fbf20a7f11fcd7b23ba93bdef37f",
+  "originHash" : "4a7b7466f657c0d099df68c33b1215dce537911d546a21028c3379fc38aff1fc",
   "pins" : [
     {
       "identity" : "swift-custom-dump",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
       "state" : {
-        "revision" : "ad5e3190cc63dc288f28546f9c6827efc1e9d495",
-        "version" : "1.19.2"
+        "revision" : "1bc16f430d8410e7f087d4c787767b26fd32fe30",
+        "version" : "1.19.3"
       }
     },
     {
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftUIComponents",
       "state" : {
-        "revision" : "90dcff423cf2001fc5db38e725b52bf78d0d753b",
-        "version" : "0.1.0"
+        "revision" : "d441a1d01ca60e37fc6362bb1a33dcf374a807f7",
+        "version" : "0.1.1"
       }
     },
     {

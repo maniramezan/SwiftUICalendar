@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		23B4853F2FFF39A300EBA2D3 /* SwiftUICalendar in Frameworks */ = {isa = PBXBuildFile; productRef = 23B4853E2FFF39A300EBA2D3 /* SwiftUICalendar */; };
 		BF1BF1BF1BF1BF1BF1BF1BF1BF1BF1BF1 /* SwiftUICalendarSampleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR1FR1FR1FR1FR1FR1FR1FR1FR1FR1FR1 /* SwiftUICalendarSampleApp.swift */; };
 		BF2BF2BF2BF2BF2BF2BF2BF2BF2BF2BF2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR2FR2FR2FR2FR2FR2FR2FR2FR2FR2FR2 /* ContentView.swift */; };
-		BF3BF3BF3BF3BF3BF3BF3BF3BF3BF3BF3 /* SwiftUICalendar in Frameworks */ = {isa = PBXBuildFile; productRef = 23B52BE82F14823100874FA6 /* SwiftUICalendar */; };
 		BF4BF4BF4BF4BF4BF4BF4BF4BF4BF4BF4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FR3FR3FR3FR3FR3FR3FR3FR3FR3FR3FR3 /* Assets.xcassets */; };
 		BF5BF5BF5BF5BF5BF5BF5BF5BF5BF5BF5 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FR4FR4FR4FR4FR4FR4FR4FR4FR4FR4FR4 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -27,7 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BF3BF3BF3BF3BF3BF3BF3BF3BF3BF3BF3 /* SwiftUICalendar in Frameworks */,
+				23B4853F2FFF39A300EBA2D3 /* SwiftUICalendar in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,7 +94,7 @@
 			);
 			name = SwiftUICalendarSample;
 			packageProductDependencies = (
-				23B52BE82F14823100874FA6 /* SwiftUICalendar */,
+				23B4853E2FFF39A300EBA2D3 /* SwiftUICalendar */,
 			);
 			productName = SwiftUICalendarSample;
 			productReference = PR1PR1PR1PR1PR1PR1PR1PR1PR1PR1PR1 /* SwiftUICalendarSample.app */;
@@ -125,7 +125,7 @@
 			);
 			mainGroup = C1C1C1C1C1C1C1C1C1C1C1C1;
 			packageReferences = (
-				P1P1P1P1P1P1P1P1P1P1P1P1 /* XCLocalSwiftPackageReference "../.." */,
+				23B4853D2FFF39A300EBA2D3 /* XCLocalSwiftPackageReference "../../../SwiftUICalendar" */,
 			);
 			productRefGroup = C5C5C5C5C5C5C5C5C5C5C5C5 /* Products */;
 			projectDirPath = "";
@@ -348,16 +348,15 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		P1P1P1P1P1P1P1P1P1P1P1P1 /* XCLocalSwiftPackageReference "../.." */ = {
+		23B4853D2FFF39A300EBA2D3 /* XCLocalSwiftPackageReference "../../../SwiftUICalendar" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../..;
+			relativePath = ../../../SwiftUICalendar;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		23B52BE82F14823100874FA6 /* SwiftUICalendar */ = {
+		23B4853E2FFF39A300EBA2D3 /* SwiftUICalendar */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = P1P1P1P1P1P1P1P1P1P1P1P1 /* XCLocalSwiftPackageReference "../.." */;
 			productName = SwiftUICalendar;
 		};
 /* End XCSwiftPackageProductDependency section */

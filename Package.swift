@@ -16,16 +16,16 @@ let package = Package(
   ],
   dependencies: [
     .package(
-      url: "https://github.com/maniramezan/SwiftCommons.git",
-      .upToNextMajor(from: "0.2.0")
+      url: "https://github.com/maniramezan/SwiftCommons",
+      .upToNextMajor(from: "0.3.0")
     ),
     .package(
       url: "https://github.com/maniramezan/SwiftUIComponents",
-      .upToNextMajor(from: "0.1.0")
+      .upToNextMajor(from: "0.1.1")
     ),
     .package(
       url: "https://github.com/pointfreeco/swift-snapshot-testing",
-      from: "1.19.2"
+      from: "1.19.3"
     ),
   ],
   targets: [
