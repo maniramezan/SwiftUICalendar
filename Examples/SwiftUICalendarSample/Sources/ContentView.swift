@@ -11,54 +11,29 @@ struct ContentView: View {
     calendarIdentifier: .gregorian, selection: .single(Date()))
   @State private var theme = Theme()
   @State private var typography = Typography.default
+  @State private var isConfigurationPopoverPresented = false
 
   var body: some View {
-    VStack(alignment: .center, spacing: 16) {
-      GroupBox("Settings") {
-        VStack(alignment: .leading, spacing: 12) {
-          Picker("Calendar", selection: $calendarIdentifier) {
-            Text("Gregorian").tag(Calendar.Identifier.gregorian)
-            Text("Persian").tag(Calendar.Identifier.persian)
-          }
-          .pickerStyle(.segmented)
-
-          Picker("Selection", selection: $selectionMode) {
-            ForEach(SelectionMode.allCases) { mode in
-              Text(mode.title).tag(mode)
-            }
-          }
-          .pickerStyle(.segmented)
-
-          Picker("Scroll", selection: $scrollMode) {
-            Text("None").tag(Theme.ScrollMode.none)
-            Text("Vertical").tag(Theme.ScrollMode.vertical)
-            Text("Horizontal").tag(Theme.ScrollMode.horizontal)
-          }
-          .pickerStyle(.segmented)
-
-          if scrollMode == .horizontal {
-            Picker("Horizontal Height", selection: $horizontalHeightMode) {
-              Text("Hug Content").tag(Theme.HorizontalHeightMode.hugContent)
-              Text("Six Rows").tag(Theme.HorizontalHeightMode.sixRows)
-            }
-            .pickerStyle(.segmented)
-          }
-
-          Picker("Day View", selection: $dayViewMode) {
-            ForEach(DayViewMode.allCases) { mode in
-              Text(mode.title).tag(mode)
-            }
-          }
-          .pickerStyle(.segmented)
-        }
-        .padding(.top, 4)
-      }
-
+    NavigationStack {
       CalendarView(model: viewModel, theme: theme, typography: typography)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .id("\(scrollMode)-\(dayViewMode)-\(calendarIdentifier)")
+        .padding()
+        .navigationTitle("Calendar")
+        .toolbar {
+          ToolbarItem(placement: .topBarTrailing) {
+            Button("Settings", systemImage: "gearshape") {
+              isConfigurationPopoverPresented = true
+            }
+            .accessibilityHint("Choose calendar display settings")
+            .popover(isPresented: $isConfigurationPopoverPresented) {
+              configurationPicker
+                .padding()
+                .frame(width: 360)
+            }
+          }
+        }
     }
-    .padding()
     .onAppear {
       applyConfiguration()
     }
@@ -76,6 +51,48 @@ struct ContentView: View {
     }
     .onChange(of: horizontalHeightMode) { _, _ in
       applyConfiguration()
+    }
+  }
+
+  private var configurationPicker: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text("Settings")
+        .font(.headline)
+
+      Picker("Calendar", selection: $calendarIdentifier) {
+        Text("Gregorian").tag(Calendar.Identifier.gregorian)
+        Text("Persian").tag(Calendar.Identifier.persian)
+      }
+      .pickerStyle(.segmented)
+
+      Picker("Selection", selection: $selectionMode) {
+        ForEach(SelectionMode.allCases) { mode in
+          Text(mode.title).tag(mode)
+        }
+      }
+      .pickerStyle(.segmented)
+
+      Picker("Scroll", selection: $scrollMode) {
+        Text("None").tag(Theme.ScrollMode.none)
+        Text("Vertical").tag(Theme.ScrollMode.vertical)
+        Text("Horizontal").tag(Theme.ScrollMode.horizontal)
+      }
+      .pickerStyle(.segmented)
+
+      if scrollMode == .horizontal {
+        Picker("Horizontal Height", selection: $horizontalHeightMode) {
+          Text("Hug Content").tag(Theme.HorizontalHeightMode.hugContent)
+          Text("Six Rows").tag(Theme.HorizontalHeightMode.sixRows)
+        }
+        .pickerStyle(.segmented)
+      }
+
+      Picker("Day View", selection: $dayViewMode) {
+        ForEach(DayViewMode.allCases) { mode in
+          Text(mode.title).tag(mode)
+        }
+      }
+      .pickerStyle(.segmented)
     }
   }
 
