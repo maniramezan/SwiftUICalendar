@@ -6,16 +6,20 @@ struct CalendarHeaderView: View {
   @Environment(Typography.self) var typography
 
   var body: some View {
-    ViewThatFits {
+    ViewThatFits(in: .horizontal) {
       HStack {
         CalendarHeaderMonthView()
+          .id("row-month")
         CalendarHeaderYearView()
+          .id("row-year")
         macOSTodayButton
       }
       #if !os(macOS)
         VStack {
           CalendarHeaderMonthView()
+            .id("stack-month")
           CalendarHeaderYearView()
+            .id("stack-year")
         }
       #endif
     }

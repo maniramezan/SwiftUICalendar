@@ -1,5 +1,5 @@
 {
-  "originHash" : "4a7b7466f657c0d099df68c33b1215dce537911d546a21028c3379fc38aff1fc",
+  "originHash" : "6d525947bdbf75162de742ad5811e35f94328a0f222bc155a4fbd4988a0a105c",
   "pins" : [
     {
       "identity" : "swift-custom-dump",
@@ -31,7 +31,7 @@
     {
       "identity" : "swiftcommons",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/maniramezan/SwiftCommons.git",
+      "location" : "https://github.com/maniramezan/SwiftCommons",
       "state" : {
         "revision" : "f06ef65a6837be36779ebb709458264c80bc1ddf",
         "version" : "0.3.0"
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftUIComponents",
       "state" : {
-        "revision" : "d441a1d01ca60e37fc6362bb1a33dcf374a807f7",
-        "version" : "0.1.1"
+        "revision" : "59891411700a758b902dfcfc2744205aa1d50f0f",
+        "version" : "0.4.0"
       }
     },
     {

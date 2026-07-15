@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftUIComponents",
       "state" : {
-        "revision" : "d441a1d01ca60e37fc6362bb1a33dcf374a807f7",
-        "version" : "0.1.1"
+        "revision" : "c482427026069b6a4b6b7c58239000200e578b4f",
+        "version" : "0.2.0"
       }
     }
   ],

@@ -22,6 +22,8 @@ import SwiftUI
   public var scrollMode: ScrollMode = .none
   /// Controls how horizontal calendars determine their height.
   public var horizontalHeightMode: HorizontalHeightMode = .sixRows
+  /// Configuration for the year-selection control in the header.
+  public var yearSelection = YearSelection()
   /// A fresh default theme configuration.
   ///
   /// This property returns a new theme each time so local mutations do not leak into other
@@ -59,6 +61,41 @@ extension Theme {
     case hugContent
     /// Use a fixed six-row month grid height.
     case sixRows
+  }
+
+  /// Configuration for the year-selection control shown in the header.
+  ///
+  /// Use ``style`` to choose between the built-in wheel sheet, a dropdown menu, or a custom
+  /// decade-grid popover. Use ``minYear``/``maxYear`` to restrict which years the picker offers
+  /// as choices; this only affects the picker's own choices, not overall calendar navigation
+  /// bounds.
+  ///
+  /// ```swift
+  /// let theme = Theme()
+  /// theme.yearSelection.style = .custom
+  /// theme.yearSelection.minYear = 2000
+  /// theme.yearSelection.maxYear = 2050
+  /// ```
+  public struct YearSelection {
+    /// The presentation style for the year-selection control.
+    public enum Style {
+      /// A sheet containing a wheel-style picker, regardless of the number of years offered.
+      case wheel
+      /// A dropdown menu listing every selectable year.
+      case menu
+      /// A popover showing a 3x3 grid of years, paged nine years at a time.
+      case custom
+    }
+
+    /// The presentation style to use. Defaults to ``Style/wheel``, matching prior behavior.
+    public var style: Style = .wheel
+    /// Restricts the earliest year offered by the picker. `nil` uses the calendar's own minimum.
+    public var minYear: Int?
+    /// Restricts the latest year offered by the picker. `nil` uses the calendar's own maximum.
+    public var maxYear: Int?
+
+    /// Creates a year-selection configuration with default values.
+    public init() {}
   }
 
   /// Day-level styling and behavior configuration.

@@ -15,6 +15,70 @@ struct CalendarBodyHorizontalViewLayoutTests {
       CalendarBodyHorizontalView.layoutWidth(containerWidth: 390, minCalendarWidth: 356) == 390)
   }
 
+  @Test("carousel peek reaches past the centered cell's margin into real content")
+  func carouselReservesAvailableWidthForPeeks() {
+    #expect(
+      CalendarBodyHorizontalView.peekWidth(
+        containerWidth: 390, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44, maxCellSize: 64
+      ) == 17)
+    #expect(
+      CalendarBodyHorizontalView.pageWidth(
+        containerWidth: 390, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44, maxCellSize: 64
+      ) == 356)
+    #expect(
+      CalendarBodyHorizontalView.peekWidth(
+        containerWidth: 356, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44, maxCellSize: 64
+      ) == 0)
+    #expect(
+      CalendarBodyHorizontalView.pageWidth(
+        containerWidth: 356, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44, maxCellSize: 64
+      ) == 356)
+  }
+
+  @Test("carousel track exposes the parked months on mirrored RTL edges")
+  func carouselTrackMirrorsPeekedMonthsInRTL() {
+    let peekWidth = CalendarBodyHorizontalView.peekWidth(
+      containerWidth: 390,
+      minCalendarWidth: 356,
+      itemSpacing: 8,
+      minCellSize: 44,
+      maxCellSize: 64
+    )
+    let pageWidth = CalendarBodyHorizontalView.pageWidth(
+      containerWidth: 390,
+      minCalendarWidth: 356,
+      itemSpacing: 8,
+      minCellSize: 44,
+      maxCellSize: 64
+    )
+
+    let ltrPrevious =
+      CalendarBodyHorizontalView.previousMonthBaseOffset(
+        layoutWidth: pageWidth,
+        layoutDirectionMultiplier: 1
+      ) + peekWidth
+    let ltrNext =
+      CalendarBodyHorizontalView.nextMonthBaseOffset(
+        layoutWidth: pageWidth,
+        layoutDirectionMultiplier: 1
+      ) + peekWidth
+    let rtlPrevious =
+      CalendarBodyHorizontalView.previousMonthBaseOffset(
+        layoutWidth: pageWidth,
+        layoutDirectionMultiplier: -1
+      ) + peekWidth
+    let rtlNext =
+      CalendarBodyHorizontalView.nextMonthBaseOffset(
+        layoutWidth: pageWidth,
+        layoutDirectionMultiplier: -1
+      ) + peekWidth
+
+    #expect(ltrPrevious == -339)
+    #expect(ltrNext == 373)
+    #expect(rtlPrevious == 373)
+    #expect(rtlNext == -339)
+  }
+
   @Test("cellSize clamps between minimum and maximum bounds")
   func cellSizeClampsBetweenBounds() {
     #expect(

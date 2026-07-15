@@ -15,24 +15,26 @@ struct ContentView: View {
 
   var body: some View {
     NavigationStack {
-      CalendarView(model: viewModel, theme: theme, typography: typography)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .id("\(scrollMode)-\(dayViewMode)-\(calendarIdentifier)")
-        .padding()
-        .navigationTitle("Calendar")
-        .toolbar {
-          ToolbarItem(placement: .topBarTrailing) {
-            Button("Settings", systemImage: "gearshape") {
-              isConfigurationPopoverPresented = true
-            }
-            .accessibilityHint("Choose calendar display settings")
-            .popover(isPresented: $isConfigurationPopoverPresented) {
-              configurationPicker
-                .padding()
-                .frame(width: 360)
-            }
+      ScrollView {
+        CalendarView(model: viewModel, theme: theme, typography: typography)
+          .frame(maxWidth: .infinity, alignment: .top)
+          .id("\(scrollMode)-\(dayViewMode)-\(calendarIdentifier)")
+          .padding()
+      }
+      .navigationTitle("Calendar")
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("Settings", systemImage: "gearshape") {
+            isConfigurationPopoverPresented = true
+          }
+          .accessibilityHint("Choose calendar display settings")
+          .popover(isPresented: $isConfigurationPopoverPresented) {
+            configurationPicker
+              .padding()
+              .frame(width: 360)
           }
         }
+      }
     }
     .onAppear {
       applyConfiguration()

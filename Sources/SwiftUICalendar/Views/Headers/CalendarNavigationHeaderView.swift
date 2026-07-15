@@ -10,34 +10,19 @@ struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
   var isNextDisabled: Bool = false
 
   var body: some View {
-    HStack {
-      Button(action: onPrevious) {
-        Image(systemName: "chevron.backward")
-          .font(.body.weight(.semibold))
-          .frame(width: 28, height: 28)
-          .adaptiveGlass(shape: .circle, interactive: true)
-      }
-      // Plain style so the glass circle is the only chrome; macOS otherwise draws a bordered
-      // push-button background around it.
-      .buttonStyle(.plain)
-      .accessibilityLabel("Calendar.Navigation.Previous".localized)
-      .opacity(isPreviousDisabled ? 0.4 : 1.0)
-      .disabled(isPreviousDisabled)
-
+    CalendarHeaderChevronRow(
+      onPrevious: onPrevious,
+      onNext: onNext,
+      isPreviousDisabled: isPreviousDisabled,
+      isNextDisabled: isNextDisabled
+    ) {
+      // NOTE: intended to pass `preferredStyle: .menu` here so year matches month's presentation
+      // regardless of item count (year's ~200 items otherwise silently fall back to a wheel-sheet
+      // once they cross MenuPicker's internal 30-item threshold). That parameter requires an
+      // unreleased SwiftUIComponents change (see MenuPicker.swift's `PresentationStyle`) that
+      // isn't in the pinned remote package version yet, so it's reverted here to keep the build
+      // green until that's published. See conversation for the plan to ship it properly.
       MenuPicker(items: items, currentValue: selectedItem)
-
-      Button(action: onNext) {
-        Image(systemName: "chevron.forward")
-          .font(.body.weight(.semibold))
-          .frame(width: 28, height: 28)
-          .adaptiveGlass(shape: .circle, interactive: true)
-      }
-      // Plain style so the glass circle is the only chrome; macOS otherwise draws a bordered
-      // push-button background around it.
-      .buttonStyle(.plain)
-      .accessibilityLabel("Calendar.Navigation.Next".localized)
-      .opacity(isNextDisabled ? 0.4 : 1.0)
-      .disabled(isNextDisabled)
     }
   }
 }
