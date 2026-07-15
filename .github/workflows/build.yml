@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -111,6 +112,38 @@ jobs:
         uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: SwiftUICalendar/.build/docs
+
+  record-snapshots:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: SwiftUICalendar
+    steps:
+      - name: Checkout SwiftUICalendar
+        uses: actions/checkout@v6.0.3
+        with:
+          path: SwiftUICalendar
+
+      - name: Select Swift toolchain
+        run: bash ./scripts/select-swift-toolchain.sh
+
+      - name: Resolve package dependencies
+        run: swift package resolve
+
+      - name: Record snapshot baselines
+        env:
+          SNAPSHOT_ASSERTIONS: true
+          SNAPSHOT_RECORD_MODE: all
+        run: swift test --filter Snapshot || true
+
+      - name: Upload recorded snapshots
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: recorded-snapshots
+          path: SwiftUICalendar/Tests/SwiftUICalendarTests/Snapshot/__Snapshots__
 
   deploy-docs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

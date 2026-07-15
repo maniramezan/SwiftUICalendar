@@ -6,7 +6,14 @@ import SwiftUI
 
 // MARK: - Global record mode
 // ⚠️ Set to .all to record baseline snapshots, then revert to .missing before committing.
-let globalRecordMode: SnapshotTestingConfiguration.Record = .missing
+// `SNAPSHOT_RECORD_MODE=all` lets CI record baselines on the exact runner image without
+// requiring a source change (see the `record-snapshots` workflow_dispatch job).
+let globalRecordMode: SnapshotTestingConfiguration.Record = {
+  if ProcessInfo.processInfo.environment["SNAPSHOT_RECORD_MODE"] == "all" {
+    return .all
+  }
+  return .missing
+}()
 
 private var shouldAssertSnapshots: Bool {
   ProcessInfo.processInfo.environment["SNAPSHOT_ASSERTIONS"] == "true"
