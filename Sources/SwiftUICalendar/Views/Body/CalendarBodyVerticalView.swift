@@ -10,23 +10,23 @@ struct CalendarBodyVerticalView: View {
   @Environment(Typography.self) private var typography
   @Environment(\.calendarMetrics) private var metrics
 
-  // The anchor month must be the FIRST rendered item whenever the window is (re)generated —
-  // writing `.scrollPosition(id:)` to jump to a non-zero index of a freshly laid-out
-  // `LazyVStack` is unreliable in current SDKs (the list can rest at the array's start
-  // instead, observed on the macos-15 CI runner), and the same is true of prepending items
-  // above the anchor before the scroll view has ever been interacted with. The window
-  // therefore starts at the anchor (`lowerOffset == 0`) so the natural resting position is
-  // already correct, and fills backward exactly once per generated window on the first real
-  // scroll interaction (`onScrollPhaseChange`): with an interaction in flight, prepending
-  // while the position binding holds the visible month relies on scroll-position identity
-  // anchoring — the same mechanism the near-edge expansion below already uses — instead of a
-  // positional jump, so the visible month stays put and earlier months become reachable by
-  // scrolling up.
+  // The anchor month must be the FIRST rendered item whenever the window is (re)generated,
+  // and NOTHING may be prepended above it until the user actually scrolls — writing
+  // `.scrollPosition(id:)` to jump to a non-zero index of a freshly laid-out `LazyVStack` is
+  // unreliable in current SDKs, and so is prepending items above the anchor while the scroll
+  // view is at rest: in both cases the list can end up resting at the array's start instead
+  // of the anchor (observed on the macos-15 CI runner rendering December 2023 instead of
+  // June 2025). The window therefore starts at the anchor (`lowerOffset == 0`) so the natural
+  // resting position is already correct, and every backward growth path — the initial
+  // backward fill and the near-edge expansion alike — is gated on `hasUserInteracted`. With
+  // an interaction in flight, prepending while the position binding holds the visible month
+  // relies on scroll-position identity anchoring instead of a positional jump, so the visible
+  // month stays put and earlier months become reachable by scrolling up.
   @State private var anchor: MonthIdentifier?
   @State private var lowerOffset = 0
   @State private var upperOffset = Self.initialRadius
   @State private var scrollPosition: MonthIdentifier?
-  @State private var needsBackwardFill = true
+  @State private var hasUserInteracted = false
 
   private var monthItems: [VerticalMonthItem] {
     guard let anchor else { return [] }
@@ -60,10 +60,10 @@ struct CalendarBodyVerticalView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .onAppear(perform: initializeWindow)
     // User interaction only — programmatic scrolls (external navigation regenerating the
-    // window) report `.animating` or stay `.idle`, and must not trigger the backward fill.
+    // window) report `.animating` or stay `.idle`, and must not unlock backward growth.
     .onScrollPhaseChange { _, newPhase in
       guard newPhase == .tracking || newPhase == .interacting else { return }
-      fillBackwardOnFirstScroll()
+      markUserInteraction()
     }
     .onChange(of: viewModel.currentDate) { _, _ in
       synchronizeExternalNavigation()
@@ -74,7 +74,7 @@ struct CalendarBodyVerticalView: View {
       // writes always set the position to the anchor itself, so a differing position proves
       // real scrolling happened.
       if position != anchor {
-        fillBackwardOnFirstScroll()
+        markUserInteraction()
       }
       expandWindowIfNeeded(around: position)
       guard
@@ -127,7 +127,7 @@ struct CalendarBodyVerticalView: View {
     let current = currentMonthIdentifier
     anchor = current
     scrollPosition = current
-    needsBackwardFill = true
+    hasUserInteracted = false
   }
 
   private func synchronizeExternalNavigation() {
@@ -139,21 +139,27 @@ struct CalendarBodyVerticalView: View {
     lowerOffset = 0
     upperOffset = Self.initialRadius
     scrollPosition = target
-    needsBackwardFill = true
+    hasUserInteracted = false
   }
 
-  /// Fills the window backward once per generated window, making months before the anchor
-  /// reachable by scrolling up. Must only be called once real scroll interaction has begun —
-  /// see the state declarations for why the fill cannot happen while the view is at rest.
-  private func fillBackwardOnFirstScroll() {
-    guard needsBackwardFill, lowerOffset == 0 else { return }
-    needsBackwardFill = false
+  /// Unlocks backward window growth and performs the initial backward fill, making months
+  /// before the anchor reachable by scrolling up. Must only be called once real scroll
+  /// interaction has begun — see the state declarations for why the window cannot grow
+  /// backward while the view is at rest.
+  private func markUserInteraction() {
+    guard !hasUserInteracted else { return }
+    hasUserInteracted = true
+    guard lowerOffset == 0 else { return }
     withTransaction(Transaction(animation: nil)) {
       lowerOffset = -Self.initialRadius
     }
   }
 
   private func expandWindowIfNeeded(around position: MonthIdentifier) {
+    // Until the user scrolls, the anchor rests at index 0 — inside the top expansion
+    // threshold — so this would otherwise prepend immediately while the view is at rest,
+    // displacing the resting position (see the state declarations).
+    guard hasUserInteracted else { return }
     let items = monthItems
     guard let index = items.firstIndex(where: { $0.id == position }) else { return }
     let expanded = Self.expandedOffsets(
