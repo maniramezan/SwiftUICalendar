@@ -65,7 +65,8 @@ struct YearDecadeGridPickerView: View {
 }
 
 /// The popover body for `YearDecadeGridPickerView`: a paging header plus a 3x3 grid of years.
-private struct YearDecadeGridPopoverContent: View {
+/// Internal (not private) so hosting tests can render the grid without presenting a popover.
+struct YearDecadeGridPopoverContent: View {
   let minYear: Int
   let maxYear: Int
   @Binding var pageStart: Int

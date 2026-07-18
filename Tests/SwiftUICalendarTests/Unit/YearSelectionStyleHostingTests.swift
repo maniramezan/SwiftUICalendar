@@ -98,6 +98,27 @@ import Testing
 
       #expect(hosted.hosting.fittingSize.width >= 0)
     }
+
+    @Test("Decade grid popover content renders paging header and year grid")
+    func decadeGridPopoverContentRendersWithoutCrashing() {
+      let currentValue = Binding.constant(YearItem(id: 2026, title: "2026"))
+      let pageStart = Binding.constant(YearDecadeGrid.pageStart(for: 2026))
+      let isPresented = Binding.constant(true)
+
+      let view = YearDecadeGridPopoverContent(
+        minYear: 2000,
+        maxYear: 2050,
+        pageStart: pageStart,
+        currentValue: currentValue,
+        formatTitle: { "\($0)" },
+        isPresented: isPresented
+      )
+
+      let hosted = hostView(view, size: CGSize(width: 220, height: 260))
+      hosted.window.contentView = nil
+
+      #expect(hosted.hosting.fittingSize.width >= 0)
+    }
   }
 
 #endif
