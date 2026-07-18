@@ -19,15 +19,12 @@ struct CalendarBodyView: View {
   /// Set to `false` for scroll modes where the adjacent month is already visible.
   private let navigatesOnOverflowTap: Bool
 
-  private var layoutWidth: CGFloat {
-    max(containerWidth, metrics.minCalendarWidth)
+  private var gridLayout: CalendarGridLayout {
+    CalendarGridLayout(containerWidth: containerWidth, metrics: metrics)
   }
 
   private var cellSize: CGFloat {
-    let totalInteritemSpacing = metrics.itemSpacing * 6
-    let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
-    let columnWidth = widthForCells / 7
-    return min(metrics.maxCellSize, max(metrics.minCellSize, columnWidth))
+    gridLayout.cellSize
   }
 
   private var headerHeight: CGFloat {
@@ -35,109 +32,20 @@ struct CalendarBodyView: View {
   }
 
   private var columns: [GridItem] {
-    Array(
-      repeating: GridItem(
-        .flexible(minimum: metrics.minCellSize), spacing: metrics.itemSpacing, alignment: .center),
-      count: 7
-    )
+    gridLayout.columns
   }
 
-  private var dayItems: [DayRenderItem] {
-    let previousMonthMetadata =
-      viewModel.monthMetadata(
-        month: activeMonth,
-        year: activeYear,
-        offset: -1
-      ) ?? fallbackMetadata(month: activeMonth, year: activeYear, offset: -1)
-    let nextMonthMetadata =
-      viewModel.monthMetadata(
-        month: activeMonth,
-        year: activeYear,
-        offset: 1
-      ) ?? fallbackMetadata(month: activeMonth, year: activeYear, offset: 1)
-    let leadingEmptyDaysCount = max(
-      viewModel.startOfMonthDay(month: activeMonth, year: activeYear) - 1, 0)
-    let previousMonthDaysCount = previousMonthMetadata.numberOfDays
-    let previousMonthStartingDay = max(1, previousMonthDaysCount - leadingEmptyDaysCount + 1)
-    let totalDaysToRender =
-      leadingEmptyDaysCount
-      + viewModel.numberOfDaysInMonth(
-        month: activeMonth,
-        year: activeYear
+  private var snapshot: MonthSnapshot {
+    viewModel.monthSnapshot(for: MonthIdentifier(month: activeMonth, year: activeYear))
+      ?? MonthSnapshot(
+        id: MonthIdentifier(month: activeMonth, year: activeYear),
+        title: "",
+        days: []
       )
-    let trailingEmptyDaysCount: Int = {
-      let remainder = totalDaysToRender % 7
-      return remainder == 0 ? 0 : 7 - remainder
-    }()
-
-    var items = (0..<totalDaysToRender).map { index in
-      let isCurrentMonth = index >= leadingEmptyDaysCount
-      let day: Int
-      let dayLabel: String
-      let targetMonth: Int
-      let targetYear: Int
-      let isToday: Bool
-      let isSelected: Bool
-      let date: Date?
-
-      if isCurrentMonth {
-        day = index - leadingEmptyDaysCount + 1
-        targetMonth = activeMonth
-        targetYear = activeYear
-        date = viewModel.date(for: day, month: targetMonth, year: targetYear)
-        isToday =
-          date != nil && viewModel.isToday(day: day, month: targetMonth, year: targetYear)
-        isSelected = date.map { viewModel.isSelected(date: $0) } ?? false
-      } else {
-        day = previousMonthStartingDay + index
-        targetMonth = previousMonthMetadata.month
-        targetYear = previousMonthMetadata.year
-        date = viewModel.date(for: day, month: targetMonth, year: targetYear)
-        isToday = date != nil && viewModel.isToday(day: day, month: targetMonth, year: targetYear)
-        isSelected = date.map { viewModel.isSelected(date: $0) } ?? false
-      }
-
-      dayLabel = NumberFormatter.formatDay(day, locale: viewModel.locale)
-
-      return DayRenderItem(
-        id: "day-\(targetYear)-\(targetMonth)-\(day)",
-        day: day,
-        dayLabel: dayLabel,
-        date: date,
-        targetMonth: targetMonth,
-        targetYear: targetYear,
-        isCurrentMonth: isCurrentMonth,
-        isToday: isToday,
-        isSelected: isSelected
-      )
-    }
-
-    if trailingEmptyDaysCount > 0 {
-      let trailingItems = (0..<trailingEmptyDaysCount).map { index in
-        let day = index + 1
-        let dayLabel = NumberFormatter.formatDay(day, locale: viewModel.locale)
-        let targetMonth = nextMonthMetadata.month
-        let targetYear = nextMonthMetadata.year
-        let date = viewModel.date(for: day, month: targetMonth, year: targetYear)
-        return DayRenderItem(
-          id: "day-\(targetYear)-\(targetMonth)-\(day)",
-          day: day,
-          dayLabel: dayLabel,
-          date: date,
-          targetMonth: targetMonth,
-          targetYear: targetYear,
-          isCurrentMonth: false,
-          isToday: date != nil && viewModel.isToday(day: day, month: targetMonth, year: targetYear),
-          isSelected: date.map { viewModel.isSelected(date: $0) } ?? false
-        )
-      }
-      items.append(contentsOf: trailingItems)
-    }
-    return items
   }
 
   private var rowCount: Int {
-    max(1, (dayItems.count + 6) / 7)
+    snapshot.rowCount
   }
 
   private var isRightToLeft: Bool {
@@ -151,19 +59,19 @@ struct CalendarBodyView: View {
     return viewModel.headerTitles
   }
 
-  private var orderedDayItems: [DayRenderItem] {
+  private var orderedDayItems: [MonthSnapshot.Day] {
     if !isRightToLeft {
-      return dayItems
+      return snapshot.days
     }
 
     let rowWidth = 7
-    var reordered: [DayRenderItem] = []
-    reordered.reserveCapacity(dayItems.count)
+    var reordered: [MonthSnapshot.Day] = []
+    reordered.reserveCapacity(snapshot.days.count)
     var index = 0
 
-    while index < dayItems.count {
-      let endIndex = min(index + rowWidth, dayItems.count)
-      reordered.append(contentsOf: dayItems[index..<endIndex].reversed())
+    while index < snapshot.days.count {
+      let endIndex = min(index + rowWidth, snapshot.days.count)
+      reordered.append(contentsOf: snapshot.days[index..<endIndex].reversed())
       index += rowWidth
     }
 
@@ -205,14 +113,14 @@ struct CalendarBodyView: View {
         spacing: metrics.rowSpacing
       ) {
         ForEach(orderedDayItems) { item in
-          if let date = item.date, !(hideOverflowDays && !item.isCurrentMonth) {
+          if let date = item.date, !(hideOverflowDays && !item.isInDisplayedMonth) {
             let context = CalendarDayContext(
               date: date,
               day: item.day,
               dayLabel: item.dayLabel,
               isToday: item.isToday,
               isSelected: item.isSelected,
-              isInCurrentMonth: item.isCurrentMonth,
+              isInCurrentMonth: item.isInDisplayedMonth,
               theme: theme.day,
               typography: typography,
               onSelect: { selectedDate in
@@ -221,13 +129,13 @@ struct CalendarBodyView: View {
               secondaryLabel: resolveSecondaryLabel(for: date)
             )
 
-            AnyView(theme.day.dayContent(context))
+            CalendarDayCell(context: context, renderer: theme.day.renderer)
               .id(item.id)
               // Keep the cell a square (cellSize × cellSize) and center it in the wider column so
               // square day views stay square when the grid fills a wide window.
               .frame(width: cellSize, height: cellSize)
               .frame(maxWidth: .infinity)
-              .foregroundStyle(item.isCurrentMonth ? Color.primary : Color.gray)
+              .foregroundStyle(item.isInDisplayedMonth ? Color.primary : Color.gray)
               .contentShape(Rectangle())
           } else {
             // Hidden overflow day, or a date that could not be resolved.
@@ -241,15 +149,12 @@ struct CalendarBodyView: View {
     .frame(height: calendarHeight, alignment: .top)
     // Fill the available width; cells spread to fill while row height stays capped (see cellSize).
     .frame(maxWidth: .infinity, alignment: .top)
-    .background(
-      GeometryReader { geometry in
-        Color.clear
-          .onAppear { containerWidth = geometry.size.width }
-          .onChange(of: geometry.size.width) { _, newWidth in
-            containerWidth = newWidth
-          }
-      }
-    )
+    .onGeometryChange(for: CGFloat.self) { geometry in
+      geometry.size.width
+    } action: { width in
+      guard containerWidth != width else { return }
+      containerWidth = width
+    }
   }
 
   init(
@@ -264,16 +169,20 @@ struct CalendarBodyView: View {
   }
 }
 
-private struct DayRenderItem: Identifiable {
-  let id: String
-  let day: Int
-  let dayLabel: String
-  let date: Date?
-  let targetMonth: Int
-  let targetYear: Int
-  let isCurrentMonth: Bool
-  let isToday: Bool
-  let isSelected: Bool
+private struct CalendarDayCell: View {
+  let context: CalendarDayContext
+  let renderer: Theme.Day.Renderer
+
+  var body: some View {
+    switch renderer {
+    case .circle:
+      CircleDayView(context: context)
+    case .square:
+      SquareDualCalendarDayView(context: context)
+    case .custom(let content):
+      content(context)
+    }
+  }
 }
 
 extension CalendarBodyView {
@@ -290,42 +199,18 @@ extension CalendarBodyView {
     return theme.day.secondaryLabelMode.label(for: date)
   }
 
-  fileprivate func handleSelection(for item: DayRenderItem, selectedDate: Date) {
+  fileprivate func handleSelection(for item: MonthSnapshot.Day, selectedDate: Date) {
     // Tapping a day from an adjacent month navigates the calendar to that month — but only when
     // navigation is allowed. In a vertical scroll the target month is already on screen, so
     // mutating `currentDate` here would trigger an unwanted scroll jump.
-    if navigatesOnOverflowTap, !item.isCurrentMonth {
-      viewModel.currentYear = item.targetYear
-      viewModel.currentMonth = item.targetMonth
+    if navigatesOnOverflowTap, !item.isInDisplayedMonth {
+      if let targetDate = viewModel.firstDate(month: item.month, year: item.year) {
+        try? viewModel.navigate(to: targetDate)
+      }
     }
     viewModel.select(selectedDate)
   }
 
-  fileprivate func fallbackMetadata(month baseMonth: Int, year baseYear: Int, offset: Int)
-    -> CalendarViewModel.MonthMetadata
-  {
-    let monthCount = max(1, viewModel.monthSymbols.count)
-    var monthIndex = (baseMonth - 1) + offset
-    var year = baseYear
-
-    while monthIndex < 0 {
-      monthIndex += monthCount
-      year -= 1
-    }
-
-    while monthIndex >= monthCount {
-      monthIndex -= monthCount
-      year += 1
-    }
-
-    let month = monthIndex + 1
-
-    return CalendarViewModel.MonthMetadata(
-      month: month,
-      year: year,
-      numberOfDays: viewModel.numberOfDaysInMonth(month: month, year: year)
-    )
-  }
 }
 
 #Preview("Persian: Range") {

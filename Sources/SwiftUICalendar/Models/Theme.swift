@@ -1,29 +1,25 @@
 import SwiftUI
 
-/// Visual configuration for the calendar, including day rendering and layout behavior.
+/// Visual configuration for the calendar.
 ///
 /// Create a theme when you want to change scrolling, selection colors, or the view used for
 /// each day cell. `Theme` is observable so SwiftUI refreshes the calendar when you mutate it.
 ///
 /// ```swift
 /// let theme = Theme()
-/// theme.scrollMode = .horizontal
-/// theme.horizontalHeightMode = .hugContent
 /// theme.day.selectedBackgroundColor = .indigo
 /// theme.day.useSquareDualCalendarDayView(secondaryLabel: .persian)
 ///
-/// CalendarView(model: viewModel, theme: theme)
+/// CalendarView(
+///     model: viewModel,
+///     theme: theme,
+///     configuration: CalendarConfiguration(scrollMode: .horizontal)
+/// )
 /// ```
 @MainActor
 @Observable final public class Theme {
   /// Configuration for day view rendering.
   public var day = Day()
-  /// Controls whether the calendar scrolls vertically, horizontally, or stays fixed.
-  public var scrollMode: ScrollMode = .none
-  /// Controls how horizontal calendars determine their height.
-  public var horizontalHeightMode: HorizontalHeightMode = .sixRows
-  /// Configuration for the year-selection control in the header.
-  public var yearSelection = YearSelection()
   /// A fresh default theme configuration.
   ///
   /// This property returns a new theme each time so local mutations do not leak into other
@@ -45,59 +41,6 @@ import SwiftUI
 }
 
 extension Theme {
-  /// Scrolling behavior for the calendar body.
-  public enum ScrollMode {
-    /// No scrolling; renders a single month.
-    case none
-    /// Vertical scrolling through months.
-    case vertical
-    /// Horizontal paging through months.
-    case horizontal
-  }
-
-  /// Height strategy for horizontally scrolling calendars.
-  public enum HorizontalHeightMode {
-    /// Size to the content height.
-    case hugContent
-    /// Use a fixed six-row month grid height.
-    case sixRows
-  }
-
-  /// Configuration for the year-selection control shown in the header.
-  ///
-  /// Use ``style`` to choose between the built-in wheel sheet, a dropdown menu, or a custom
-  /// decade-grid popover. Use ``minYear``/``maxYear`` to restrict which years the picker offers
-  /// as choices; this only affects the picker's own choices, not overall calendar navigation
-  /// bounds.
-  ///
-  /// ```swift
-  /// let theme = Theme()
-  /// theme.yearSelection.style = .custom
-  /// theme.yearSelection.minYear = 2000
-  /// theme.yearSelection.maxYear = 2050
-  /// ```
-  public struct YearSelection {
-    /// The presentation style for the year-selection control.
-    public enum Style {
-      /// A sheet containing a wheel-style picker, regardless of the number of years offered.
-      case wheel
-      /// A dropdown menu listing every selectable year.
-      case menu
-      /// A popover showing a 3x3 grid of years, paged nine years at a time.
-      case custom
-    }
-
-    /// The presentation style to use. Defaults to ``Style/wheel``, matching prior behavior.
-    public var style: Style = .wheel
-    /// Restricts the earliest year offered by the picker. `nil` uses the calendar's own minimum.
-    public var minYear: Int?
-    /// Restricts the latest year offered by the picker. `nil` uses the calendar's own maximum.
-    public var maxYear: Int?
-
-    /// Creates a year-selection configuration with default values.
-    public init() {}
-  }
-
   /// Day-level styling and behavior configuration.
   ///
   /// Use this nested theme to customize day colors, alternate labels, or swap the built-in
@@ -106,13 +49,19 @@ extension Theme {
   /// ```swift
   /// let theme = Theme()
   /// theme.day.todayBorderColor = .orange
-  /// theme.day.dayContent = { context in
+  /// theme.day.setDayContent { context in
   ///     MyDayCell(context: context)
   /// }
   /// ```
   @MainActor
   @Observable
   final public class Day {
+    enum Renderer {
+      case circle
+      case square
+      case custom((CalendarDayContext) -> AnyView)
+    }
+
     /// Provides the view used to render a day cell.
     ///
     /// The closure receives a `CalendarDayContext` for each visible date. Return a view that
@@ -120,12 +69,14 @@ extension Theme {
     ///
     /// Use ``useSquareDualCalendarDayView(secondaryLabel:)`` to select the built-in square style.
     /// Assign a closure when your app provides a custom ``CalendarDayView`` implementation.
-    public var dayContent:
-      (
-        CalendarDayContext
-      ) -> any CalendarDayView = { context in
-        CircleDayView(context: context)
-      }
+    var renderer: Renderer = .circle
+
+    /// Installs a custom day-cell renderer.
+    public func setDayContent<Content: CalendarDayView>(
+      @ViewBuilder _ content: @escaping (CalendarDayContext) -> Content
+    ) {
+      renderer = .custom { context in AnyView(content(context)) }
+    }
 
     /// Mode for displaying secondary labels on day views that support them.
     public var secondaryLabelMode: SecondaryLabelMode = .none
@@ -197,9 +148,7 @@ extension Theme.Day {
   /// CalendarView(model: viewModel, theme: theme)
   /// ```
   public func useSquareDualCalendarDayView(secondaryLabel: SecondaryLabelMode? = nil) {
-    dayContent = { context in
-      SquareDualCalendarDayView(context: context)
-    }
+    renderer = .square
     if let mode = secondaryLabel {
       secondaryLabelMode = mode
     }

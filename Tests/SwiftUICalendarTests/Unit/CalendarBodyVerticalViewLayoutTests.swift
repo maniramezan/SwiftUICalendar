@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import SwiftUICalendar
@@ -5,147 +6,105 @@ import Testing
 @MainActor
 @Suite("CalendarBodyVerticalView Layout Tests")
 struct CalendarBodyVerticalViewLayoutTests {
+  private let anchor = MonthIdentifier(month: 6, year: 2025)
 
-  /// A simple Gregorian-shaped 12-month-per-year calendar sequence, used to test
-  /// `generateMonthItems` without depending on a full `CalendarViewModel`.
-  private func metadata(month: Int, year: Int) -> CalendarViewModel.MonthMetadata? {
-    guard (1...12).contains(month) else { return nil }
-    return CalendarViewModel.MonthMetadata(month: month, year: year, numberOfDays: 30)
+  private func resolve(offset: Int) -> MonthIdentifier? {
+    let zeroBased = 5 + offset
+    let yearOffset = Int(floor(Double(zeroBased) / 12.0))
+    let normalizedMonth = ((zeroBased % 12) + 12) % 12 + 1
+    let year = 2025 + yearOffset
+    guard (1900...2100).contains(year) else { return nil }
+    return MonthIdentifier(month: normalizedMonth, year: year)
   }
 
-  private func nextMetadata(month: Int, year: Int) -> CalendarViewModel.MonthMetadata? {
-    if month == 12 {
-      return metadata(month: 1, year: year + 1)
-    }
-    return metadata(month: month + 1, year: year)
-  }
-
-  private func monthTitle(month: Int, year: Int) -> String {
-    "Month\(month)"
-  }
-
-  @Test("generateMonthItems starts with the requested month as the first element")
-  func generateMonthItemsStartsAtRequestedMonth() {
-    let start = MonthIdentifier(month: 7, year: 2026)
+  @Test("month window includes backward and forward months around its anchor")
+  func monthWindowIsBidirectional() {
     let items = CalendarBodyVerticalView.generateMonthItems(
-      start: start,
-      count: 5,
-      maxYear: 2100,
-      metadata: metadata,
-      nextMetadata: nextMetadata,
-      monthTitle: monthTitle
-    )
-
-    #expect(items.first?.id == MonthIdentifier(month: 7, year: 2026))
-  }
-
-  @Test("generateMonthItems produces months in ascending chronological order")
-  func generateMonthItemsIsChronological() {
-    let start = MonthIdentifier(month: 7, year: 2026)
-    let items = CalendarBodyVerticalView.generateMonthItems(
-      start: start,
-      count: 6,
-      maxYear: 2100,
-      metadata: metadata,
-      nextMetadata: nextMetadata,
-      monthTitle: monthTitle
-    )
-
-    let ids = items.map(\.id)
-    #expect(
-      ids == [
-        MonthIdentifier(month: 7, year: 2026),
-        MonthIdentifier(month: 8, year: 2026),
-        MonthIdentifier(month: 9, year: 2026),
-        MonthIdentifier(month: 10, year: 2026),
-        MonthIdentifier(month: 11, year: 2026),
-        MonthIdentifier(month: 12, year: 2026),
-      ])
-  }
-
-  @Test("generateMonthItems rolls over into the next year")
-  func generateMonthItemsRollsOverYear() {
-    let start = MonthIdentifier(month: 11, year: 2026)
-    let items = CalendarBodyVerticalView.generateMonthItems(
-      start: start,
-      count: 4,
-      maxYear: 2100,
-      metadata: metadata,
-      nextMetadata: nextMetadata,
-      monthTitle: monthTitle
+      anchor: anchor,
+      lowerOffset: -2,
+      upperOffset: 2,
+      resolve: resolve,
+      title: { "\($0.month)" }
     )
 
     #expect(
       items.map(\.id) == [
-        MonthIdentifier(month: 11, year: 2026),
-        MonthIdentifier(month: 12, year: 2026),
-        MonthIdentifier(month: 1, year: 2027),
-        MonthIdentifier(month: 2, year: 2027),
+        MonthIdentifier(month: 4, year: 2025),
+        MonthIdentifier(month: 5, year: 2025),
+        MonthIdentifier(month: 6, year: 2025),
+        MonthIdentifier(month: 7, year: 2025),
+        MonthIdentifier(month: 8, year: 2025),
       ])
   }
 
-  @Test("generateMonthItems stops at the requested count")
-  func generateMonthItemsRespectsCount() {
-    let start = MonthIdentifier(month: 1, year: 2026)
+  @Test("month window omits identifiers outside supported bounds")
+  func monthWindowClampsToBounds() {
     let items = CalendarBodyVerticalView.generateMonthItems(
-      start: start,
-      count: 3,
-      maxYear: 2100,
-      metadata: metadata,
-      nextMetadata: nextMetadata,
-      monthTitle: monthTitle
+      anchor: anchor,
+      lowerOffset: -2,
+      upperOffset: 2,
+      resolve: { $0 == 0 ? anchor : nil },
+      title: { "\($0.month)" }
     )
 
-    #expect(items.count == 3)
+    #expect(items.map(\.id) == [anchor])
   }
 
-  @Test("generateMonthItems stops once maxYear is reached")
-  func generateMonthItemsStopsAtMaxYear() {
-    let start = MonthIdentifier(month: 11, year: 2026)
+  @Test("month window rejects inverted offset ranges")
+  func monthWindowRejectsInvertedRange() {
     let items = CalendarBodyVerticalView.generateMonthItems(
-      start: start,
-      count: 240,
-      maxYear: 2026,
-      metadata: metadata,
-      nextMetadata: nextMetadata,
-      monthTitle: monthTitle
-    )
-
-    // Should include November and December 2026, then stop rather than continuing into 2027.
-    #expect(
-      items.map(\.id) == [
-        MonthIdentifier(month: 11, year: 2026),
-        MonthIdentifier(month: 12, year: 2026),
-      ])
-  }
-
-  @Test("generateMonthItems returns an empty array when the start month can't be resolved")
-  func generateMonthItemsHandlesUnresolvableStart() {
-    let start = MonthIdentifier(month: 13, year: 2026)
-    let items = CalendarBodyVerticalView.generateMonthItems(
-      start: start,
-      count: 5,
-      maxYear: 2100,
-      metadata: metadata,
-      nextMetadata: nextMetadata,
-      monthTitle: monthTitle
+      anchor: anchor,
+      lowerOffset: 2,
+      upperOffset: -2,
+      resolve: resolve,
+      title: { "\($0.month)" }
     )
 
     #expect(items.isEmpty)
   }
 
-  @Test("generateMonthItems uses the provided monthTitle for each item")
-  func generateMonthItemsUsesMonthTitle() {
-    let start = MonthIdentifier(month: 3, year: 2026)
-    let items = CalendarBodyVerticalView.generateMonthItems(
-      start: start,
-      count: 2,
-      maxYear: 2100,
-      metadata: metadata,
-      nextMetadata: nextMetadata,
-      monthTitle: monthTitle
+  @Test("window expands backward near its leading edge")
+  func expandsBackwardNearLeadingEdge() {
+    let offsets = CalendarBodyVerticalView.expandedOffsets(
+      lowerOffset: -18,
+      upperOffset: 18,
+      visibleIndex: 2,
+      itemCount: 37,
+      threshold: 5,
+      expansionCount: 18
     )
 
-    #expect(items.map(\.monthTitle) == ["Month3", "Month4"])
+    #expect(offsets.lower == -36)
+    #expect(offsets.upper == 18)
+  }
+
+  @Test("window expands forward near its trailing edge")
+  func expandsForwardNearTrailingEdge() {
+    let offsets = CalendarBodyVerticalView.expandedOffsets(
+      lowerOffset: -18,
+      upperOffset: 18,
+      visibleIndex: 34,
+      itemCount: 37,
+      threshold: 5,
+      expansionCount: 18
+    )
+
+    #expect(offsets.lower == -18)
+    #expect(offsets.upper == 36)
+  }
+
+  @Test("window remains stable away from either edge")
+  func remainsStableAwayFromEdges() {
+    let offsets = CalendarBodyVerticalView.expandedOffsets(
+      lowerOffset: -18,
+      upperOffset: 18,
+      visibleIndex: 18,
+      itemCount: 37,
+      threshold: 5,
+      expansionCount: 18
+    )
+
+    #expect(offsets.lower == -18)
+    #expect(offsets.upper == 18)
   }
 }

@@ -80,12 +80,15 @@ case .multiple(let dates):
 
 ```swift
 let theme = Theme()
-theme.scrollMode = .horizontal
-theme.horizontalHeightMode = .hugContent
 theme.day.selectedBackgroundColor = .indigo
 theme.day.todayBorderColor = .orange
 
-CalendarView(model: calendar, theme: theme)
+let configuration = CalendarConfiguration(
+    scrollMode: .horizontal,
+    horizontalHeightMode: .hugContent
+)
+
+CalendarView(model: calendar, theme: theme, configuration: configuration)
 ```
 
 ## Alternate Calendar Labels

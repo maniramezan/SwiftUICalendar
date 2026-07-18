@@ -14,12 +14,15 @@ import Testing
     func wheelStylePickerRendersWithoutCrashing() {
       let viewModel = CalendarViewModel.snapshot(identifier: .gregorian)
       let theme = Theme()
-      theme.yearSelection.style = .wheel
 
       let hosted = hostView(
         CalendarHeaderYearView()
           .environment(viewModel)
           .environment(theme)
+          .environment(
+            \.calendarConfiguration,
+            CalendarConfiguration(yearSelection: .init(style: .wheel))
+          )
       )
       hosted.window.contentView = nil
 
@@ -30,12 +33,15 @@ import Testing
     func menuStylePickerRendersWithoutCrashing() {
       let viewModel = CalendarViewModel.snapshot(identifier: .gregorian)
       let theme = Theme()
-      theme.yearSelection.style = .menu
 
       let hosted = hostView(
         CalendarHeaderYearView()
           .environment(viewModel)
           .environment(theme)
+          .environment(
+            \.calendarConfiguration,
+            CalendarConfiguration(yearSelection: .init(style: .menu))
+          )
       )
       hosted.window.contentView = nil
 
@@ -46,14 +52,17 @@ import Testing
     func customStylePickerRendersWithoutCrashing() {
       let viewModel = CalendarViewModel.snapshot(identifier: .gregorian)
       let theme = Theme()
-      theme.yearSelection.style = .custom
-      theme.yearSelection.minYear = 2000
-      theme.yearSelection.maxYear = 2050
 
       let hosted = hostView(
         CalendarHeaderYearView()
           .environment(viewModel)
           .environment(theme)
+          .environment(
+            \.calendarConfiguration,
+            CalendarConfiguration(
+              yearSelection: .init(style: .custom, minYear: 2000, maxYear: 2050)
+            )
+          )
       )
       hosted.window.contentView = nil
 

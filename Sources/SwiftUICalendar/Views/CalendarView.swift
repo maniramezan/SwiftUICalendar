@@ -23,41 +23,46 @@ public struct CalendarView: View {
   private let viewModel: CalendarViewModel
   private let theme: Theme
   private let typography: Typography
+  private let configuration: CalendarConfiguration
 
   /// Creates a calendar view with the supplied model, theme, and typography.
   ///
   /// Use the default theme for a fixed one-month calendar, or pass a customized theme for
-  /// vertical scrolling, horizontal paging, alternate day cells, and color changes.
+  /// alternate day cells and color changes. Pass a configuration for presentation behavior.
   ///
   /// - Parameters:
   ///   - model: The calendar view model that drives selection and navigation.
   ///   - theme: Visual configuration for day rendering and behavior.
   ///   - typography: Fonts and scaling settings for calendar text.
+  ///   - configuration: Immutable scrolling, header, and year-selection behavior.
   ///
   /// ```swift
   /// let theme = Theme()
-  /// theme.scrollMode = .horizontal
+  /// let configuration = CalendarConfiguration(scrollMode: .horizontal)
   /// theme.day.selectedBackgroundColor = .purple
   ///
   /// CalendarView(
   ///     model: CalendarViewModel(calendarIdentifier: .persian),
   ///     theme: theme,
-  ///     typography: .default
+  ///     typography: .default,
+  ///     configuration: configuration
   /// )
   /// ```
   public init(
     model: CalendarViewModel,
     theme: Theme = .default,
-    typography: Typography = .default
+    typography: Typography = .default,
+    configuration: CalendarConfiguration = CalendarConfiguration()
   ) {
     self.viewModel = model
     self.theme = theme
     self.typography = typography
+    self.configuration = configuration
   }
 
   @ViewBuilder
   private var calendarBodyContent: some View {
-    switch theme.scrollMode {
+    switch configuration.scrollMode {
     case .none:
       CalendarBodyView()
     case .vertical:
@@ -81,7 +86,7 @@ public struct CalendarView: View {
           }
         }
       #endif
-      if viewModel.showHeader {
+      if configuration.showsHeader {
         CalendarHeaderView()
       }
       calendarBodyContent
@@ -92,6 +97,7 @@ public struct CalendarView: View {
     .environment(viewModel)
     .environment(theme)
     .environment(typography)
+    .environment(\.calendarConfiguration, configuration)
     .environment(\.locale, viewModel.locale)
     .environment(\.layoutDirection, viewModel.layoutDirection)
     .resolveCalendarMetrics()

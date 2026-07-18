@@ -5,6 +5,15 @@ import Testing
 
 @Suite("CalendarMetrics Tests")
 struct CalendarMetricsTests {
+  @Test("grid layout centralizes width, cell size, and seven columns")
+  func gridLayoutResolvesCalendarGeometry() {
+    let metrics = CalendarMetrics.default
+    let layout = CalendarGridLayout(containerWidth: 390, metrics: metrics)
+
+    #expect(layout.width == 390)
+    #expect(abs(layout.cellSize - (390 - metrics.itemSpacing * 6) / 7) < 0.0001)
+    #expect(layout.columns.count == 7)
+  }
 
   // MARK: - Default mapping
 

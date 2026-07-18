@@ -3,7 +3,7 @@ import SwiftUI
 /// A trigger button that presents a sheet containing a wheel-style year picker.
 ///
 /// Unlike `MenuPicker`, this always uses the wheel presentation regardless of how many years are
-/// offered, so `Theme.YearSelection.Style.wheel` behaves consistently even when a developer
+/// offered, so `CalendarConfiguration.YearSelection.Style.wheel` behaves consistently even when a developer
 /// restricts the selectable range to a small number of years.
 struct YearWheelPickerView: View {
   let items: [YearItem]

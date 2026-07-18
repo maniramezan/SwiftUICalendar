@@ -26,18 +26,17 @@ struct CalendarBodyHorizontalView: View {
 
   @Environment(Theme.self) var theme
   @Environment(Typography.self) var typography
+  @Environment(\.calendarConfiguration) private var configuration
   @Environment(\.calendarMetrics) private var metrics
   @Environment(\.layoutDirection) private var layoutDirection
   let viewModel: CalendarViewModel
 
-  @State private var previousViewModel: CalendarViewModel
-  @State private var currentViewModel: CalendarViewModel
-  @State private var nextViewModel: CalendarViewModel
   @State private var offset: CGFloat = 0
   @State private var dragOffset: CGFloat = 0
   @State private var containerWidth: CGFloat = 0
   @State private var measuredHeight: CGFloat = 0
   @State private var isNavigating = false
+  @State private var deferredContainerWidth: CGFloat?
 
   #if os(macOS)
     @State private var scrollMonitor: HorizontalScrollWheelMonitor?
@@ -81,11 +80,7 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private var columns: [GridItem] {
-    Array(
-      repeating: GridItem(
-        .flexible(minimum: metrics.minCellSize), spacing: metrics.itemSpacing, alignment: .center),
-      count: 7
-    )
+    CalendarGridLayout(containerWidth: pageWidth, metrics: metrics).columns
   }
 
   private var calendarHeight: CGFloat {
@@ -109,12 +104,20 @@ struct CalendarBodyHorizontalView: View {
       layoutWidth: pageWidth, layoutDirectionMultiplier: layoutDirectionMultiplier)
   }
 
+  private var currentMonth: MonthIdentifier {
+    viewModel.visibleMonth
+  }
+
+  private var previousMonth: MonthIdentifier {
+    viewModel.monthIdentifier(offset: -1) ?? currentMonth
+  }
+
+  private var nextMonth: MonthIdentifier {
+    viewModel.monthIdentifier(offset: 1) ?? currentMonth
+  }
+
   init(viewModel: CalendarViewModel) {
     self.viewModel = viewModel
-    let vm = viewModel
-    self._currentViewModel = State(initialValue: vm)
-    self._previousViewModel = State(initialValue: (try? vm.copy(addMonths: -1)) ?? vm)
-    self._nextViewModel = State(initialValue: (try? vm.copy(addMonths: 1)) ?? vm)
   }
 
   static func layoutWidth(containerWidth: CGFloat, minCalendarWidth: CGFloat) -> CGFloat {
@@ -250,63 +253,6 @@ struct CalendarBodyHorizontalView: View {
     (0, 0, false)
   }
 
-  static func navigationTransition(
-    monthDelta: Int,
-    canUpdateMonth: Bool,
-    fallbackViewModel: CalendarViewModel,
-    savedCurrent: CalendarViewModel,
-    previousViewModel: CalendarViewModel,
-    currentViewModel: CalendarViewModel,
-    nextViewModel: CalendarViewModel,
-    replacementPrevious: CalendarViewModel?,
-    replacementNext: CalendarViewModel?
-  ) -> NavigationTransition {
-    let reset = resetNavigationState()
-
-    guard monthDelta == 1 || monthDelta == -1, canUpdateMonth else {
-      return NavigationTransition(
-        previousViewModel: fallbackViewModel,
-        currentViewModel: fallbackViewModel,
-        nextViewModel: fallbackViewModel,
-        offset: reset.offset,
-        dragOffset: reset.dragOffset,
-        isNavigating: reset.isNavigating
-      )
-    }
-
-    if monthDelta == 1 {
-      return NavigationTransition(
-        previousViewModel: savedCurrent,
-        currentViewModel: nextViewModel,
-        nextViewModel: replacementNext ?? fallbackViewModel,
-        offset: reset.offset,
-        dragOffset: reset.dragOffset,
-        isNavigating: reset.isNavigating
-      )
-    }
-
-    return NavigationTransition(
-      previousViewModel: replacementPrevious ?? fallbackViewModel,
-      currentViewModel: previousViewModel,
-      nextViewModel: savedCurrent,
-      offset: reset.offset,
-      dragOffset: reset.dragOffset,
-      isNavigating: reset.isNavigating
-    )
-  }
-
-  static func synchronizedViewModels(
-    viewModel: CalendarViewModel,
-    isNavigating: Bool
-  ) -> (current: CalendarViewModel, previous: CalendarViewModel, next: CalendarViewModel)? {
-    guard !isNavigating else { return nil }
-    return (
-      current: viewModel,
-      previous: (try? viewModel.copy(addMonths: -1)) ?? viewModel,
-      next: (try? viewModel.copy(addMonths: 1)) ?? viewModel
-    )
-  }
-
   static func pagerAction(for monthDelta: Int?) -> HorizontalPagerAction {
     switch monthDelta {
     case 1:
@@ -333,6 +279,10 @@ struct CalendarBodyHorizontalView: View {
   static func shouldHandleScrollPage(delta: Int, isNavigating: Bool) -> Bool {
     guard !isNavigating else { return false }
     return delta == 1 || delta == -1
+  }
+
+  static func shouldDeferContainerWidthUpdate(isNavigating: Bool) -> Bool {
+    isNavigating
   }
 
   var body: some View {
@@ -362,37 +312,52 @@ struct CalendarBodyHorizontalView: View {
       // RTL: next | current | previous
       ZStack(alignment: .topLeading) {
         // Previous month — parked to the left.
-        CalendarBodyView(showWeekdayHeader: false, hideOverflowDays: true)
-          .environment(previousViewModel)
-          .environment(theme)
-          .environment(typography)
-          .environment(\.layoutDirection, layoutDirection)
-          .frame(width: pageWidth, alignment: .top)
-          .background(heightReporter(for: .previous))
-          .clipped()
-          .offset(x: previousMonthBaseOffset + offset + dragOffset)
+        CalendarBodyView(
+          displayMonth: previousMonth.month,
+          displayYear: previousMonth.year,
+          showWeekdayHeader: false,
+          hideOverflowDays: true
+        )
+        .environment(viewModel)
+        .environment(theme)
+        .environment(typography)
+        .environment(\.layoutDirection, layoutDirection)
+        .frame(width: pageWidth, alignment: .top)
+        .background(heightReporter(for: .previous))
+        .clipped()
+        .offset(x: previousMonthBaseOffset + offset + dragOffset)
 
         // Current month (centered by default)
-        CalendarBodyView(showWeekdayHeader: false, hideOverflowDays: true)
-          .environment(currentViewModel)
-          .environment(theme)
-          .environment(typography)
-          .environment(\.layoutDirection, layoutDirection)
-          .frame(width: pageWidth, alignment: .top)
-          .background(heightReporter(for: .current))
-          .clipped()
-          .offset(x: offset + dragOffset)
+        CalendarBodyView(
+          displayMonth: currentMonth.month,
+          displayYear: currentMonth.year,
+          showWeekdayHeader: false,
+          hideOverflowDays: true
+        )
+        .environment(viewModel)
+        .environment(theme)
+        .environment(typography)
+        .environment(\.layoutDirection, layoutDirection)
+        .frame(width: pageWidth, alignment: .top)
+        .background(heightReporter(for: .current))
+        .clipped()
+        .offset(x: offset + dragOffset)
 
         // Next month — parked to the right.
-        CalendarBodyView(showWeekdayHeader: false, hideOverflowDays: true)
-          .environment(nextViewModel)
-          .environment(theme)
-          .environment(typography)
-          .environment(\.layoutDirection, layoutDirection)
-          .frame(width: pageWidth, alignment: .top)
-          .background(heightReporter(for: .next))
-          .clipped()
-          .offset(x: nextMonthBaseOffset + offset + dragOffset)
+        CalendarBodyView(
+          displayMonth: nextMonth.month,
+          displayYear: nextMonth.year,
+          showWeekdayHeader: false,
+          hideOverflowDays: true
+        )
+        .environment(viewModel)
+        .environment(theme)
+        .environment(typography)
+        .environment(\.layoutDirection, layoutDirection)
+        .frame(width: pageWidth, alignment: .top)
+        .background(heightReporter(for: .next))
+        .clipped()
+        .offset(x: nextMonthBaseOffset + offset + dragOffset)
       }
       .environment(\.layoutDirection, .leftToRight)
       // Centering (rather than offsetting) the pageWidth-sized carousel within the wider
@@ -404,15 +369,6 @@ struct CalendarBodyHorizontalView: View {
       .clipped()
       .frame(maxWidth: .infinity, alignment: .top)
       .contentShape(Rectangle())
-      .onChange(of: viewModel.currentDate) { _, _ in
-        syncFromBinding()
-      }
-      .onChange(of: viewModel.selection) { _, _ in
-        syncFromBinding()
-      }
-      .onChange(of: viewModel.calendarSignature) { _, _ in
-        syncFromBinding()
-      }
       .onPreferenceChange(HorizontalMonthHeightPreferenceKey.self) { heights in
         updateMeasuredHeight(heights.values.max() ?? 0)
       }
@@ -454,15 +410,11 @@ struct CalendarBodyHorizontalView: View {
             }
           }
       )
-      .background(
-        GeometryReader { geometry in
-          Color.clear
-            .onAppear { updateContainerWidth(geometry.size.width) }
-            .onChange(of: geometry.size.width) { _, newWidth in
-              updateContainerWidth(newWidth)
-            }
-        }
-      )
+      .onGeometryChange(for: CGFloat.self) { geometry in
+        geometry.size.width
+      } action: { width in
+        updateContainerWidth(width)
+      }
     }
     #if os(macOS)
       // Trackpad/scroll-wheel horizontal scrolling pages months on macOS, matching the iOS swipe.
@@ -482,8 +434,19 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private func updateContainerWidth(_ width: CGFloat) {
+    if Self.shouldDeferContainerWidthUpdate(isNavigating: isNavigating) {
+      // Track only the latest width; clear the deferral if the width returns to the applied
+      // value so a stale intermediate size is never committed after the animation ends.
+      deferredContainerWidth = width == containerWidth ? nil : width
+      return
+    }
+
     guard containerWidth != width else { return }
-    containerWidth = width
+    withTransaction(Transaction(animation: nil)) {
+      containerWidth = width
+      offset = 0
+      dragOffset = 0
+    }
   }
 
   private func updateMeasuredHeight(_ height: CGFloat) {
@@ -491,25 +454,12 @@ struct CalendarBodyHorizontalView: View {
     measuredHeight = height
   }
 
-  private func syncFromBinding() {
-    guard
-      let synchronized = Self.synchronizedViewModels(
-        viewModel: viewModel, isNavigating: isNavigating)
-    else { return }
-    currentViewModel = synchronized.current
-    previousViewModel = synchronized.previous
-    nextViewModel = synchronized.next
-  }
-
   private var rowCountForHeight: Int {
-    switch theme.horizontalHeightMode {
+    switch configuration.horizontalHeightMode {
     case .hugContent:
-      let current = currentViewModel.rowCount(
-        month: currentViewModel.currentMonth, year: currentViewModel.currentYear)
-      let previous = previousViewModel.rowCount(
-        month: previousViewModel.currentMonth, year: previousViewModel.currentYear)
-      let next = nextViewModel.rowCount(
-        month: nextViewModel.currentMonth, year: nextViewModel.currentYear)
+      let current = viewModel.monthSnapshot(for: currentMonth)?.rowCount ?? 6
+      let previous = viewModel.monthSnapshot(for: previousMonth)?.rowCount ?? current
+      let next = viewModel.monthSnapshot(for: nextMonth)?.rowCount ?? current
       return Self.rowCount(
         mode: .hugContent, currentRows: current, previousRows: previous, nextRows: next)
     case .sixRows:
@@ -521,7 +471,7 @@ struct CalendarBodyHorizontalView: View {
   /// `.hugContent` uses the tallest of the three parked months so paging never clips;
   /// `.sixRows` pins to a fixed six-row grid regardless of the months on screen.
   static func rowCount(
-    mode: Theme.HorizontalHeightMode,
+    mode: CalendarConfiguration.HorizontalHeightMode,
     currentRows: Int,
     previousRows: Int,
     nextRows: Int
@@ -552,8 +502,6 @@ struct CalendarBodyHorizontalView: View {
     }
 
     isNavigating = true
-    let savedCurrent = currentViewModel
-
     withAnimation(Self.pagingAnimation, completionCriteria: .logicallyComplete) {
       // Move until the parked next month reaches center.
       offset = Self.nextOffset(
@@ -563,7 +511,7 @@ struct CalendarBodyHorizontalView: View {
       )
       dragOffset = 0
     } completion: {
-      finishNavigation(monthDelta: 1, savedCurrent: savedCurrent)
+      finishNavigation(monthDelta: 1)
     }
   }
 
@@ -574,8 +522,6 @@ struct CalendarBodyHorizontalView: View {
     }
 
     isNavigating = true
-    let savedCurrent = currentViewModel
-
     withAnimation(Self.pagingAnimation, completionCriteria: .logicallyComplete) {
       // Move until the parked previous month reaches center.
       offset = Self.previousOffset(
@@ -585,33 +531,24 @@ struct CalendarBodyHorizontalView: View {
       )
       dragOffset = 0
     } completion: {
-      finishNavigation(monthDelta: -1, savedCurrent: savedCurrent)
+      finishNavigation(monthDelta: -1)
     }
   }
 
-  private func finishNavigation(monthDelta: Int, savedCurrent: CalendarViewModel) {
-    let canUpdateMonth = (try? viewModel.updateMonth(byAdding: monthDelta)) != nil
-    let transition = Self.navigationTransition(
-      monthDelta: monthDelta,
-      canUpdateMonth: canUpdateMonth,
-      fallbackViewModel: viewModel,
-      savedCurrent: savedCurrent,
-      previousViewModel: previousViewModel,
-      currentViewModel: currentViewModel,
-      nextViewModel: nextViewModel,
-      replacementPrevious: try? viewModel.copy(addMonths: -1),
-      replacementNext: try? viewModel.copy(addMonths: 1)
-    )
-
-    previousViewModel = transition.previousViewModel
-    currentViewModel = transition.currentViewModel
-    nextViewModel = transition.nextViewModel
+  private func finishNavigation(monthDelta: Int) {
+    try? viewModel.updateMonth(byAdding: monthDelta)
+    let reset = Self.resetNavigationState()
     withTransaction(Transaction(animation: nil)) {
-      offset = transition.offset
-      dragOffset = transition.dragOffset
+      offset = reset.offset
+      dragOffset = reset.dragOffset
     }
-    isNavigating = transition.isNavigating
-    syncFromBinding()
+    isNavigating = reset.isNavigating
+    if let deferredContainerWidth {
+      withTransaction(Transaction(animation: nil)) {
+        containerWidth = deferredContainerWidth
+      }
+      self.deferredContainerWidth = nil
+    }
   }
 
   #if os(macOS)
@@ -650,17 +587,6 @@ enum HorizontalPagerAction {
   case next
   case previous
   case snapBack
-}
-
-/// Resolved outcome of a completed month-paging gesture: which view models occupy each
-/// carousel slot and the carousel's reset position. Always followed by a `syncFromBinding()`.
-struct NavigationTransition {
-  let previousViewModel: CalendarViewModel
-  let currentViewModel: CalendarViewModel
-  let nextViewModel: CalendarViewModel
-  let offset: CGFloat
-  let dragOffset: CGFloat
-  let isNavigating: Bool
 }
 
 #if os(macOS)

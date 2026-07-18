@@ -9,7 +9,7 @@ import SwiftUI
 
 /// Context passed to day views to render a specific date.
 ///
-/// Custom day views receive this value from `Theme.Day.dayContent`. Use it to display the date,
+/// Custom day views receive this value from `Theme.Day.setDayContent`. Use it to display the date,
 /// reflect selection state, and call `onSelect` when the user selects the cell.
 ///
 /// ```swift
@@ -99,7 +99,7 @@ public struct CalendarDayContext {
 
 /// A day view that can be constructed from a `CalendarDayContext`.
 ///
-/// Conform to this protocol to provide a custom cell renderer through `Theme.Day.dayContent`.
+/// Conform to this protocol to provide a custom cell renderer through `Theme.Day.setDayContent`.
 /// Your view should visually represent `context.isSelected`, `context.isToday`, and
 /// `context.isInCurrentMonth`, then call `context.onSelect(context.date)` on activation.
 ///

@@ -40,7 +40,7 @@ struct CalendarHeaderMonthView: View {
           )
         },
         set: { newItem in
-          model.currentMonth = newItem.id
+          try? model.navigate(toMonth: newItem.id, year: model.currentYear)
         }
       ),
       onPrevious: {

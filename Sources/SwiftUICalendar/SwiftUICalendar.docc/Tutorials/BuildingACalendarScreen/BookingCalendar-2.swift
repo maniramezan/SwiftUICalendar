@@ -8,16 +8,18 @@ struct BookingCalendar: View {
   )
 
   var body: some View {
-    CalendarView(model: calendar, theme: theme)
+    CalendarView(model: calendar, theme: theme, configuration: configuration)
       .frame(minHeight: 420)
   }
 
   private var theme: Theme {
     let theme = Theme()
-    theme.scrollMode = .horizontal
-    theme.horizontalHeightMode = .hugContent
     theme.day.selectedBackgroundColor = .indigo
     theme.day.useSquareDualCalendarDayView(secondaryLabel: .persian)
     return theme
+  }
+
+  private var configuration: CalendarConfiguration {
+    CalendarConfiguration(scrollMode: .horizontal, horizontalHeightMode: .hugContent)
   }
 }

@@ -257,133 +257,6 @@ struct CalendarBodyHorizontalViewLayoutTests {
     )
   }
 
-  @Test("navigationTransition resets state when navigation is invalid")
-  func navigationTransitionResetsStateWhenInvalid() {
-    let fallback = CalendarViewModel.test()
-    let result = CalendarBodyHorizontalView.navigationTransition(
-      monthDelta: 0,
-      canUpdateMonth: false,
-      fallbackViewModel: fallback,
-      savedCurrent: fallback,
-      previousViewModel: fallback,
-      currentViewModel: fallback,
-      nextViewModel: fallback,
-      replacementPrevious: nil,
-      replacementNext: nil
-    )
-
-    #expect(result.previousViewModel === fallback)
-    #expect(result.currentViewModel === fallback)
-    #expect(result.nextViewModel === fallback)
-    #expect(result.offset == 0)
-    #expect(result.dragOffset == 0)
-    #expect(!result.isNavigating)
-  }
-
-  @Test("navigationTransition resets state when month update fails at a boundary")
-  func navigationTransitionResetsStateWhenMonthUpdateFails() {
-    let fallback = CalendarViewModel.test()
-    let saved = CalendarViewModel.test()
-    let next = CalendarViewModel.test()
-
-    let result = CalendarBodyHorizontalView.navigationTransition(
-      monthDelta: 1,
-      canUpdateMonth: false,
-      fallbackViewModel: fallback,
-      savedCurrent: saved,
-      previousViewModel: fallback,
-      currentViewModel: fallback,
-      nextViewModel: next,
-      replacementPrevious: nil,
-      replacementNext: nil
-    )
-
-    #expect(result.previousViewModel === fallback)
-    #expect(result.currentViewModel === fallback)
-    #expect(result.nextViewModel === fallback)
-    #expect(result.offset == 0)
-    #expect(result.dragOffset == 0)
-    #expect(!result.isNavigating)
-  }
-
-  @Test("navigationTransition rotates models forward")
-  func navigationTransitionRotatesModelsForward() {
-    let fallback = CalendarViewModel.test()
-    let saved = CalendarViewModel.test()
-    let previous = CalendarViewModel.test()
-    let current = CalendarViewModel.test()
-    let next = CalendarViewModel.test()
-    let replacementNext = CalendarViewModel.test()
-
-    let result = CalendarBodyHorizontalView.navigationTransition(
-      monthDelta: 1,
-      canUpdateMonth: true,
-      fallbackViewModel: fallback,
-      savedCurrent: saved,
-      previousViewModel: previous,
-      currentViewModel: current,
-      nextViewModel: next,
-      replacementPrevious: nil,
-      replacementNext: replacementNext
-    )
-
-    #expect(result.previousViewModel === saved)
-    #expect(result.currentViewModel === next)
-    #expect(result.nextViewModel === replacementNext)
-  }
-
-  @Test("navigationTransition rotates models backward")
-  func navigationTransitionRotatesModelsBackward() {
-    let fallback = CalendarViewModel.test()
-    let saved = CalendarViewModel.test()
-    let previous = CalendarViewModel.test()
-    let current = CalendarViewModel.test()
-    let next = CalendarViewModel.test()
-    let replacementPrevious = CalendarViewModel.test()
-
-    let result = CalendarBodyHorizontalView.navigationTransition(
-      monthDelta: -1,
-      canUpdateMonth: true,
-      fallbackViewModel: fallback,
-      savedCurrent: saved,
-      previousViewModel: previous,
-      currentViewModel: current,
-      nextViewModel: next,
-      replacementPrevious: replacementPrevious,
-      replacementNext: nil
-    )
-
-    #expect(result.previousViewModel === replacementPrevious)
-    #expect(result.currentViewModel === previous)
-    #expect(result.nextViewModel === saved)
-  }
-
-  @Test("synchronizedViewModels returns nil while navigating")
-  func synchronizedViewModelsReturnsNilWhileNavigating() {
-    let viewModel = CalendarViewModel.test()
-
-    let result = CalendarBodyHorizontalView.synchronizedViewModels(
-      viewModel: viewModel,
-      isNavigating: true
-    )
-
-    #expect(result == nil)
-  }
-
-  @Test("synchronizedViewModels returns current previous and next copies")
-  func synchronizedViewModelsReturnsCurrentPreviousAndNextCopies() {
-    let viewModel = CalendarViewModel.test()
-
-    let result = CalendarBodyHorizontalView.synchronizedViewModels(
-      viewModel: viewModel,
-      isNavigating: false
-    )
-
-    #expect(result?.current === viewModel)
-    #expect(result?.previous.currentMonth == viewModel.monthMetadata(offset: -1)?.month)
-    #expect(result?.next.currentMonth == viewModel.monthMetadata(offset: 1)?.month)
-  }
-
   @Test("pagerAction maps month deltas to pager actions")
   func pagerActionMapsMonthDeltas() {
     #expect(CalendarBodyHorizontalView.pagerAction(for: 1) == .next)
@@ -416,6 +289,12 @@ struct CalendarBodyHorizontalViewLayoutTests {
     #expect(CalendarBodyHorizontalView.shouldHandleScrollPage(delta: -1, isNavigating: false))
     #expect(!CalendarBodyHorizontalView.shouldHandleScrollPage(delta: 0, isNavigating: false))
     #expect(!CalendarBodyHorizontalView.shouldHandleScrollPage(delta: 1, isNavigating: true))
+  }
+
+  @Test("container width updates defer only while a page animation is active")
+  func containerWidthUpdatesDeferDuringNavigation() {
+    #expect(!CalendarBodyHorizontalView.shouldDeferContainerWidthUpdate(isNavigating: false))
+    #expect(CalendarBodyHorizontalView.shouldDeferContainerWidthUpdate(isNavigating: true))
   }
 
   #if os(macOS)

@@ -10,20 +10,11 @@ struct ThemeTests {
   @Test("Theme.default returns independent instances")
   func defaultReturnsIndependentInstances() {
     let first = Theme.default
-    first.scrollMode = .horizontal
-    first.horizontalHeightMode = .hugContent
     first.day.emptyDayBorderColorWidth = 3
-    first.yearSelection.style = .custom
-    first.yearSelection.minYear = 2000
 
     let second = Theme.default
 
-    #expect(second.scrollMode == .none)
-    #expect(second.horizontalHeightMode == .sixRows)
     #expect(second.day.emptyDayBorderColorWidth == 0)
-    #expect(second.yearSelection.style == .wheel)
-    #expect(second.yearSelection.minYear == nil)
-    #expect(second.yearSelection.maxYear == nil)
   }
 
   @Test("useSquareDualCalendarDayView applies optional secondary label mode")

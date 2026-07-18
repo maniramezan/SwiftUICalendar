@@ -38,7 +38,7 @@ struct EventDayView: CalendarDayView {
 
 ```swift
 let theme = Theme()
-theme.day.dayContent = { context in
+theme.day.setDayContent { context in
     EventDayView(context: context)
 }
 

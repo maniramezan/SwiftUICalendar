@@ -219,6 +219,41 @@ struct CalendarViewModelNavigationTests {
     #expect(vm.currentMonth == 6)
   }
 
+  @Test("explicit date navigation throws outside the supported range")
+  func explicitDateNavigationThrowsOutOfRange() {
+    let vm = CalendarViewModel.test()
+
+    #expect(throws: Error.self) {
+      try vm.navigate(to: makeDate(year: 2101, month: 1, day: 1))
+    }
+  }
+
+  @Test("explicit navigation commands update the visible month")
+  func explicitNavigationCommandsUpdateVisibleMonth() throws {
+    let vm = CalendarViewModel.test()
+
+    try vm.navigate(to: makeDate(year: 2025, month: 6, day: 15))
+    #expect(vm.visibleMonth == MonthIdentifier(month: 6, year: 2025))
+
+    try vm.navigate(toMonth: 8, year: 2025)
+    #expect(vm.visibleMonth == MonthIdentifier(month: 8, year: 2025))
+
+    try vm.navigate(toYear: 2026)
+    #expect(vm.visibleMonth == MonthIdentifier(month: 8, year: 2026))
+  }
+
+  @Test("explicit month and year navigation reject invalid targets")
+  func explicitComponentNavigationRejectsInvalidTargets() {
+    let vm = CalendarViewModel.test()
+
+    #expect(throws: Error.self) {
+      try vm.navigate(toMonth: 13, year: 2025)
+    }
+    #expect(throws: Error.self) {
+      try vm.navigate(toYear: 2101)
+    }
+  }
+
   @Test("Next year: advances year while preserving month")
   func nextYearAdvancesYear() throws {
     let vm = CalendarViewModel.test()
@@ -288,48 +323,54 @@ struct CalendarViewModelNavigationTests {
     #expect(vm.currentMonth == 6)
   }
 
-  // MARK: - copy(addMonths:)
+  // MARK: - Month identifiers
 
-  @Test("copy: positive offset advances month without mutating original")
-  func copyPositiveOffset() throws {
+  @Test("monthIdentifier resolves a positive offset without mutating state")
+  func monthIdentifierPositiveOffset() {
     let vm = CalendarViewModel.test()
     vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
-    let copy = try vm.copy(addMonths: 1)
-    #expect(copy.currentMonth == 7)
-    #expect(copy.currentYear == 2025)
+    let month = vm.monthIdentifier(offset: 1)
+    #expect(month == MonthIdentifier(month: 7, year: 2025))
     #expect(vm.currentMonth == 6)
   }
 
-  @Test("copy: negative offset retreats month without mutating original")
-  func copyNegativeOffset() throws {
+  @Test("monthIdentifier resolves a negative offset without mutating state")
+  func monthIdentifierNegativeOffset() {
     let vm = CalendarViewModel.test()
     vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
-    let copy = try vm.copy(addMonths: -1)
-    #expect(copy.currentMonth == 5)
-    #expect(copy.currentYear == 2025)
+    let month = vm.monthIdentifier(offset: -1)
+    #expect(month == MonthIdentifier(month: 5, year: 2025))
     #expect(vm.currentMonth == 6)
   }
 
-  @Test("copy: selection is preserved in the copy")
-  func copyPreservesSelection() throws {
-    let date = makeDate(year: 2025, month: 6, day: 15)
-    let vm = CalendarViewModel.test(selection: .single(date))
+  @Test("month snapshot reflects selection without creating another model")
+  func monthSnapshotReflectsSelection() throws {
+    let selectedDate = makeDate(year: 2025, month: 6, day: 15)
+    let vm = CalendarViewModel.test(selection: .single(selectedDate))
     vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
-    let copy = try vm.copy(addMonths: 1)
-    guard case .single(let selected) = copy.selection else {
-      Issue.record("Expected single selection in copy")
-      return
-    }
-    #expect(selected != nil)
+    let snapshot = try #require(vm.monthSnapshot(for: MonthIdentifier(month: 6, year: 2025)))
+    #expect(
+      snapshot.days.first(where: { $0.day == 15 && $0.isInDisplayedMonth })?.isSelected == true)
   }
 
-  @Test("copy: year wraps correctly when spanning December→January")
-  func copyYearWrapAcrossDecemberJanuary() throws {
+  @Test("monthIdentifier wraps the year without mutating state")
+  func monthIdentifierWrapsYear() {
     let vm = CalendarViewModel.test()
     vm.currentDate = makeDate(year: 2025, month: 12, day: 1)
-    let copy = try vm.copy(addMonths: 1)
-    #expect(copy.currentMonth == 1)
-    #expect(copy.currentYear == 2026)
+    #expect(vm.monthIdentifier(offset: 1) == MonthIdentifier(month: 1, year: 2026))
     #expect(vm.currentMonth == 12)
+  }
+
+  @Test("monthIdentifier returns nil beyond the supported range")
+  func monthIdentifierReturnsNilBeyondSupportedRange() {
+    let vm = CalendarViewModel.test()
+
+    vm.currentDate = makeDate(year: 2100, month: 12, day: 1)
+    #expect(vm.monthIdentifier(offset: 1) == nil)
+    #expect(vm.monthIdentifier(offset: -1) == MonthIdentifier(month: 11, year: 2100))
+
+    vm.currentDate = makeDate(year: 1900, month: 1, day: 1)
+    #expect(vm.monthIdentifier(offset: -1) == nil)
+    #expect(vm.monthIdentifier(offset: 1) == MonthIdentifier(month: 2, year: 1900))
   }
 }

@@ -4,125 +4,75 @@ import SwiftUICalendar
 struct ContentView: View {
   @State private var calendarIdentifier: Calendar.Identifier = .gregorian
   @State private var selectionMode: SelectionMode = .single
-  @State private var scrollMode: Theme.ScrollMode = .none
+  @State private var scrollMode: CalendarConfiguration.ScrollMode = .none
   @State private var dayViewMode: DayViewMode = .circle
-  @State private var horizontalHeightMode: Theme.HorizontalHeightMode = .sixRows
+  @State private var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode = .sixRows
   @State private var viewModel = CalendarViewModel(
     calendarIdentifier: .gregorian, selection: .single(Date()))
   @State private var theme = Theme()
   @State private var typography = Typography.default
-  @State private var isConfigurationPopoverPresented = false
+  @State private var isSettingsPresented = false
 
   var body: some View {
     NavigationStack {
-      ScrollView {
-        CalendarView(model: viewModel, theme: theme, typography: typography)
-          .frame(maxWidth: .infinity, alignment: .top)
-          .id("\(scrollMode)-\(dayViewMode)-\(calendarIdentifier)")
-          .padding()
-      }
+      SampleCalendarContent(
+        viewModel: viewModel,
+        theme: theme,
+        typography: typography,
+        scrollMode: scrollMode,
+        horizontalHeightMode: horizontalHeightMode
+      )
       .navigationTitle("Calendar")
       .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .primaryAction) {
           Button("Settings", systemImage: "gearshape") {
-            isConfigurationPopoverPresented = true
+            isSettingsPresented = true
           }
           .accessibilityHint("Choose calendar display settings")
-          .popover(isPresented: $isConfigurationPopoverPresented) {
-            configurationPicker
-              .padding()
-              .frame(width: 360)
-          }
         }
       }
     }
-    .onAppear {
-      applyConfiguration()
+    .sheet(isPresented: $isSettingsPresented) {
+      ConfigurationView(
+        calendarIdentifier: $calendarIdentifier,
+        selectionMode: $selectionMode,
+        scrollMode: $scrollMode,
+        horizontalHeightMode: $horizontalHeightMode,
+        dayViewMode: $dayViewMode
+      )
     }
     .onChange(of: calendarIdentifier) { _, _ in
-      applyConfiguration()
+      applyCalendarIdentifier()
     }
     .onChange(of: selectionMode) { _, _ in
-      applyConfiguration()
-    }
-    .onChange(of: scrollMode) { _, _ in
-      applyConfiguration()
+      applySelectionMode()
     }
     .onChange(of: dayViewMode) { _, _ in
-      applyConfiguration()
-    }
-    .onChange(of: horizontalHeightMode) { _, _ in
-      applyConfiguration()
+      applyDayConfiguration()
     }
   }
 
-  private var configurationPicker: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text("Settings")
-        .font(.headline)
-
-      Picker("Calendar", selection: $calendarIdentifier) {
-        Text("Gregorian").tag(Calendar.Identifier.gregorian)
-        Text("Persian").tag(Calendar.Identifier.persian)
-      }
-      .pickerStyle(.segmented)
-
-      Picker("Selection", selection: $selectionMode) {
-        ForEach(SelectionMode.allCases) { mode in
-          Text(mode.title).tag(mode)
-        }
-      }
-      .pickerStyle(.segmented)
-
-      Picker("Scroll", selection: $scrollMode) {
-        Text("None").tag(Theme.ScrollMode.none)
-        Text("Vertical").tag(Theme.ScrollMode.vertical)
-        Text("Horizontal").tag(Theme.ScrollMode.horizontal)
-      }
-      .pickerStyle(.segmented)
-
-      if scrollMode == .horizontal {
-        Picker("Horizontal Height", selection: $horizontalHeightMode) {
-          Text("Hug Content").tag(Theme.HorizontalHeightMode.hugContent)
-          Text("Six Rows").tag(Theme.HorizontalHeightMode.sixRows)
-        }
-        .pickerStyle(.segmented)
-      }
-
-      Picker("Day View", selection: $dayViewMode) {
-        ForEach(DayViewMode.allCases) { mode in
-          Text(mode.title).tag(mode)
-        }
-      }
-      .pickerStyle(.segmented)
-    }
-  }
-
-  private func applyConfiguration() {
+  private func applyCalendarIdentifier() {
     viewModel.updateCalendar(identifier: calendarIdentifier)
-    viewModel.currentDate = Date()
+    applyDayConfiguration()
+  }
+
+  private func applySelectionMode() {
     viewModel.selection = selectionMode.selectionValue(baseDate: Date())
+  }
 
-    theme.scrollMode = scrollMode
-    theme.horizontalHeightMode = horizontalHeightMode
-
-    // Reset day configuration
+  private func applyDayConfiguration() {
     theme.day = Theme.Day()
 
     switch dayViewMode {
     case .circle:
-      // For circle mode, only show Persian secondary label when using Persian calendar
       if calendarIdentifier == .persian {
         theme.day.secondaryLabelMode = .persian
-      } else {
-        theme.day.secondaryLabelMode = .none
       }
     case .square:
-      // For square mode, show secondary label based on calendar
       if calendarIdentifier == .persian {
         theme.day.useSquareDualCalendarDayView(secondaryLabel: .persian)
       } else {
-        // For Gregorian calendar, show abbreviated month as secondary label
         theme.day.useSquareDualCalendarDayView(
           secondaryLabel: .custom { date in
             let formatter = DateFormatter()
@@ -132,6 +82,108 @@ struct ContentView: View {
           })
       }
     }
+  }
+}
+
+private struct SampleCalendarContent: View {
+  let viewModel: CalendarViewModel
+  let theme: Theme
+  let typography: Typography
+  let scrollMode: CalendarConfiguration.ScrollMode
+  let horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode
+
+  var body: some View {
+    Group {
+      if scrollMode == .none {
+        ScrollView {
+          CalendarView(
+            model: viewModel,
+            theme: theme,
+            typography: typography,
+            configuration: configuration
+          )
+        }
+      } else {
+        CalendarView(
+          model: viewModel,
+          theme: theme,
+          typography: typography,
+          configuration: configuration
+        )
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+  }
+
+  private var configuration: CalendarConfiguration {
+    CalendarConfiguration(
+      scrollMode: scrollMode,
+      horizontalHeightMode: horizontalHeightMode
+    )
+  }
+}
+
+private struct ConfigurationView: View {
+  @Environment(\.dismiss) private var dismiss
+
+  @Binding var calendarIdentifier: Calendar.Identifier
+  @Binding var selectionMode: SelectionMode
+  @Binding var scrollMode: CalendarConfiguration.ScrollMode
+  @Binding var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode
+  @Binding var dayViewMode: DayViewMode
+
+  var body: some View {
+    NavigationStack {
+      Form {
+        Section("Calendar") {
+          Picker("Calendar", selection: $calendarIdentifier) {
+            Text("Gregorian").tag(Calendar.Identifier.gregorian)
+            Text("Persian").tag(Calendar.Identifier.persian)
+          }
+          .pickerStyle(.segmented)
+
+          Picker("Selection", selection: $selectionMode) {
+            ForEach(SelectionMode.allCases) { mode in
+              Text(mode.title).tag(mode)
+            }
+          }
+          .pickerStyle(.segmented)
+        }
+
+        Section("Layout") {
+          Picker("Scroll", selection: $scrollMode) {
+            Text("None").tag(CalendarConfiguration.ScrollMode.none)
+            Text("Vertical").tag(CalendarConfiguration.ScrollMode.vertical)
+            Text("Horizontal").tag(CalendarConfiguration.ScrollMode.horizontal)
+          }
+          .pickerStyle(.segmented)
+
+          if scrollMode == .horizontal {
+            Picker("Horizontal Height", selection: $horizontalHeightMode) {
+              Text("Hug Content").tag(CalendarConfiguration.HorizontalHeightMode.hugContent)
+              Text("Six Rows").tag(CalendarConfiguration.HorizontalHeightMode.sixRows)
+            }
+            .pickerStyle(.segmented)
+          }
+
+          Picker("Day View", selection: $dayViewMode) {
+            ForEach(DayViewMode.allCases) { mode in
+              Text(mode.title).tag(mode)
+            }
+          }
+          .pickerStyle(.segmented)
+        }
+      }
+      .navigationTitle("Settings")
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Done") {
+            dismiss()
+          }
+        }
+      }
+    }
+    .presentationDetents([.medium, .large])
   }
 }
 
@@ -154,8 +206,6 @@ private enum SelectionMode: String, CaseIterable, Identifiable {
   }
 
   func selectionValue(baseDate: Date) -> CalendarViewModel.Selection {
-    _ = Calendar.current.date(byAdding: .day, value: 3, to: baseDate) ?? baseDate
-    _ = Calendar.current.date(byAdding: .day, value: 10, to: baseDate) ?? baseDate
     switch self {
     case .single:
       return .single(nil)

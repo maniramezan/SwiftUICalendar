@@ -57,18 +57,13 @@ import SwiftUI
 
   // MARK: - Properties
 
-  // MARK: UI Configurations
-
-  /// Controls whether the month and year header controls are shown.
-  ///
-  /// Set this to `false` when your screen provides its own navigation chrome.
-  public var showHeader: Bool = true
-
   private static let minYear = 1900
   private static let maxYear = 2100
 
-  private(set) var minYear: Int
-  private(set) var maxYear: Int
+  /// The earliest year (in the active calendar system) the calendar can navigate to.
+  public private(set) var minYear: Int
+  /// The latest year (in the active calendar system) the calendar can navigate to.
+  public private(set) var maxYear: Int
 
   private let gregorianCalendar = Calendar(identifier: .gregorian)
 
@@ -126,7 +121,7 @@ import SwiftUI
     monthSymbol(for: currentMonth, year: currentYear)
   }
 
-  var currentYear: Int {
+  public internal(set) var currentYear: Int {
     get {
       calendar.year(from: currentDate)
     }
@@ -141,7 +136,7 @@ import SwiftUI
     }
   }
 
-  var currentMonth: Int {
+  public internal(set) var currentMonth: Int {
     get {
       calendar.month(from: currentDate)
     }
@@ -213,7 +208,7 @@ import SwiftUI
   /// moves the calendar to that date's month in the active calendar system. Dates outside the
   /// supported range (January 1, 1900 through December 31, 2100 in the Gregorian calendar) are
   /// ignored.
-  public var currentDate: Date {
+  public internal(set) var currentDate: Date {
     get { storedCurrentDate }
     set {
       guard isWithinSupportedYear(newValue) else {
@@ -222,6 +217,48 @@ import SwiftUI
       }
       storedCurrentDate = newValue
     }
+  }
+
+  /// Stable calendar components for the currently visible month.
+  public var visibleMonth: MonthIdentifier {
+    MonthIdentifier(month: currentMonth, year: currentYear)
+  }
+
+  /// Moves the calendar to an absolute date within its supported range.
+  public func navigate(to date: Date) throws {
+    guard isWithinSupportedYear(date) else {
+      logger.error("Cannot navigate outside the supported calendar range")
+      throw Calendar.CalendarError.cannotCalculateDate
+    }
+    storedCurrentDate = date
+  }
+
+  /// Moves the calendar to a month while preserving the current day when possible.
+  public func navigate(toMonth month: Int, year: Int) throws {
+    guard months(in: year).contains(where: { $0.month == month }),
+      let date = resolvedDate(
+        year: year,
+        month: month,
+        preferredDay: calendar.day(from: currentDate)
+      ),
+      isWithinSupportedYear(date)
+    else {
+      logger.error("Cannot navigate to requested calendar month")
+      throw Calendar.CalendarError.cannotCalculateDate
+    }
+    storedCurrentDate = date
+  }
+
+  /// Moves the calendar to a year while preserving the current month and day when possible.
+  public func navigate(toYear year: Int) throws {
+    guard (minYear...maxYear).contains(year),
+      let date = try? calendar.updateYear(year, for: currentDate),
+      isWithinSupportedYear(date)
+    else {
+      logger.error("Cannot navigate to requested calendar year")
+      throw Calendar.CalendarError.cannotCalculateDate
+    }
+    storedCurrentDate = date
   }
 
   private var storedCurrentDate: Date
@@ -318,15 +355,17 @@ import SwiftUI
     try updateMonth(byAdding: 1)
   }
 
-  func updateMonth(byAdding months: Int) throws {
+  /// Moves the calendar by a relative number of months, preserving the day when possible.
+  ///
+  /// Throws ``Foundation/Calendar/CalendarError/cannotCalculateDate`` when the offset cannot be
+  /// computed or the target month falls outside the supported navigation range.
+  public func updateMonth(byAdding months: Int) throws {
     guard let updatedDate = date(byAddingMonths: months, to: currentDate) else {
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
-    guard isWithinSupportedYear(updatedDate) else {
+      logger.error("Cannot calculate requested month offset")
       throw Calendar.CalendarError.cannotCalculateDate
     }
 
-    currentDate = updatedDate
+    try navigate(to: updatedDate)
   }
 
   func updateMonthToPreviousMonth() throws {
@@ -349,16 +388,6 @@ import SwiftUI
     }
 
     currentDate = updatedDate
-  }
-
-  func copy(addMonths: Int) throws -> CalendarViewModel {
-    let calendarViewModel = CalendarViewModel(
-      calendar: calendar,
-      currentDate: currentDate,
-      selection: selection,
-      locale: locale)
-    try calendarViewModel.updateMonth(byAdding: addMonths)
-    return calendarViewModel
   }
 
   func monthMetadata(offset: Int) -> MonthMetadata? {
@@ -467,6 +496,86 @@ import SwiftUI
     let remainder = totalDaysToRender % 7
     let trailingEmptyDaysCount = remainder == 0 ? 0 : 7 - remainder
     return max(1, (totalDaysToRender + trailingEmptyDaysCount) / 7)
+  }
+
+  /// Resolves the month `offset` months away from `identifier` (or the visible month when
+  /// `identifier` is `nil`). Returns `nil` when the target month cannot be computed or falls
+  /// outside the supported navigation range, so callers never present a month the model would
+  /// refuse to navigate to.
+  func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil)
+    -> MonthIdentifier?
+  {
+    let sourceDate: Date
+    if let identifier {
+      guard let date = firstDate(month: identifier.month, year: identifier.year) else { return nil }
+      sourceDate = date
+    } else {
+      sourceDate = currentDate
+    }
+
+    guard let targetDate = date(byAddingMonths: offset, to: sourceDate),
+      isWithinSupportedYear(targetDate)
+    else { return nil }
+    return MonthIdentifier(
+      month: calendar.month(from: targetDate),
+      year: calendar.year(from: targetDate)
+    )
+  }
+
+  func monthSnapshot(for identifier: MonthIdentifier) -> MonthSnapshot? {
+    guard
+      let metadata = monthMetadata(month: identifier.month, year: identifier.year),
+      let previous = monthMetadata(month: identifier.month, year: identifier.year, offset: -1),
+      let next = monthMetadata(month: identifier.month, year: identifier.year, offset: 1)
+    else { return nil }
+
+    let leadingCount = max(startOfMonthDay(month: identifier.month, year: identifier.year) - 1, 0)
+    let currentCount = metadata.numberOfDays
+    let populatedCount = leadingCount + currentCount
+    let remainder = populatedCount % 7
+    let trailingCount = remainder == 0 ? 0 : 7 - remainder
+    var days: [MonthSnapshot.Day] = []
+    days.reserveCapacity(populatedCount + trailingCount)
+
+    if leadingCount > 0 {
+      for index in 0..<leadingCount {
+        let day = previous.numberOfDays - leadingCount + index + 1
+        days.append(
+          snapshotDay(day: day, month: previous.month, year: previous.year, isCurrent: false))
+      }
+    }
+    for day in 1...currentCount {
+      days.append(
+        snapshotDay(day: day, month: identifier.month, year: identifier.year, isCurrent: true))
+    }
+    if trailingCount > 0 {
+      for day in 1...trailingCount {
+        days.append(snapshotDay(day: day, month: next.month, year: next.year, isCurrent: false))
+      }
+    }
+
+    return MonthSnapshot(
+      id: identifier,
+      title: monthSymbol(for: identifier.month, year: identifier.year),
+      days: days
+    )
+  }
+
+  private func snapshotDay(day: Int, month: Int, year: Int, isCurrent: Bool)
+    -> MonthSnapshot.Day
+  {
+    let date = date(for: day, month: month, year: year)
+    return MonthSnapshot.Day(
+      id: "day-\(year)-\(month)-\(day)",
+      date: date,
+      day: day,
+      dayLabel: NumberFormatter.formatDay(day, locale: locale),
+      month: month,
+      year: year,
+      isInDisplayedMonth: isCurrent,
+      isToday: date.map { calendar.isDateInToday($0) } ?? false,
+      isSelected: date.map(isSelected(date:)) ?? false
+    )
   }
 
   func monthSymbol(for month: Int) -> String {

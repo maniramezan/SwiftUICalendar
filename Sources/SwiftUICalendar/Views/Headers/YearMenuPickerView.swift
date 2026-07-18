@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A trigger button that presents a native dropdown menu listing every selectable year.
 ///
-/// Built directly with SwiftUI's `Menu` rather than `MenuPicker` so `Theme.YearSelection.Style
+/// Built directly with SwiftUI's `Menu` rather than `MenuPicker` so `CalendarConfiguration.YearSelection.Style
 /// .menu` always renders a dropdown regardless of item count, independent of `MenuPicker`'s
 /// internal wheel-fallback threshold.
 struct YearMenuPickerView: View {

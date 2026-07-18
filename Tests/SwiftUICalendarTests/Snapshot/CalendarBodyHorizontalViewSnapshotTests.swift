@@ -26,7 +26,6 @@ struct CalendarBodyHorizontalViewSnapshotTests {
   func gregorianSixRowsNoSelection() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
     let theme = Theme()
-    theme.horizontalHeightMode = .sixRows
     assertCalendarSnapshot(
       of: horizontalView(vm: vm, theme: theme),
       width: snapshotWidth,
@@ -38,9 +37,12 @@ struct CalendarBodyHorizontalViewSnapshotTests {
   func gregorianHugContent() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
     let theme = Theme()
-    theme.horizontalHeightMode = .hugContent
     assertCalendarSnapshot(
-      of: horizontalView(vm: vm, theme: theme),
+      of: horizontalView(vm: vm, theme: theme)
+        .environment(
+          \.calendarConfiguration,
+          CalendarConfiguration(horizontalHeightMode: .hugContent)
+        ),
       width: snapshotWidth,
       named: "gregorian-hug-content"
     )
@@ -50,7 +52,6 @@ struct CalendarBodyHorizontalViewSnapshotTests {
   func persianRTL() {
     let vm = CalendarViewModel.snapshot(identifier: .persian, selection: .single(nil))
     let theme = Theme()
-    theme.horizontalHeightMode = .sixRows
     assertCalendarSnapshot(
       of: horizontalView(vm: vm, theme: theme)
         .environment(\.layoutDirection, .rightToLeft),
@@ -66,7 +67,6 @@ struct CalendarBodyHorizontalViewSnapshotTests {
     let end = makeDate(year: 2025, month: 6, day: 5)
     let vm = CalendarViewModel.snapshot(selection: .range(start, end))
     let theme = Theme()
-    theme.horizontalHeightMode = .sixRows
     assertCalendarSnapshot(
       of: horizontalView(vm: vm, theme: theme),
       width: snapshotWidth,
@@ -80,13 +80,16 @@ struct CalendarBodyHorizontalViewSnapshotTests {
     vm.currentDate = makeDate(year: 2026, month: 2, day: 1)
 
     let theme = Theme()
-    theme.horizontalHeightMode = .hugContent
     theme.day.useSquareDualCalendarDayView()
     theme.day.emptyDayBorderColor = .pink
     theme.day.emptyDayBorderColorWidth = 1
 
     assertCalendarSnapshot(
-      of: horizontalView(vm: vm, theme: theme),
+      of: horizontalView(vm: vm, theme: theme)
+        .environment(
+          \.calendarConfiguration,
+          CalendarConfiguration(horizontalHeightMode: .hugContent)
+        ),
       width: snapshotWidth,
       named: "square-full-cell-borders-horizontal"
     )

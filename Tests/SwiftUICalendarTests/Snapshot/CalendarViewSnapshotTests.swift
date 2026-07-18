@@ -12,9 +12,15 @@ struct CalendarViewSnapshotTests {
   private func makeCalendarView(
     vm: CalendarViewModel,
     theme: Theme = Theme(),
-    typography: Typography = .default
+    typography: Typography = .default,
+    configuration: CalendarConfiguration = CalendarConfiguration()
   ) -> some View {
-    CalendarView(model: vm, theme: theme, typography: typography)
+    CalendarView(
+      model: vm,
+      theme: theme,
+      typography: typography,
+      configuration: configuration
+    )
   }
 
   @Test("CalendarView renders fixed calendar with header")
@@ -31,9 +37,11 @@ struct CalendarViewSnapshotTests {
   @Test("CalendarView renders without header")
   func fixedCalendarWithoutHeader() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
-    vm.showHeader = false
     assertCalendarSnapshot(
-      of: makeCalendarView(vm: vm),
+      of: makeCalendarView(
+        vm: vm,
+        configuration: CalendarConfiguration(showsHeader: false)
+      ),
       width: snapshotWidth,
       height: 500,
       named: "fixed-calendar-without-header"
@@ -43,10 +51,11 @@ struct CalendarViewSnapshotTests {
   @Test("CalendarView renders vertical scroll mode")
   func verticalCalendar() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
-    let theme = Theme()
-    theme.scrollMode = .vertical
     assertCalendarSnapshot(
-      of: makeCalendarView(vm: vm, theme: theme),
+      of: makeCalendarView(
+        vm: vm,
+        configuration: CalendarConfiguration(scrollMode: .vertical)
+      ),
       width: snapshotWidth,
       height: 620,
       named: "vertical-calendar"
@@ -56,10 +65,11 @@ struct CalendarViewSnapshotTests {
   @Test("CalendarView renders horizontal scroll mode")
   func horizontalCalendar() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
-    let theme = Theme()
-    theme.scrollMode = .horizontal
     assertCalendarSnapshot(
-      of: makeCalendarView(vm: vm, theme: theme),
+      of: makeCalendarView(
+        vm: vm,
+        configuration: CalendarConfiguration(scrollMode: .horizontal)
+      ),
       width: snapshotWidth,
       height: 560,
       named: "horizontal-calendar"

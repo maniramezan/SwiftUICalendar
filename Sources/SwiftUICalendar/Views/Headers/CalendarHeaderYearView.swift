@@ -4,20 +4,20 @@ import SwiftUI
 
 struct CalendarHeaderYearView: View {
   @Environment(CalendarViewModel.self) var model
-  @Environment(Theme.self) var theme
+  @Environment(\.calendarConfiguration) private var configuration
 
   private let logger = Logger.swiftUICalendar(for: Self.self)
 
   /// The lower bound offered by the picker. Clamped to the calendar's own navigable range so a
   /// misconfigured override never offers a year the calendar can't navigate to.
   private var effectiveMinYear: Int {
-    Self.effectiveMinYear(model: model, override: theme.yearSelection.minYear)
+    Self.effectiveMinYear(model: model, override: configuration.yearSelection.minYear)
   }
 
   /// The upper bound offered by the picker. Clamped to the calendar's own navigable range so a
   /// misconfigured override never offers a year the calendar can't navigate to.
   private var effectiveMaxYear: Int {
-    Self.effectiveMaxYear(model: model, override: theme.yearSelection.maxYear)
+    Self.effectiveMaxYear(model: model, override: configuration.yearSelection.maxYear)
   }
 
   private var yearItems: [YearItem] {
@@ -74,7 +74,7 @@ struct CalendarHeaderYearView: View {
         )
       },
       set: { newItem in
-        model.currentYear = newItem.id
+        try? model.navigate(toYear: newItem.id)
       }
     )
   }
@@ -98,7 +98,7 @@ struct CalendarHeaderYearView: View {
       isPreviousDisabled: !model.canNavigateToPreviousYear,
       isNextDisabled: !model.canNavigateToNextYear,
       content: {
-        switch theme.yearSelection.style {
+        switch configuration.yearSelection.style {
         case .wheel:
           YearWheelPickerView(items: yearItems, currentValue: selectedItemBinding)
         case .menu:
