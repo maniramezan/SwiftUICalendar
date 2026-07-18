@@ -361,6 +361,35 @@ struct CalendarViewModelNavigationTests {
     #expect(vm.currentMonth == 12)
   }
 
+  @Test("monthIdentifier resolves offsets from an explicit source month")
+  func monthIdentifierResolvesFromExplicitSource() {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 15)
+
+    let source = MonthIdentifier(month: 1, year: 2024)
+    #expect(vm.monthIdentifier(offset: 2, from: source) == MonthIdentifier(month: 3, year: 2024))
+    #expect(vm.monthIdentifier(offset: -1, from: source) == MonthIdentifier(month: 12, year: 2023))
+    #expect(vm.currentMonth == 6)
+  }
+
+  @Test("month snapshot is nil for an unresolvable month")
+  func monthSnapshotNilForUnresolvableMonth() {
+    let vm = CalendarViewModel.test()
+    #expect(vm.monthSnapshot(for: MonthIdentifier(month: 0, year: 2025)) == nil)
+  }
+
+  @Test("month snapshot pads leading and trailing overflow days to full weeks")
+  func monthSnapshotPadsToFullWeeks() throws {
+    let vm = CalendarViewModel.test()
+    vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
+    let snapshot = try #require(vm.monthSnapshot(for: MonthIdentifier(month: 6, year: 2025)))
+
+    #expect(snapshot.days.count % 7 == 0)
+    #expect(snapshot.rowCount == snapshot.days.count / 7)
+    #expect(snapshot.days.contains { !$0.isInDisplayedMonth })
+    #expect(snapshot.days.filter(\.isInDisplayedMonth).count == 30)
+  }
+
   @Test("monthIdentifier returns nil beyond the supported range")
   func monthIdentifierReturnsNilBeyondSupportedRange() {
     let vm = CalendarViewModel.test()

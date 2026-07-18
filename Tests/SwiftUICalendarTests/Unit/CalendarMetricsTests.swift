@@ -15,6 +15,29 @@ struct CalendarMetricsTests {
     #expect(layout.columns.count == 7)
   }
 
+  @Test("grid layout falls back to the minimum calendar width and clamps cell size")
+  func gridLayoutClampsCellSize() {
+    let metrics = CalendarMetrics.default
+
+    let unmeasured = CalendarGridLayout(containerWidth: 0, metrics: metrics)
+    #expect(unmeasured.width == metrics.minCalendarWidth)
+    #expect(unmeasured.cellSize == metrics.minCellSize)
+
+    let wide = CalendarGridLayout(containerWidth: 2000, metrics: metrics)
+    #expect(wide.cellSize == metrics.maxCellSize)
+  }
+
+  @Test("grid layouts compare by width and cell size")
+  func gridLayoutEquality() {
+    let metrics = CalendarMetrics.default
+    #expect(
+      CalendarGridLayout(containerWidth: 390, metrics: metrics)
+        == CalendarGridLayout(containerWidth: 390, metrics: metrics))
+    #expect(
+      CalendarGridLayout(containerWidth: 390, metrics: metrics)
+        != CalendarGridLayout(containerWidth: 500, metrics: metrics))
+  }
+
   // MARK: - Default mapping
 
   @Test("Default metrics map design-system tokens (8pt grid, 44 min, 64 max)")
