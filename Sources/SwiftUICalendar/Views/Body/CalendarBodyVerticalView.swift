@@ -10,10 +10,21 @@ struct CalendarBodyVerticalView: View {
   @Environment(Typography.self) private var typography
   @Environment(\.calendarMetrics) private var metrics
 
+  // The anchor month must be the FIRST rendered item whenever the window is (re)generated —
+  // writing `.scrollPosition(id:)` to jump to a non-zero index of a freshly laid-out
+  // `LazyVStack` is unreliable in current SDKs (the list can rest at the array's start
+  // instead, observed on the macos-15 CI runner). The window therefore starts at the anchor
+  // (`lowerOffset == 0`) and expands backward one runloop tick later (`.task(id: anchor)`),
+  // once the scroll view is settled on the anchor: prepending items while the position binding
+  // already holds the visible month uses scroll-position identity anchoring, not a positional
+  // jump, so the visible month stays put and earlier months become reachable by scrolling up.
   @State private var anchor: MonthIdentifier?
-  @State private var lowerOffset = -Self.initialRadius
+  @State private var lowerOffset = 0
   @State private var upperOffset = Self.initialRadius
   @State private var scrollPosition: MonthIdentifier?
+  // Bumped whenever the window is regenerated so the deferred backward expansion re-runs even
+  // when the new anchor equals the previous one (e.g. "today" navigation back to the anchor).
+  @State private var windowGeneration = 0
 
   private var monthItems: [VerticalMonthItem] {
     guard let anchor else { return [] }
@@ -46,6 +57,9 @@ struct CalendarBodyVerticalView: View {
     .scrollPosition(id: $scrollPosition, anchor: .top)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .onAppear(perform: initializeWindow)
+    .task(id: windowGeneration) {
+      expandBackwardFromAnchor()
+    }
     .onChange(of: viewModel.currentDate) { _, _ in
       synchronizeExternalNavigation()
     }
@@ -102,15 +116,28 @@ struct CalendarBodyVerticalView: View {
     let current = currentMonthIdentifier
     anchor = current
     scrollPosition = current
+    windowGeneration += 1
   }
 
   private func synchronizeExternalNavigation() {
     let target = currentMonthIdentifier
     guard target != scrollPosition else { return }
+    // Regenerate the window with the target first — see the state declarations for why the
+    // anchor must start the window instead of being scrolled to.
     anchor = target
-    lowerOffset = -Self.initialRadius
+    lowerOffset = 0
     upperOffset = Self.initialRadius
     scrollPosition = target
+    windowGeneration += 1
+  }
+
+  /// Expands the window backward once the freshly generated window has settled on its anchor,
+  /// making months before the anchor reachable without a positional scroll jump.
+  private func expandBackwardFromAnchor() {
+    guard anchor != nil, lowerOffset == 0 else { return }
+    withTransaction(Transaction(animation: nil)) {
+      lowerOffset = -Self.initialRadius
+    }
   }
 
   private func expandWindowIfNeeded(around position: MonthIdentifier) {
