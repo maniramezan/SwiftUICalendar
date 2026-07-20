@@ -291,13 +291,40 @@ struct CalendarBodyHorizontalViewLayoutTests {
     #expect(!CalendarBodyHorizontalView.shouldHandleScrollPage(delta: 1, isNavigating: true))
   }
 
-  @Test("container width updates defer only while a page animation is active")
-  func containerWidthUpdatesDeferDuringNavigation() {
-    #expect(!CalendarBodyHorizontalView.shouldDeferContainerWidthUpdate(isNavigating: false))
-    #expect(CalendarBodyHorizontalView.shouldDeferContainerWidthUpdate(isNavigating: true))
-  }
-
   #if os(macOS)
+    @Test("horizontal calendar renders identically to a fresh portrait view after rotating from landscape")
+    func horizontalCalendarMatchesFreshPortraitAfterRotation() throws {
+      // Reference: a calendar created directly at the portrait size.
+      let freshViewModel = CalendarViewModel.snapshot(selection: .single(nil))
+      let freshView = CalendarView(
+        model: freshViewModel,
+        configuration: CalendarConfiguration(scrollMode: .horizontal)
+      )
+      let portraitSize = CGSize(width: 390, height: 844)
+      let freshHosted = hostView(freshView, size: portraitSize)
+      let freshData = try #require(renderPNGData(freshHosted.hosting))
+      freshHosted.window.contentView = nil
+
+      // Subject: a calendar created at landscape size, then rotated to the same portrait size —
+      // this is what actually happens when a device rotates while the calendar is on screen.
+      let rotatedViewModel = CalendarViewModel.snapshot(selection: .single(nil))
+      let rotatedView = CalendarView(
+        model: rotatedViewModel,
+        configuration: CalendarConfiguration(scrollMode: .horizontal)
+      )
+      let landscapeSize = CGSize(width: 844, height: 320)
+      let rotatedHosted = hostView(rotatedView, size: landscapeSize)
+      // Warm up: render once at landscape size so any width-derived @State is populated,
+      // matching what happens on a real device before rotation occurs.
+      _ = renderPNGData(rotatedHosted.hosting)
+
+      rotatedHosted.hosting.frame = CGRect(origin: .zero, size: portraitSize)
+      let rotatedData = try #require(renderPNGData(rotatedHosted.hosting))
+      rotatedHosted.window.contentView = nil
+
+      #expect(freshData == rotatedData)
+    }
+
     @Test("hosted horizontal view runs lifecycle without crashing")
     func hostedHorizontalViewRunsLifecycleWithoutCrashing() {
       let viewModel = CalendarViewModel.snapshot(selection: .single(nil))

@@ -29,6 +29,16 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "4E5035AAD0743496AE63CB4B"
+               BuildableName = "SwiftUICalendarSampleUITests.xctest"
+               BlueprintName = "SwiftUICalendarSampleUITests"
+               ReferencedContainer = "container:SwiftUICalendarSample.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

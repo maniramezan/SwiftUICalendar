@@ -11,6 +11,7 @@ struct CalendarConfigurationTests {
 
     #expect(configuration.scrollMode == .none)
     #expect(configuration.horizontalHeightMode == .sixRows)
+    #expect(configuration.gridSizing == .adaptive)
     #expect(configuration.showsHeader)
     #expect(configuration.yearSelection == .init())
   }
@@ -24,5 +25,11 @@ struct CalendarConfigurationTests {
 
     #expect(first.scrollMode == .vertical)
     #expect(second.scrollMode == .horizontal)
+  }
+
+  @Test("configuration preserves the requested grid sizing")
+  func configurationPreservesGridSizing() {
+    #expect(CalendarConfiguration(gridSizing: .compact).gridSizing == .compact)
+    #expect(CalendarConfiguration(gridSizing: .flexible).gridSizing == .flexible)
   }
 }

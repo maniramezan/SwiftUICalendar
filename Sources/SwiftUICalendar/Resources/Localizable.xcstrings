@@ -37,6 +37,18 @@
         }
       }
     },
+    "Calendar.Done": {
+      "comment": "Button that confirms the year selection and dismisses the year picker",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
     "Calendar.Navigation.Next": {
       "comment": "VoiceOver label for the button that advances to the next month/year",
       "extractionState": "manual",

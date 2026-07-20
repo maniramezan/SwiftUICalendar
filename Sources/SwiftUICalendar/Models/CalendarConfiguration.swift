@@ -14,6 +14,16 @@ public struct CalendarConfiguration: Equatable, Sendable {
     case sixRows
   }
 
+  /// Controls whether the calendar grid fills its container or retains its natural width.
+  public enum GridSizing: Equatable, Sendable {
+    /// Centers the grid once day cells reach their maximum size; otherwise fills the available width.
+    case adaptive
+    /// Always keeps the grid at its natural day-cell width.
+    case compact
+    /// Always distributes the grid across the available width.
+    case flexible
+  }
+
   public struct YearSelection: Equatable, Sendable {
     public enum Style: Equatable, Sendable {
       case wheel
@@ -34,17 +44,20 @@ public struct CalendarConfiguration: Equatable, Sendable {
 
   public var scrollMode: ScrollMode
   public var horizontalHeightMode: HorizontalHeightMode
+  public var gridSizing: GridSizing
   public var showsHeader: Bool
   public var yearSelection: YearSelection
 
   public init(
     scrollMode: ScrollMode = .none,
     horizontalHeightMode: HorizontalHeightMode = .sixRows,
+    gridSizing: GridSizing = .adaptive,
     showsHeader: Bool = true,
     yearSelection: YearSelection = YearSelection()
   ) {
     self.scrollMode = scrollMode
     self.horizontalHeightMode = horizontalHeightMode
+    self.gridSizing = gridSizing
     self.showsHeader = showsHeader
     self.yearSelection = yearSelection
   }

@@ -25,13 +25,22 @@ struct YearWheelPickerView: View {
       .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
       .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
       .sheet(isPresented: $isPresented) {
-        Picker("", selection: $currentValue) {
-          ForEach(items) { item in
-            Text(item.title).tag(item)
+        NavigationStack {
+          Picker("", selection: $currentValue) {
+            ForEach(items) { item in
+              Text(item.title).tag(item)
+            }
+          }
+          .pickerStyle(.wheel)
+          .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Calendar.Done".localized) {
+                isPresented = false
+              }
+            }
           }
         }
-        .pickerStyle(.wheel)
-        .presentationDetents([.height(220)])
+        .presentationDetents([.height(280)])
         .presentationDragIndicator(.visible)
       }
     #else

@@ -8,9 +8,11 @@ struct CalendarBodyView: View {
   @Environment(CalendarViewModel.self) var viewModel
   @Environment(Theme.self) var theme
   @Environment(Typography.self) var typography
+  @Environment(\.calendarConfiguration) private var configuration
   @Environment(\.calendarMetrics) private var metrics
   @Environment(\.layoutDirection) private var layoutDirection
   @State private var containerWidth: CGFloat = 0
+  private let layoutWidth: CGFloat?
   private let displayMonth: Int?
   private let displayYear: Int?
   private let showWeekdayHeader: Bool
@@ -20,7 +22,11 @@ struct CalendarBodyView: View {
   private let navigatesOnOverflowTap: Bool
 
   private var gridLayout: CalendarGridLayout {
-    CalendarGridLayout(containerWidth: containerWidth, metrics: metrics)
+    CalendarGridLayout(
+      containerWidth: layoutWidth ?? containerWidth,
+      metrics: metrics,
+      sizing: configuration.gridSizing
+    )
   }
 
   private var cellSize: CGFloat {
@@ -33,6 +39,10 @@ struct CalendarBodyView: View {
 
   private var columns: [GridItem] {
     gridLayout.columns
+  }
+
+  private var gridWidth: CGFloat {
+    gridLayout.gridWidth
   }
 
   private var snapshot: MonthSnapshot {
@@ -103,6 +113,7 @@ struct CalendarBodyView: View {
               .frame(maxWidth: .infinity)
           }
         }
+        .frame(width: gridWidth)
         .accessibilityHidden(true)
       }
 
@@ -145,27 +156,27 @@ struct CalendarBodyView: View {
           }
         }
       }
+      .frame(width: gridWidth)
     }
     .frame(height: calendarHeight, alignment: .top)
-    // Fill the available width; cells spread to fill while row height stays capped (see cellSize).
+    // The containing frame keeps the grid centered when its configured sizing is compact.
     .frame(maxWidth: .infinity, alignment: .top)
-    .onGeometryChange(for: CGFloat.self) { geometry in
-      geometry.size.width
-    } action: { width in
-      guard containerWidth != width else { return }
+    .onGeometryChange(for: CGFloat.self) { geometry in geometry.size.width } action: { width in
+      guard layoutWidth == nil, containerWidth != width else { return }
       containerWidth = width
     }
   }
 
   init(
     displayMonth: Int? = nil, displayYear: Int? = nil, showWeekdayHeader: Bool = true,
-    hideOverflowDays: Bool = false, navigatesOnOverflowTap: Bool = true
+    hideOverflowDays: Bool = false, navigatesOnOverflowTap: Bool = true, layoutWidth: CGFloat? = nil
   ) {
     self.displayMonth = displayMonth
     self.displayYear = displayYear
     self.showWeekdayHeader = showWeekdayHeader
     self.hideOverflowDays = hideOverflowDays
     self.navigatesOnOverflowTap = navigatesOnOverflowTap
+    self.layoutWidth = layoutWidth
   }
 }
 

@@ -76,6 +76,48 @@ struct CalendarViewSnapshotTests {
     )
   }
 
+  @Test("Horizontal calendar scrolls in a short landscape viewport")
+  func horizontalCalendarInShortLandscapeViewport() {
+    let vm = CalendarViewModel.snapshot(selection: .single(nil))
+    assertCalendarSnapshot(
+      of: makeCalendarView(
+        vm: vm,
+        configuration: CalendarConfiguration(scrollMode: .horizontal)
+      ),
+      width: 844,
+      height: 320,
+      named: "horizontal-calendar-short-landscape"
+    )
+  }
+
+  @Test("Flexible grid fills a landscape horizontal calendar")
+  func flexibleHorizontalCalendarInLandscapeViewport() {
+    let vm = CalendarViewModel.snapshot(selection: .single(nil))
+    assertCalendarSnapshot(
+      of: makeCalendarView(
+        vm: vm,
+        configuration: CalendarConfiguration(scrollMode: .horizontal, gridSizing: .flexible)
+      ),
+      width: 844,
+      height: 320,
+      named: "horizontal-calendar-flexible-landscape"
+    )
+  }
+
+  @Test("Adaptive horizontal calendar fits a portrait viewport after rotation")
+  func adaptiveHorizontalCalendarInPortraitViewport() {
+    let vm = CalendarViewModel.snapshot(selection: .single(nil))
+    assertCalendarSnapshot(
+      of: makeCalendarView(
+        vm: vm,
+        configuration: CalendarConfiguration(scrollMode: .horizontal)
+      ),
+      width: 390,
+      height: 844,
+      named: "horizontal-calendar-adaptive-portrait"
+    )
+  }
+
   @Test("CalendarHeaderView renders localized controls")
   func calendarHeader() {
     let vm = CalendarViewModel.snapshot(identifier: .persian, selection: .single(nil))

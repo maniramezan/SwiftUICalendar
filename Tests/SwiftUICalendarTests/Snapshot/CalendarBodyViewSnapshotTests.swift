@@ -34,12 +34,12 @@ struct CalendarBodyViewSnapshotTests {
     assertCalendarSnapshot(of: calendarBodyView(vm: vm), named: "no-selection")
   }
 
-  // MARK: - Wide window (macOS) — fills width, capped row height
+  // MARK: - Wide window (macOS) — compact grid, capped row height
 
-  @Test("Wide window fills width while capping row height")
-  func wideWindowFillsWidth() {
+  @Test("Wide window keeps day spacing compact while capping row height")
+  func wideWindowKeepsDaySpacingCompact() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
-    // Columns span the full 700 pt width; row height stays capped so cells do not balloon.
+    // Capped cells stay in a centered compact grid instead of being distributed across the window.
     assertCalendarSnapshot(of: calendarBodyView(vm: vm), width: 700, named: "wide-700-fill")
   }
 

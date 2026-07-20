@@ -43,7 +43,10 @@ struct CalendarBodyHorizontalView: View {
   #endif
 
   private var layoutWidth: CGFloat {
-    Self.layoutWidth(containerWidth: containerWidth, minCalendarWidth: metrics.minCalendarWidth)
+    Self.layoutWidth(
+      containerWidth: containerWidth,
+      minCalendarWidth: metrics.minCalendarWidth
+    )
   }
 
   private var peekWidth: CGFloat {
@@ -80,7 +83,19 @@ struct CalendarBodyHorizontalView: View {
   }
 
   private var columns: [GridItem] {
-    CalendarGridLayout(containerWidth: pageWidth, metrics: metrics).columns
+    gridLayout.columns
+  }
+
+  private var gridWidth: CGFloat {
+    gridLayout.gridWidth
+  }
+
+  private var gridLayout: CalendarGridLayout {
+    CalendarGridLayout(
+      containerWidth: pageWidth,
+      metrics: metrics,
+      sizing: configuration.gridSizing
+    )
   }
 
   private var calendarHeight: CGFloat {
@@ -298,7 +313,7 @@ struct CalendarBodyHorizontalView: View {
             .frame(maxWidth: .infinity)
         }
       }
-      .frame(width: pageWidth)
+      .frame(width: gridWidth)
       .frame(maxWidth: .infinity)
       .accessibilityHidden(true)
 
@@ -316,7 +331,8 @@ struct CalendarBodyHorizontalView: View {
           displayMonth: previousMonth.month,
           displayYear: previousMonth.year,
           showWeekdayHeader: false,
-          hideOverflowDays: true
+          hideOverflowDays: true,
+          layoutWidth: pageWidth
         )
         .environment(viewModel)
         .environment(theme)
@@ -332,7 +348,8 @@ struct CalendarBodyHorizontalView: View {
           displayMonth: currentMonth.month,
           displayYear: currentMonth.year,
           showWeekdayHeader: false,
-          hideOverflowDays: true
+          hideOverflowDays: true,
+          layoutWidth: pageWidth
         )
         .environment(viewModel)
         .environment(theme)
@@ -348,7 +365,8 @@ struct CalendarBodyHorizontalView: View {
           displayMonth: nextMonth.month,
           displayYear: nextMonth.year,
           showWeekdayHeader: false,
-          hideOverflowDays: true
+          hideOverflowDays: true,
+          layoutWidth: pageWidth
         )
         .environment(viewModel)
         .environment(theme)
@@ -360,19 +378,18 @@ struct CalendarBodyHorizontalView: View {
         .offset(x: nextMonthBaseOffset + offset + dragOffset)
       }
       .environment(\.layoutDirection, .leftToRight)
-      // Centering (rather than offsetting) the pageWidth-sized carousel within the wider
-      // layoutWidth viewport reveals symmetric peek slivers of the parked months. An `.offset`
-      // here does not reliably survive the outer `.frame`, since SwiftUI is free to resolve the
-      // frame's alignment against the view's post-effect geometry.
-      .frame(width: layoutWidth, alignment: .center)
+      // The carousel fills whatever width the parent proposes. Month pages are centered within
+      // that space (via their individual `.frame(width: pageWidth)` + maxWidth centering).
+      // Using `.frame(maxWidth: .infinity)` instead of a fixed `.frame(width: layoutWidth)`
+      // prevents a stale `containerWidth` from producing an oversized frame during rotation.
+      .frame(maxWidth: .infinity, alignment: .center)
       .frame(minHeight: max(calendarHeight, measuredHeight), alignment: .top)
       .clipped()
-      .frame(maxWidth: .infinity, alignment: .top)
       .contentShape(Rectangle())
       .onPreferenceChange(HorizontalMonthHeightPreferenceKey.self) { heights in
         updateMeasuredHeight(heights.values.max() ?? 0)
       }
-      .gesture(
+      .simultaneousGesture(
         DragGesture()
           .onChanged { value in
             guard !isNavigating else {
@@ -410,9 +427,7 @@ struct CalendarBodyHorizontalView: View {
             }
           }
       )
-      .onGeometryChange(for: CGFloat.self) { geometry in
-        geometry.size.width
-      } action: { width in
+      .onGeometryChange(for: CGFloat.self) { geometry in geometry.size.width } action: { width in
         updateContainerWidth(width)
       }
     }

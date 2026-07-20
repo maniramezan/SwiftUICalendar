@@ -5,14 +5,42 @@ import Testing
 
 @Suite("CalendarMetrics Tests")
 struct CalendarMetricsTests {
-  @Test("grid layout centralizes width, cell size, and seven columns")
+  @Test("grid layout centralizes width, cell size, and seven fixed columns")
   func gridLayoutResolvesCalendarGeometry() {
     let metrics = CalendarMetrics.default
     let layout = CalendarGridLayout(containerWidth: 390, metrics: metrics)
 
     #expect(layout.width == 390)
     #expect(abs(layout.cellSize - (390 - metrics.itemSpacing * 6) / 7) < 0.0001)
+    #expect(layout.gridWidth == 390)
     #expect(layout.columns.count == 7)
+  }
+
+  @Test("wide grids retain compact cell spacing")
+  func wideGridRetainsCompactCellSpacing() {
+    let metrics = CalendarMetrics.default
+    let layout = CalendarGridLayout(containerWidth: 844, metrics: metrics)
+
+    #expect(layout.cellSize == metrics.maxCellSize)
+    #expect(abs(layout.gridWidth - ((metrics.maxCellSize * 7) + (metrics.itemSpacing * 6))) < 0.0001)
+  }
+
+  @Test("grid sizing selects compact or flexible width as configured")
+  func gridSizingResolvesWidthPolicy() {
+    let metrics = CalendarMetrics.default
+
+    #expect(
+      abs(
+        CalendarGridLayout(containerWidth: 844, metrics: metrics, sizing: .compact).gridWidth
+          - ((metrics.maxCellSize * 7) + (metrics.itemSpacing * 6))
+      ) < 0.0001
+    )
+    #expect(
+      CalendarGridLayout(containerWidth: 844, metrics: metrics, sizing: .flexible).gridWidth == 844
+    )
+    #expect(
+      CalendarGridLayout(containerWidth: 390, metrics: metrics, sizing: .adaptive).gridWidth == 390
+    )
   }
 
   @Test("grid layout falls back to the minimum calendar width and clamps cell size")
