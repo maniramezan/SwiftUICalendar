@@ -57,7 +57,8 @@ final class FixedCalendarRotationUITests: XCTestCase {
     XCTAssertGreaterThanOrEqual(
       todayFrame.minX, 0, "today's cell is cropped off the left edge after rotation")
     XCTAssertLessThanOrEqual(
-      todayFrame.maxX, windowFrame.width, "today's cell is cropped off the right edge after rotation")
+      todayFrame.maxX, windowFrame.width,
+      "today's cell is cropped off the right edge after rotation")
     XCTAssertGreaterThan(todayFrame.width, 20, "today's cell is a sliver, not a full cell")
   }
 }

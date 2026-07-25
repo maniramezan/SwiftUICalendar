@@ -15,12 +15,25 @@ public struct CalendarConfiguration: Equatable, Sendable {
   }
 
   /// Controls whether the calendar grid fills its container or retains its natural width.
+  ///
+  /// Day cells are always clamped between a minimum hit-target size and a maximum size. This
+  /// setting decides what happens to the leftover width in a container wider than seven
+  /// maximum-size cells, which is common on macOS windows, iPad, and landscape iPhone.
   public enum GridSizing: Equatable, Sendable {
     /// Centers the grid once day cells reach their maximum size; otherwise fills the available width.
+    ///
+    /// This is the default: narrow containers spread the grid edge to edge, and wide containers
+    /// stop stretching day spacing and center a natural-width grid instead.
     case adaptive
     /// Always keeps the grid at its natural day-cell width.
+    ///
+    /// The grid never stretches, so it stays visually identical across container widths and is
+    /// centered in anything wider than itself.
     case compact
     /// Always distributes the grid across the available width.
+    ///
+    /// Columns keep filling the container no matter how wide it gets, so day spacing grows with
+    /// the window while cell height stays capped.
     case flexible
   }
 
@@ -44,6 +57,7 @@ public struct CalendarConfiguration: Equatable, Sendable {
 
   public var scrollMode: ScrollMode
   public var horizontalHeightMode: HorizontalHeightMode
+  /// How the day grid resolves its width inside the available container.
   public var gridSizing: GridSizing
   public var showsHeader: Bool
   public var yearSelection: YearSelection

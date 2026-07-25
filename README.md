@@ -91,6 +91,27 @@ let configuration = CalendarConfiguration(
 CalendarView(model: calendar, theme: theme, configuration: configuration)
 ```
 
+## Grid Sizing
+
+Day cells are always clamped between a minimum hit-target size and a maximum size. `gridSizing`
+decides what happens to the leftover width when the container is wider than seven maximum-size
+cells — a macOS window, an iPad, or a landscape iPhone.
+
+```swift
+let configuration = CalendarConfiguration(gridSizing: .compact)
+
+CalendarView(model: calendar, configuration: configuration)
+```
+
+| Value | Behavior |
+| --- | --- |
+| `.adaptive` (default) | Fills the container while cells are below their maximum size, then centers a natural-width grid once they reach it. |
+| `.compact` | Never stretches. The grid keeps its natural width and is centered in anything wider. |
+| `.flexible` | Always fills the container, so day spacing grows with the window while cell height stays capped. |
+
+Use `.compact` when the calendar should look identical regardless of window size, and `.flexible`
+when it should track the full width of a resizable pane.
+
 ## Alternate Calendar Labels
 
 Use the square dual-calendar day view to show a secondary day number from another calendar system:

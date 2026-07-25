@@ -85,12 +85,14 @@ public struct CalendarView: View {
       #endif
       if configuration.showsHeader {
         CalendarHeaderControl()
-        .frame(height: 44)
+          .frame(height: 44)
       }
       calendarBodyContent
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .layoutPriority(1)
-        .onGeometryChange(for: Int.self) { Int($0.size.width / 100) } action: { newClass in
+        .onGeometryChange(for: Int.self) {
+          Int($0.size.width / 100)
+        } action: { newClass in
           widthClass = newClass
         }
         // Every calendar body mode (`.none`, `.vertical`, `.horizontal`) resolves its own day

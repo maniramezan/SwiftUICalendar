@@ -427,7 +427,9 @@ struct CalendarBodyHorizontalView: View {
             }
           }
       )
-      .onGeometryChange(for: CGFloat.self) { geometry in geometry.size.width } action: { width in
+      .onGeometryChange(for: CGFloat.self) { geometry in
+        geometry.size.width
+      } action: { width in
         updateContainerWidth(width)
       }
     }

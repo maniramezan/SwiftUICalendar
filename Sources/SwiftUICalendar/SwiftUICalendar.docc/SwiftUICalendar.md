@@ -53,7 +53,7 @@ struct BookingCalendar: View {
 
 ## Customize Layout
 
-`CalendarConfiguration` controls scrolling, header visibility, and year selection; `Theme` controls how days are rendered.
+`CalendarConfiguration` controls scrolling, grid sizing, header visibility, and year selection; `Theme` controls how days are rendered.
 
 ```swift
 let theme = Theme()
@@ -94,6 +94,7 @@ CalendarView(model: calendar, theme: theme)
 - ``CalendarConfiguration``
 - ``CalendarConfiguration/ScrollMode``
 - ``CalendarConfiguration/HorizontalHeightMode``
+- ``CalendarConfiguration/GridSizing``
 - ``CalendarConfiguration/YearSelection``
 - ``Theme/Day``
 - ``Theme/Day/SecondaryLabelMode``

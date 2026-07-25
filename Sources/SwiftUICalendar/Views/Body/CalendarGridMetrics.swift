@@ -18,14 +18,15 @@ struct CalendarGridLayout: Equatable {
       max(metrics.minCellSize, availableCellWidth / 7)
     )
     let naturalGridWidth = (cellSize * 7) + (metrics.itemSpacing * 6)
-    let usesCompactWidth = switch sizing {
-    case .compact:
-      true
-    case .flexible:
-      false
-    case .adaptive:
-      cellSize == metrics.maxCellSize
-    }
+    let usesCompactWidth =
+      switch sizing {
+      case .compact:
+        true
+      case .flexible:
+        false
+      case .adaptive:
+        cellSize == metrics.maxCellSize
+      }
     gridWidth = usesCompactWidth ? naturalGridWidth : width
     columns = Array(
       repeating: GridItem(

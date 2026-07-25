@@ -53,6 +53,26 @@ Use ``CalendarViewModel/Selection`` to decide how users select dates.
 )
 ```
 
+## Size the Grid for Wide Layouts
+
+Day cells are clamped between a minimum hit-target size and a maximum size, so a container wider
+than seven maximum-size cells has width left over. Use
+``CalendarConfiguration/GridSizing`` to decide where that width goes.
+
+```swift
+CalendarView(
+    model: calendar,
+    configuration: CalendarConfiguration(gridSizing: .compact)
+)
+```
+
+- ``CalendarConfiguration/GridSizing/adaptive`` fills the container until cells hit their maximum
+  size, then centers a natural-width grid. This is the default.
+- ``CalendarConfiguration/GridSizing/compact`` never stretches, so the calendar looks identical at
+  every window size.
+- ``CalendarConfiguration/GridSizing/flexible`` always fills the container, growing day spacing
+  with the window.
+
 ## Switch Calendars
 
 `Date` values are calendar independent, so existing selections survive a calendar-system switch.

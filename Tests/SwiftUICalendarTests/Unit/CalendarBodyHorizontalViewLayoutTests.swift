@@ -292,7 +292,9 @@ struct CalendarBodyHorizontalViewLayoutTests {
   }
 
   #if os(macOS)
-    @Test("horizontal calendar renders identically to a fresh portrait view after rotating from landscape")
+    @Test(
+      "horizontal calendar renders identically to a fresh portrait view after rotating from landscape"
+    )
     func horizontalCalendarMatchesFreshPortraitAfterRotation() throws {
       // Reference: a calendar created directly at the portrait size.
       let freshViewModel = CalendarViewModel.snapshot(selection: .single(nil))

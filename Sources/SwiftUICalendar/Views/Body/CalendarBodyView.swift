@@ -161,7 +161,9 @@ struct CalendarBodyView: View {
     .frame(height: calendarHeight, alignment: .top)
     // The containing frame keeps the grid centered when its configured sizing is compact.
     .frame(maxWidth: .infinity, alignment: .top)
-    .onGeometryChange(for: CGFloat.self) { geometry in geometry.size.width } action: { width in
+    .onGeometryChange(for: CGFloat.self) { geometry in
+      geometry.size.width
+    } action: { width in
       guard layoutWidth == nil, containerWidth != width else { return }
       containerWidth = width
     }

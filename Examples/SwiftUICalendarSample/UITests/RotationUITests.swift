@@ -33,7 +33,8 @@ final class RotationUITests: XCTestCase {
     XCTAssertEqual(rotatedBackFrame.width, portraitFrame.width, accuracy: 1)
     XCTAssertEqual(rotatedBackFrame.height, portraitFrame.height, accuracy: 1)
 
-    assertNoClippedContent(app, windowFrame: rotatedBackFrame, label: "after landscape->portrait rotation")
+    assertNoClippedContent(
+      app, windowFrame: rotatedBackFrame, label: "after landscape->portrait rotation")
   }
 
   /// Cold-launches the app already in landscape (rather than rotating from a running portrait
@@ -55,9 +56,12 @@ final class RotationUITests: XCTestCase {
     Thread.sleep(forTimeInterval: 2.5)
 
     let portraitFrame = app.windows.firstMatch.frame
-    XCTAssertGreaterThan(portraitFrame.height, portraitFrame.width, "expected a tall portrait window")
+    XCTAssertGreaterThan(
+      portraitFrame.height, portraitFrame.width, "expected a tall portrait window")
 
-    assertNoClippedContent(app, windowFrame: portraitFrame, label: "after launching in landscape then rotating to portrait")
+    assertNoClippedContent(
+      app, windowFrame: portraitFrame,
+      label: "after launching in landscape then rotating to portrait")
   }
 
   private func assertNoClippedContent(_ app: XCUIApplication, windowFrame: CGRect, label: String) {
@@ -85,7 +89,8 @@ final class RotationUITests: XCTestCase {
       NSPredicate(format: "label BEGINSWITH 'Jul'")
     )
     let dayCellCount = dayButtons.count
-    XCTAssertGreaterThanOrEqual(dayCellCount, 28, "expected at least 4 full weeks of day cells \(label)")
+    XCTAssertGreaterThanOrEqual(
+      dayCellCount, 28, "expected at least 4 full weeks of day cells \(label)")
 
     var clippedDays: [String] = []
     for index in 0..<dayCellCount {

@@ -22,7 +22,8 @@ struct CalendarMetricsTests {
     let layout = CalendarGridLayout(containerWidth: 844, metrics: metrics)
 
     #expect(layout.cellSize == metrics.maxCellSize)
-    #expect(abs(layout.gridWidth - ((metrics.maxCellSize * 7) + (metrics.itemSpacing * 6))) < 0.0001)
+    #expect(
+      abs(layout.gridWidth - ((metrics.maxCellSize * 7) + (metrics.itemSpacing * 6))) < 0.0001)
   }
 
   @Test("grid sizing selects compact or flexible width as configured")
