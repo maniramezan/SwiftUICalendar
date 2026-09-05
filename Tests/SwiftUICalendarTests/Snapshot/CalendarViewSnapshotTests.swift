@@ -4,7 +4,7 @@ import Testing
 @testable import SwiftUICalendar
 
 @MainActor
-@Suite("CalendarView Snapshot Tests")
+@Suite("CalendarView Snapshot Tests", .enabled(if: snapshotsEnabled))
 struct CalendarViewSnapshotTests {
 
   private let snapshotWidth: CGFloat = 390

@@ -32,7 +32,8 @@ final class FixedCalendarRotationUITests: XCTestCase {
     let dayButtons = app.buttons.matching(
       NSPredicate(
         format:
-          "label MATCHES '.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) [0-9]+, [0-9]+.*'")
+          "label MATCHES '.*(January|February|March|April|May|June|July|August|September|October|November|December) [0-9]+, [0-9]+.*'"
+      )
     )
     let dayCellCount = dayButtons.count
     XCTAssertGreaterThan(dayCellCount, 0, "no day cells found after rotation")

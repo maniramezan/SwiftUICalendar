@@ -1,15 +1,5 @@
 import Foundation
 
-public struct MonthIdentifier: Hashable, Sendable {
-  public let month: Int
-  public let year: Int
-
-  public init(month: Int, year: Int) {
-    self.month = month
-    self.year = year
-  }
-}
-
 struct MonthSnapshot: Identifiable, Equatable, Sendable {
   struct Day: Identifiable, Equatable, Sendable {
     let id: String

@@ -52,7 +52,7 @@ struct CalendarHeaderYearView: View {
     let range =
       lowerBound <= upperBound ? (lowerBound...upperBound) : (model.minYear...model.maxYear)
     return range.map {
-      YearItem(id: $0, title: NumberFormatter.formatYear($0, locale: model.locale))
+      YearItem(id: $0, title: model.yearTitle($0))
     }
   }
 
@@ -108,7 +108,7 @@ struct CalendarHeaderYearView: View {
             minYear: effectiveMinYear,
             maxYear: effectiveMaxYear,
             currentValue: selectedItemBinding,
-            formatTitle: { NumberFormatter.formatYear($0, locale: model.locale) }
+            formatTitle: { model.yearTitle($0) }
           )
         }
       }

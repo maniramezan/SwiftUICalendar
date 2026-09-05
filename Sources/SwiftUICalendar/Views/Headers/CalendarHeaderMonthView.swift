@@ -16,7 +16,9 @@ struct CalendarHeaderMonthView: View {
 
   static func monthItems(for model: CalendarViewModel) -> [MonthItem] {
     model.months(in: model.currentYear).map {
-      MonthItem(id: $0.month, title: model.monthSymbol(for: $0.month, year: $0.year))
+      MonthItem(
+        id: $0.month + ($0.identifier.isLeapMonth ? 100 : 0),
+        title: model.monthSymbol(for: $0.identifier), month: $0.identifier)
     }
   }
 
@@ -34,13 +36,15 @@ struct CalendarHeaderMonthView: View {
       selectedItem: Binding(
         get: {
           Self.selectedMonthItem(
-            currentMonth: model.currentMonth,
+            currentMonth: model.currentMonth + (model.visibleMonth.isLeapMonth ? 100 : 0),
             itemsById: monthItemsById,
             items: monthItems
           )
         },
         set: { newItem in
-          try? model.navigate(toMonth: newItem.id, year: model.currentYear)
+          if let month = newItem.month {
+            try? model.navigateInVisibleEra(toMonth: month)
+          }
         }
       ),
       onPrevious: {

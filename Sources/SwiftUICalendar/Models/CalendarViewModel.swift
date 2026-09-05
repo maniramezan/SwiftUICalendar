@@ -33,41 +33,27 @@ import SwiftUI
   /// let range = CalendarViewModel.Selection.range(startDate, endDate)
   /// let multiple = CalendarViewModel.Selection.multiple([firstDate, secondDate])
   /// ```
-  public enum Selection: Equatable {
-    /// A single selected date.
-    ///
-    /// Tapping the selected date again clears the selection.
-    case single(_ date: Date? = nil)
-    /// A contiguous range defined by start and end dates.
-    ///
-    /// The first tap sets the start. The second tap sets the end, automatically sorting the
-    /// two dates if the user taps an earlier date second.
-    case range(Date? = nil, Date? = nil)
-    /// Multiple discrete selected dates.
-    ///
-    /// Tapping an already selected day removes that date from the set.
-    case multiple(Set<Date> = [])
-  }
+  public typealias Selection = CalendarSelection
 
   struct MonthMetadata: Equatable {
-    let month: Int
-    let year: Int
+    let identifier: MonthIdentifier
     let numberOfDays: Int
+    var month: Int { identifier.month }
+    var year: Int { identifier.year }
   }
 
   // MARK: - Properties
 
-  private static let minYear = 1900
-  private static let maxYear = 2100
-
-  /// The earliest year (in the active calendar system) the calendar can navigate to.
+  /// The earliest supported year in the visible era. Relative navigation can cross eras.
   public private(set) var minYear: Int
-  /// The latest year (in the active calendar system) the calendar can navigate to.
+  /// The latest supported year in the visible era.
   public private(set) var maxYear: Int
 
   private let gregorianCalendar = Calendar(identifier: .gregorian)
 
   private let logger = Logger.swiftUICalendar(for: CalendarViewModel.self)
+
+  var engine: CalendarEngine { CalendarEngine(calendar: calendar) }
 
   private var calendar: Calendar {
     didSet {
@@ -96,7 +82,7 @@ import SwiftUI
   }
 
   var startOfMonthDay: Int {
-    (try? calendar.startOfMonthDay(for: currentDate)) ?? 1
+    engine.start(of: visibleMonth).map { calendar.component(.weekday, from: $0) } ?? 1
   }
 
   var layoutDirection: LayoutDirection {
@@ -114,11 +100,11 @@ import SwiftUI
   }
 
   var numberOfDaysInMonth: Int {
-    (try? calendar.numberOfDays(for: currentDate)) ?? 30
+    calendar.range(of: .day, in: .month, for: currentDate)?.count ?? 30
   }
 
   var currentMonthName: String {
-    monthSymbol(for: currentMonth, year: currentYear)
+    monthSymbol(for: visibleMonth)
   }
 
   public internal(set) var currentYear: Int {
@@ -126,13 +112,7 @@ import SwiftUI
       calendar.year(from: currentDate)
     }
     set {
-      guard (minYear...maxYear).contains(newValue),
-        let updatedDate = try? calendar.updateYear(newValue, for: currentDate),
-        isWithinSupportedYear(updatedDate)
-      else {
-        return
-      }
-      currentDate = updatedDate
+      try? navigate(toYear: newValue)
     }
   }
 
@@ -141,17 +121,7 @@ import SwiftUI
       calendar.month(from: currentDate)
     }
     set {
-      guard months(in: currentYear).contains(where: { $0.month == newValue }),
-        let updatedDate = resolvedDate(
-          year: currentYear,
-          month: newValue,
-          preferredDay: calendar.day(from: currentDate)
-        ),
-        isWithinSupportedYear(updatedDate)
-      else {
-        return
-      }
-      currentDate = updatedDate
+      try? navigate(toMonth: newValue, year: currentYear)
     }
   }
 
@@ -159,33 +129,10 @@ import SwiftUI
     calendar.monthSymbols
   }
 
-  var canNavigateToPreviousMonth: Bool {
-    guard let updatedDate = date(byAddingMonths: -1, to: currentDate) else {
-      return false
-    }
-    return isWithinSupportedYear(updatedDate)
-  }
-
-  var canNavigateToNextMonth: Bool {
-    guard let updatedDate = date(byAddingMonths: 1, to: currentDate) else {
-      return false
-    }
-    return isWithinSupportedYear(updatedDate)
-  }
-
-  var canNavigateToPreviousYear: Bool {
-    guard let updatedDate = try? calendar.previousYear(for: currentDate) else {
-      return false
-    }
-    return isWithinSupportedYear(updatedDate)
-  }
-
-  var canNavigateToNextYear: Bool {
-    guard let updatedDate = try? calendar.nextYear(for: currentDate) else {
-      return false
-    }
-    return isWithinSupportedYear(updatedDate)
-  }
+  var canNavigateToPreviousMonth: Bool { monthIdentifier(offset: -1) != nil }
+  var canNavigateToNextMonth: Bool { monthIdentifier(offset: 1) != nil }
+  var canNavigateToPreviousYear: Bool { relativeYearDate(-1) != nil }
+  var canNavigateToNextYear: Bool { relativeYearDate(1) != nil }
 
   /// Current selection state for the calendar.
   ///
@@ -197,17 +144,15 @@ import SwiftUI
   /// ```
   public var selection: Selection {
     get { storedSelection }
-    set { storedSelection = normalizedSelection(newValue) }
+    set { storedSelection = newValue.normalized(in: calendar) }
   }
 
   private var storedSelection: Selection
 
   /// The date representing the currently visible month.
   ///
-  /// The day component is preserved when possible during navigation. Assigning an in-range date
-  /// moves the calendar to that date's month in the active calendar system. Dates outside the
-  /// supported range (January 1, 1900 through December 31, 2100 in the Gregorian calendar) are
-  /// ignored.
+  /// Use `try calendar.navigate(to: date)` to change the visible month. The supported interval
+  /// is January 1, 1900 through December 31, 2100 in the Gregorian calendar.
   public internal(set) var currentDate: Date {
     get { storedCurrentDate }
     set {
@@ -221,7 +166,7 @@ import SwiftUI
 
   /// Stable calendar components for the currently visible month.
   public var visibleMonth: MonthIdentifier {
-    MonthIdentifier(month: currentMonth, year: currentYear)
+    engine.month(containing: currentDate)
   }
 
   /// Moves the calendar to an absolute date within its supported range.
@@ -233,35 +178,61 @@ import SwiftUI
     storedCurrentDate = date
   }
 
-  /// Moves the calendar to a month while preserving the current day when possible.
+  /// Moves to a regular month in the current era, preserving the day when possible.
+  /// Use `navigate(toMonth:)` with a complete identifier for leap months or another era.
   public func navigate(toMonth month: Int, year: Int) throws {
-    guard months(in: year).contains(where: { $0.month == month }),
-      let date = resolvedDate(
-        year: year,
-        month: month,
-        preferredDay: calendar.day(from: currentDate)
-      ),
-      isWithinSupportedYear(date)
+    guard
+      let identifier = months(in: year).first(where: {
+        $0.month == month && $0.identifier.isLeapMonth == false
+      })?.identifier
     else {
-      logger.error("Cannot navigate to requested calendar month")
       throw Calendar.CalendarError.cannotCalculateDate
     }
-    storedCurrentDate = date
+    try navigateInVisibleEra(toMonth: identifier)
   }
 
-  /// Moves the calendar to a year while preserving the current month and day when possible.
+  /// Moves to an unambiguous month, including leap months and historical eras.
+  public func navigate(toMonth month: MonthIdentifier) throws {
+    guard
+      let date = engine.navigationDate(
+        in: month, preferredDay: calendar.component(.day, from: currentDate))
+    else {
+      throw Calendar.CalendarError.cannotCalculateDate
+    }
+    try navigate(to: date)
+  }
+
+  /// Moves to a year in the currently visible era. Boundary years clamp to a supported date.
   public func navigate(toYear year: Int) throws {
+    let months = engine.months(in: year, relativeTo: currentDate)
     guard (minYear...maxYear).contains(year),
-      let date = try? calendar.updateYear(year, for: currentDate),
-      isWithinSupportedYear(date)
-    else {
-      logger.error("Cannot navigate to requested calendar year")
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
-    storedCurrentDate = date
+      let month = months.first(where: {
+        $0.month == currentMonth && $0.isLeapMonth == visibleMonth.isLeapMonth
+      })
+        ?? months.first(where: { $0.month == currentMonth })
+        ?? months.last(where: { $0.month < currentMonth }) ?? months.first
+    else { throw Calendar.CalendarError.cannotCalculateDate }
+    try navigateInVisibleEra(toMonth: month)
   }
 
-  private var storedCurrentDate: Date
+  func navigateInVisibleEra(toMonth month: MonthIdentifier) throws {
+    guard
+      let date = engine.navigationDate(
+        in: month, preferredDay: calendar.component(.day, from: currentDate)),
+      let monthInterval = engine.interval(of: month)
+    else {
+      throw Calendar.CalendarError.cannotCalculateDate
+    }
+    let era = calendar.dateInterval(of: .era, for: currentDate)
+    let start = max(monthInterval.start, era?.start ?? monthInterval.start)
+    let end = min(monthInterval.end, era?.end ?? monthInterval.end)
+    guard start < end else { throw Calendar.CalendarError.cannotCalculateDate }
+    try navigate(to: min(max(date, start), end.addingTimeInterval(-1)))
+  }
+
+  private var storedCurrentDate: Date {
+    didSet { updateYearBoundaries(including: storedCurrentDate) }
+  }
 
   /// Creates a view model for a given calendar system and selection mode.
   ///
@@ -292,32 +263,20 @@ import SwiftUI
   private init(calendar: Calendar, currentDate: Date, selection: Selection, locale: Locale) {
     var calendar = calendar
     calendar.locale = locale
-    self.minYear = Self.minYear
-    self.maxYear = Self.maxYear
+    let bounds = CalendarEngine(calendar: calendar).yearBounds(containing: currentDate)
+    self.minYear = bounds.lowerBound
+    self.maxYear = bounds.upperBound
     self.calendar = calendar
     self.storedCurrentDate = currentDate
-    self.storedSelection = Self.normalizedSelection(selection, calendar: calendar)
+    self.storedSelection = selection.normalized(in: calendar)
 
     updateYearBoundaries(including: currentDate)
   }
 
   private func updateYearBoundaries(including currentDate: Date? = nil) {
-    guard let minYear = try? convertGregorianYearToCurrentCalendar(Self.minYear) else {
-      return
-    }
-
-    guard let maxYear = try? convertGregorianYearToCurrentCalendar(Self.maxYear) else {
-      return
-    }
-
-    if let currentDate {
-      let currentYear = calendar.year(from: currentDate)
-      self.minYear = min(minYear, currentYear)
-      self.maxYear = max(maxYear, currentYear)
-    } else {
-      self.minYear = minYear
-      self.maxYear = maxYear
-    }
+    let bounds = engine.yearBounds(containing: currentDate ?? self.currentDate)
+    minYear = bounds.lowerBound
+    maxYear = bounds.upperBound
   }
 
   func convertGregorianYearToCurrentCalendar(_ year: Int) throws -> Int {
@@ -357,54 +316,49 @@ import SwiftUI
 
   /// Moves the calendar by a relative number of months, preserving the day when possible.
   ///
-  /// Throws ``Foundation/Calendar/CalendarError/cannotCalculateDate`` when the offset cannot be
+  /// Throws `Calendar.CalendarError.cannotCalculateDate` when the offset cannot be
   /// computed or the target month falls outside the supported navigation range.
   public func updateMonth(byAdding months: Int) throws {
-    guard let updatedDate = date(byAddingMonths: months, to: currentDate) else {
-      logger.error("Cannot calculate requested month offset")
+    guard months != 0 else { return }
+    guard let month = monthIdentifier(offset: months) else {
       throw Calendar.CalendarError.cannotCalculateDate
     }
-
-    try navigate(to: updatedDate)
+    try navigate(toMonth: month)
   }
 
   func updateMonthToPreviousMonth() throws {
     try updateMonth(byAdding: -1)
   }
 
-  func updateYearToNextYear() throws {
-    let updatedDate = try calendar.nextYear(for: currentDate)
-    guard isWithinSupportedYear(updatedDate) else {
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
+  private func relativeYearDate(_ offset: Int) -> Date? {
+    guard let date = calendar.date(byAdding: .year, value: offset, to: currentDate),
+      let interval = calendar.dateInterval(of: .year, for: date),
+      engine.intersectsSupportedDates(interval)
+    else { return nil }
+    return min(
+      max(date, engine.supportedDates.lowerBound),
+      engine.supportedDates.upperBound.addingTimeInterval(-1))
+  }
 
-    currentDate = updatedDate
+  func updateYearToNextYear() throws {
+    guard let date = relativeYearDate(1) else { throw Calendar.CalendarError.cannotCalculateDate }
+    try navigate(to: date)
   }
 
   func updateYearToPreviousYear() throws {
-    let updatedDate = try calendar.previousYear(for: currentDate)
-    guard isWithinSupportedYear(updatedDate) else {
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
+    guard let date = relativeYearDate(-1) else { throw Calendar.CalendarError.cannotCalculateDate }
+    try navigate(to: date)
+  }
 
-    currentDate = updatedDate
+  private func metadata(for date: Date) -> MonthMetadata {
+    let identifier = engine.month(containing: date)
+    return MonthMetadata(
+      identifier: identifier,
+      numberOfDays: calendar.range(of: .day, in: .month, for: date)?.count ?? 0)
   }
 
   func monthMetadata(offset: Int) -> MonthMetadata? {
-    if offset == 0 {
-      return MonthMetadata(
-        month: currentMonth,
-        year: currentYear,
-        numberOfDays: numberOfDaysInMonth
-      )
-    }
-    guard let targetDate = date(byAddingMonths: offset, to: currentDate) else {
-      return nil
-    }
-    let month = calendar.month(from: targetDate)
-    let year = calendar.year(from: targetDate)
-    let numberOfDays = (try? calendar.numberOfDays(for: targetDate)) ?? numberOfDaysInMonth
-    return MonthMetadata(month: month, year: year, numberOfDays: numberOfDays)
+    calendar.date(byAdding: .month, value: offset, to: currentDate).map(metadata(for:))
   }
 
   func monthMetadata(month: Int, year: Int) -> MonthMetadata? {
@@ -412,170 +366,70 @@ import SwiftUI
   }
 
   func monthMetadata(month: Int, year: Int, offset: Int) -> MonthMetadata? {
-    guard let date = firstDate(month: month, year: year),
-      let targetDate = self.date(byAddingMonths: offset, to: date)
-    else {
-      return nil
-    }
-
-    let targetMonth = calendar.month(from: targetDate)
-    let targetYear = calendar.year(from: targetDate)
-    let numberOfDays = (try? calendar.numberOfDays(for: targetDate)) ?? numberOfDaysInMonth
-    return MonthMetadata(month: targetMonth, year: targetYear, numberOfDays: numberOfDays)
+    guard let start = firstDate(month: month, year: year),
+      let date = calendar.date(byAdding: .month, value: offset, to: start)
+    else { return nil }
+    return metadata(for: date)
   }
 
   func months(in year: Int) -> [MonthMetadata] {
-    guard let startDate = firstDate(month: 1, year: year) else {
-      return []
+    engine.months(in: year, relativeTo: currentDate).compactMap { identifier in
+      engine.start(of: identifier).map(metadata(for:))
     }
-
-    var months: [MonthMetadata] = []
-    var visitedMonths = Set<Int>()
-    var date = startDate
-
-    while calendar.year(from: date) == year {
-      let month = calendar.month(from: date)
-      if visitedMonths.insert(month).inserted {
-        let numberOfDays = (try? calendar.numberOfDays(for: date)) ?? 0
-        months.append(MonthMetadata(month: month, year: year, numberOfDays: numberOfDays))
-      }
-
-      guard let nextDate = calendar.date(byAdding: .month, value: 1, to: date) else {
-        break
-      }
-      date = nextDate
-    }
-
-    return months
   }
 
-  /// Returns the absolute date for a day in the currently displayed month, or `nil` if the
-  /// components cannot be resolved in the active calendar.
   func date(for day: Int) -> Date? {
-    guard
-      let date = calendar.date(
-        from: DateComponents(year: currentYear, month: currentMonth, day: day))
-    else {
-      logger.error("Cannot create date from components for day: \(day)")
-      return nil
-    }
-    return date
+    engine.date(day: day, in: visibleMonth)
   }
 
-  /// Returns the absolute date for a day/month/year in the active calendar, or `nil` if the
-  /// components cannot be resolved.
-  ///
-  /// Returns `nil` rather than a placeholder so callers never mistake a failed calculation for a
-  /// real (and possibly "today"/"selected") date.
   func date(for day: Int, month: Int, year: Int) -> Date? {
-    guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) else {
-      logger.error(
-        "Cannot create date from components for day: \(day) month: \(month) year: \(year)")
-      return nil
-    }
-    return date
+    engine.date(day: day, in: componentMonth(month: month, year: year))
+  }
+
+  func componentMonth(month: Int, year: Int) -> MonthIdentifier {
+    if month == visibleMonth.month && year == visibleMonth.year { return visibleMonth }
+    return MonthIdentifier(
+      month: month, year: year, calendarIdentifier: calendar.identifier,
+      era: calendar.component(.era, from: currentDate))
   }
 
   func startOfMonthDay(month: Int, year: Int) -> Int {
-    guard let date = firstDate(month: month, year: year) else {
-      return 1
-    }
-    return (try? calendar.startOfMonthDay(for: date)) ?? 1
+    firstDate(month: month, year: year).map { calendar.component(.weekday, from: $0) } ?? 1
   }
 
   func numberOfDaysInMonth(month: Int, year: Int) -> Int {
-    guard let date = firstDate(month: month, year: year) else {
-      return numberOfDaysInMonth
-    }
-    return (try? calendar.numberOfDays(for: date)) ?? numberOfDaysInMonth
+    guard let date = firstDate(month: month, year: year) else { return numberOfDaysInMonth }
+    return calendar.range(of: .day, in: .month, for: date)?.count ?? numberOfDaysInMonth
   }
 
   func rowCount(month: Int, year: Int) -> Int {
-    let leadingEmptyDaysCount = max(startOfMonthDay(month: month, year: year) - 1, 0)
-    let totalDaysToRender = leadingEmptyDaysCount + numberOfDaysInMonth(month: month, year: year)
-    let remainder = totalDaysToRender % 7
-    let trailingEmptyDaysCount = remainder == 0 ? 0 : 7 - remainder
-    return max(1, (totalDaysToRender + trailingEmptyDaysCount) / 7)
+    monthSnapshot(for: componentMonth(month: month, year: year))?.rowCount ?? 1
   }
 
-  /// Resolves the month `offset` months away from `identifier` (or the visible month when
-  /// `identifier` is `nil`). Returns `nil` when the target month cannot be computed or falls
-  /// outside the supported navigation range, so callers never present a month the model would
-  /// refuse to navigate to.
-  func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil)
-    -> MonthIdentifier?
+  func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil) -> MonthIdentifier?
   {
-    let sourceDate: Date
-    if let identifier {
-      guard let date = firstDate(month: identifier.month, year: identifier.year) else { return nil }
-      sourceDate = date
-    } else {
-      sourceDate = currentDate
-    }
-
-    guard let targetDate = date(byAddingMonths: offset, to: sourceDate),
-      isWithinSupportedYear(targetDate)
-    else { return nil }
-    return MonthIdentifier(
-      month: calendar.month(from: targetDate),
-      year: calendar.year(from: targetDate)
-    )
+    engine.month(offset: offset, from: identifier ?? visibleMonth)
   }
 
   func monthSnapshot(for identifier: MonthIdentifier) -> MonthSnapshot? {
-    guard
-      let metadata = monthMetadata(month: identifier.month, year: identifier.year),
-      let previous = monthMetadata(month: identifier.month, year: identifier.year, offset: -1),
-      let next = monthMetadata(month: identifier.month, year: identifier.year, offset: 1)
+    guard let start = engine.start(of: identifier),
+      let count = calendar.range(of: .day, in: .month, for: start)?.count
     else { return nil }
-
-    let leadingCount = max(startOfMonthDay(month: identifier.month, year: identifier.year) - 1, 0)
-    let currentCount = metadata.numberOfDays
-    let populatedCount = leadingCount + currentCount
-    let remainder = populatedCount % 7
-    let trailingCount = remainder == 0 ? 0 : 7 - remainder
-    var days: [MonthSnapshot.Day] = []
-    days.reserveCapacity(populatedCount + trailingCount)
-
-    if leadingCount > 0 {
-      for index in 0..<leadingCount {
-        let day = previous.numberOfDays - leadingCount + index + 1
-        days.append(
-          snapshotDay(day: day, month: previous.month, year: previous.year, isCurrent: false))
+    let leading = calendar.component(.weekday, from: start) - 1
+    let total = ((leading + count + 6) / 7) * 7
+    let days = (0..<total).compactMap { index -> MonthSnapshot.Day? in
+      guard let date = calendar.date(byAdding: .day, value: index - leading, to: start) else {
+        return nil
       }
+      let day = calendar.component(.day, from: date)
+      return MonthSnapshot.Day(
+        id: "day-\(date.timeIntervalSinceReferenceDate)", date: date, day: day,
+        dayLabel: NumberFormatter.formatDay(day, locale: locale),
+        month: calendar.component(.month, from: date), year: calendar.component(.year, from: date),
+        isInDisplayedMonth: index >= leading && index < leading + count,
+        isToday: calendar.isDateInToday(date), isSelected: isSelected(date: date))
     }
-    for day in 1...currentCount {
-      days.append(
-        snapshotDay(day: day, month: identifier.month, year: identifier.year, isCurrent: true))
-    }
-    if trailingCount > 0 {
-      for day in 1...trailingCount {
-        days.append(snapshotDay(day: day, month: next.month, year: next.year, isCurrent: false))
-      }
-    }
-
-    return MonthSnapshot(
-      id: identifier,
-      title: monthSymbol(for: identifier.month, year: identifier.year),
-      days: days
-    )
-  }
-
-  private func snapshotDay(day: Int, month: Int, year: Int, isCurrent: Bool)
-    -> MonthSnapshot.Day
-  {
-    let date = date(for: day, month: month, year: year)
-    return MonthSnapshot.Day(
-      id: "day-\(year)-\(month)-\(day)",
-      date: date,
-      day: day,
-      dayLabel: NumberFormatter.formatDay(day, locale: locale),
-      month: month,
-      year: year,
-      isInDisplayedMonth: isCurrent,
-      isToday: date.map { calendar.isDateInToday($0) } ?? false,
-      isSelected: date.map(isSelected(date:)) ?? false
-    )
+    return MonthSnapshot(id: identifier, title: monthSymbol(for: identifier), days: days)
   }
 
   func monthSymbol(for month: Int) -> String {
@@ -583,42 +437,42 @@ import SwiftUI
   }
 
   func monthSymbol(for month: Int, year: Int) -> String {
-    guard let date = firstDate(month: month, year: year) else {
-      return ""
-    }
+    monthSymbol(for: componentMonth(month: month, year: year))
+  }
 
-    return calendar.monthSymbol(for: date)
+  func monthSymbol(for identifier: MonthIdentifier) -> String {
+    guard let date = engine.start(of: identifier) else { return "" }
+    let formatter = DateFormatter()
+    formatter.calendar = calendar
+    formatter.locale = locale
+    formatter.timeZone = calendar.timeZone
+    formatter.dateFormat = "LLLL"
+    return formatter.string(from: date)
+  }
+
+  func yearTitle(_ year: Int) -> String {
+    let number = NumberFormatter.formatYear(year, locale: locale)
+    guard calendar.identifier == .japanese || calendar.identifier == .chinese else { return number }
+    let formatter = DateFormatter()
+    formatter.calendar = calendar
+    formatter.locale = locale
+    formatter.timeZone = calendar.timeZone
+    formatter.dateFormat = "G"
+    return "\(formatter.string(from: currentDate)) \(number)"
   }
 
   func firstDate(month: Int, year: Int) -> Date? {
-    calendar.date(from: DateComponents(year: year, month: month, day: 1))
+    engine.start(of: componentMonth(month: month, year: year))
   }
 
-  private func resolvedDate(year: Int, month: Int, preferredDay: Int) -> Date? {
-    guard let startOfMonth = firstDate(month: month, year: year) else {
-      return nil
-    }
-
-    let numberOfDays = (try? calendar.numberOfDays(for: startOfMonth)) ?? 1
-    let clampedDay = min(max(preferredDay, 1), numberOfDays)
-    return calendar.date(from: DateComponents(year: year, month: month, day: clampedDay))
-  }
-
-  private func date(byAddingMonths months: Int, to date: Date) -> Date? {
-    calendar.date(byAdding: .month, value: months, to: date)
-  }
-
-  private func isWithinSupportedYear(_ date: Date) -> Bool {
-    let year = gregorianCalendar.component(.year, from: date)
-    return (Self.minYear...Self.maxYear).contains(year)
-  }
+  private func isWithinSupportedYear(_ date: Date) -> Bool { engine.contains(date) }
 
   func isToday(_ day: Int) -> Bool {
-    calendar.isToday(day: day, month: currentMonth, year: currentYear)
+    date(for: day).map(calendar.isDateInToday) ?? false
   }
 
   func isToday(day: Int, month: Int, year: Int) -> Bool {
-    calendar.isToday(day: day, month: month, year: year)
+    date(for: day, month: month, year: year).map(calendar.isDateInToday) ?? false
   }
 
   func isSelected(_ day: Int) -> Bool {
@@ -627,68 +481,11 @@ import SwiftUI
   }
 
   func isSelected(date: Date) -> Bool {
-    let normalized = normalizedDate(date)
-    switch selection {
-    case .single(let selectedDate):
-      guard let selectedDate else { return false }
-      return isSameDay(selectedDate, normalized)
-    case .range(let start, let end):
-      if let start, let end {
-        let normalizedStart = normalizedDate(start)
-        let normalizedEnd = normalizedDate(end)
-        return normalized >= normalizedStart && normalized <= normalizedEnd
-      } else if let start {
-        return isSameDay(start, normalized)
-      } else {
-        return false
-      }
-    case .multiple(let dates):
-      return dates.contains { stored in
-        isSameDay(stored, normalized)
-      }
-    }
+    selection.contains(date, in: calendar)
   }
 
   func select(_ date: Date) {
-    let normalized = normalizedDate(date)
-    switch selection {
-    case .single(let selectedDate):
-      // Toggle: deselect if tapping the already selected date
-      if let selectedDate, isSameDay(selectedDate, normalized) {
-        selection = .single(nil)
-      } else {
-        selection = .single(normalized)
-      }
-
-    case .range(let start, let end):
-      // Keep existing behavior, plus a small toggle:
-      // If only start is set and user taps it again, clear it.
-      if end == nil, let start, isSameDay(start, normalized) {
-        selection = .range(nil, nil)
-        return
-      }
-
-      if start == nil {
-        selection = .range(normalized, nil)
-      } else if end == nil, let start {
-        let normalizedStart = normalizedDate(start)
-        if normalized >= normalizedStart {
-          selection = .range(normalizedStart, normalized)
-        } else {
-          selection = .range(normalized, normalizedStart)
-        }
-      } else {
-        selection = .range(normalized, nil)
-      }
-
-    case .multiple(var dates):
-      if let existing = dates.first(where: { isSameDay($0, normalized) }) {
-        dates.remove(existing)
-      } else {
-        dates.insert(normalized)
-      }
-      selection = .multiple(dates)
-    }
+    selection = selection.selecting(date, in: calendar)
   }
 
   // MARK: - Today navigation
@@ -699,43 +496,6 @@ import SwiftUI
 
     if case .single = selection {
       selection = .single(calendar.startOfDay(for: today))
-    }
-  }
-
-  private func normalizedDate(_ date: Date) -> Date {
-    calendar.startOfDay(for: date)
-  }
-
-  private func isSameDay(_ lhs: Date, _ rhs: Date) -> Bool {
-    calendar.isDate(lhs, inSameDayAs: rhs)
-  }
-
-  private func normalizedSelection(_ selection: Selection) -> Selection {
-    Self.normalizedSelection(selection, calendar: calendar)
-  }
-
-  private static func normalizedSelection(_ selection: Selection, calendar: Calendar) -> Selection {
-    switch selection {
-    case .single(let date):
-      return .single(date.map(calendar.startOfDay(for:)))
-    case .range(let start, let end):
-      let normalizedStart = start.map(calendar.startOfDay(for:))
-      let normalizedEnd = end.map(calendar.startOfDay(for:))
-      guard let normalizedStart, let normalizedEnd else {
-        return .range(normalizedStart, normalizedEnd)
-      }
-      return normalizedStart <= normalizedEnd
-        ? .range(normalizedStart, normalizedEnd)
-        : .range(normalizedEnd, normalizedStart)
-    case .multiple(let dates):
-      var normalizedDates = Set<Date>()
-      for date in dates {
-        let normalizedDate = calendar.startOfDay(for: date)
-        if !normalizedDates.contains(where: { calendar.isDate($0, inSameDayAs: normalizedDate) }) {
-          normalizedDates.insert(normalizedDate)
-        }
-      }
-      return .multiple(normalizedDates)
     }
   }
 

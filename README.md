@@ -27,7 +27,7 @@ These images are generated from the package snapshot references for the actual `
 Add SwiftUICalendar with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "1.0.0")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "0.1.0")
 ```
 
 Then add the product to your target:
@@ -148,7 +148,7 @@ The generated static documentation is written to `.build/docs`. CI validates Doc
 
 ## Versioning
 
-SwiftUICalendar follows semantic versioning for tagged releases, starting at `1.0.0`. Source-breaking API changes only ship in major versions.
+SwiftUICalendar follows semantic versioning for tagged releases, starting at `0.1.0`. During 0.x, source-breaking changes may ship in minor releases; patch releases preserve source compatibility.
 
 ## Development
 
@@ -159,6 +159,10 @@ swift test
 MINIMUM_COVERAGE=80 bash ./scripts/check-coverage.sh
 bash ./scripts/build-docs.sh
 ```
+
+`swift test` compares image snapshots by default. On machines used only for logic work,
+`SNAPSHOT_ASSERTIONS=false swift test` explicitly skips snapshot suites. Release and PR checks
+must run with assertions enabled. Use the same macOS and Xcode versions as CI when recording.
 
 Snapshot references live in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__`. When recording snapshots, set `globalRecordMode = .all`, run the snapshot tests, then revert to `.missing` before committing.
 

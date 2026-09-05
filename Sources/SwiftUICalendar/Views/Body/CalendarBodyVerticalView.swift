@@ -36,7 +36,7 @@ struct CalendarBodyVerticalView: View {
       upperOffset: upperOffset,
       resolve: { offset in viewModel.monthIdentifier(offset: offset, from: anchor) },
       title: { identifier in
-        viewModel.monthSymbol(for: identifier.month, year: identifier.year)
+        viewModel.monthSymbol(for: identifier)
       }
     )
   }
@@ -68,6 +68,9 @@ struct CalendarBodyVerticalView: View {
     .onChange(of: viewModel.currentDate) { _, _ in
       synchronizeExternalNavigation()
     }
+    .onChange(of: viewModel.calendarSignature) { _, _ in
+      resetWindow()
+    }
     .onChange(of: scrollPosition) { _, position in
       guard let position else { return }
       // Fallback arm for input methods whose scroll phases are not reported. Programmatic
@@ -79,7 +82,7 @@ struct CalendarBodyVerticalView: View {
       expandWindowIfNeeded(around: position)
       guard
         position != currentMonthIdentifier,
-        let date = viewModel.firstDate(month: position.month, year: position.year)
+        let date = viewModel.engine.navigationDate(in: position, preferredDay: 1)
       else { return }
       try? viewModel.navigate(to: date)
     }
@@ -135,6 +138,11 @@ struct CalendarBodyVerticalView: View {
     guard target != scrollPosition else { return }
     // Regenerate the window with the target first — see the state declarations for why the
     // anchor must start the window instead of being scrolled to.
+    resetWindow()
+  }
+
+  private func resetWindow() {
+    let target = currentMonthIdentifier
     anchor = target
     lowerOffset = 0
     upperOffset = Self.initialRadius
@@ -198,8 +206,7 @@ private struct VerticalMonthView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       CalendarBodyView(
-        displayMonth: item.id.month,
-        displayYear: item.id.year,
+        monthIdentifier: item.id,
         hideOverflowDays: true,
         navigatesOnOverflowTap: false
       )

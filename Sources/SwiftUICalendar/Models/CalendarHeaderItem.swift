@@ -7,6 +7,7 @@ protocol CalendarHeaderItem: MenuPickerItem, Hashable, Identifiable where ID == 
 struct MonthItem: CalendarHeaderItem {
   let id: Int
   let title: String
+  var month: MonthIdentifier? = nil
 }
 
 struct YearItem: CalendarHeaderItem {

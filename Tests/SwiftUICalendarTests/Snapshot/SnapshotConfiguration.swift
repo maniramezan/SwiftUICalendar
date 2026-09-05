@@ -15,13 +15,8 @@ let globalRecordMode: SnapshotTestingConfiguration.Record = {
   return .missing
 }()
 
-private var shouldAssertSnapshots: Bool {
-  ProcessInfo.processInfo.environment["SNAPSHOT_ASSERTIONS"] == "true"
-}
-
-private var shouldRenderSnapshots: Bool {
-  shouldAssertSnapshots || ProcessInfo.processInfo.environment["SNAPSHOT_RENDERING"] == "true"
-}
+// Explicit opt-out is represented as skipped suites, never successful no-op assertions.
+let snapshotsEnabled = ProcessInfo.processInfo.environment["SNAPSHOT_ASSERTIONS"] != "false"
 
 // MARK: - CalendarViewModel snapshot factory
 
@@ -53,32 +48,6 @@ func assertCalendarSnapshot<V: View>(
   testName: String = #function,
   line: UInt = #line
 ) {
-  guard shouldRenderSnapshots else {
-    return
-  }
-
-  guard shouldAssertSnapshots else {
-    #if os(macOS)
-      let targetHeight = height ?? 460
-      let size = CGSize(width: width, height: targetHeight)
-      let hosting = NSHostingView(rootView: view.frame(width: width, height: targetHeight))
-      hosting.frame = CGRect(origin: .zero, size: size)
-      let window = NSWindow(
-        contentRect: CGRect(origin: .zero, size: size),
-        styleMask: [],
-        backing: .buffered,
-        defer: false
-      )
-      window.contentView = hosting
-      window.layoutIfNeeded()
-      hosting.layoutSubtreeIfNeeded()
-      hosting.displayIfNeeded()
-    #else
-      _ = view.frame(width: width, height: height ?? 460)
-    #endif
-    return
-  }
-
   withSnapshotTesting(record: globalRecordMode) {
     #if os(iOS) || os(tvOS)
       let layout: SwiftUISnapshotLayout = {
@@ -98,11 +67,13 @@ func assertCalendarSnapshot<V: View>(
     #elseif os(macOS)
       let targetHeight = height ?? 460
       let size = CGSize(width: width, height: targetHeight)
-      let hosting = NSHostingView(rootView: view.frame(width: width))
+      let hosting = NSHostingView(
+        rootView: view.frame(width: width, height: targetHeight)
+          .environment(\.colorScheme, .light).background(Color.white))
       hosting.frame = CGRect(origin: .zero, size: size)
       assertSnapshot(
         of: hosting,
-        as: .image(size: size),
+        as: calendarImageStrategy(size: size),
         named: name,
         file: file,
         testName: testName,

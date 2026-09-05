@@ -224,8 +224,7 @@ struct CalendarViewModelMetadataTests {
     let vm = CalendarViewModel.test()
 
     #expect(vm.monthMetadata(month: 13, year: 2025) == nil)
-    #expect(vm.monthMetadata(month: 13, year: 2025, offset: 1)?.month == 2)
-    #expect(vm.monthMetadata(month: 13, year: 2025, offset: 1)?.year == 2026)
+    #expect(vm.monthMetadata(month: 13, year: 2025, offset: 1) == nil)
   }
 
   @Test("Displayed month metadata offset keeps previous and next in chronological order")

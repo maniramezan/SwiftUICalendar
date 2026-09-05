@@ -15,7 +15,8 @@ struct EventDayView: CalendarDayView {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
+        Button { context.onSelect(context.date) } label: {
+          VStack(spacing: 4) {
             Text(context.dayLabel)
                 .font(context.typography.dayFont)
 
@@ -27,8 +28,9 @@ struct EventDayView: CalendarDayView {
         }
         .frame(maxWidth: .infinity, minHeight: 44)
         .contentShape(Rectangle())
-        .onTapGesture { context.onSelect(context.date) }
-        .accessibilityLabel(context.date.formatted(date: .abbreviated, time: .omitted))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(context.accessibilityLabel)
         .accessibilityAddTraits(context.isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }

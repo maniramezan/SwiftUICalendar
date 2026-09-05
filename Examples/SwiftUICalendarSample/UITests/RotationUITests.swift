@@ -83,10 +83,10 @@ final class RotationUITests: XCTestCase {
     // fully inside the window bounds — not clipped off-screen or left as blank space.
     // NOTE: the horizontal pager intentionally parks the previous/next month's real day cells
     // just off-screen as a swipe affordance (see CalendarBodyHorizontalView's peek design), so
-    // this check is scoped to the CURRENT month only ("Jul") — those adjacent-month cells are
+    // this check is scoped to the CURRENT month only (the current month) — those adjacent-month cells are
     // supposed to be off-screen and must not be flagged here.
     let dayButtons = app.buttons.matching(
-      NSPredicate(format: "label BEGINSWITH 'Jul'")
+      NSPredicate(format: "label BEGINSWITH %@", Date().formatted(.dateTime.month(.wide)))
     )
     let dayCellCount = dayButtons.count
     XCTAssertGreaterThanOrEqual(

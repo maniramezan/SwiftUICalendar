@@ -12,7 +12,7 @@ swift test --filter Snapshot  # snapshot tests only
 
 ## Local Dependencies
 
-`SwiftCommons` (remote, branch `main`) and `SwiftUIComponents` (local path `../SwiftUIComponents`) must both be available. The sibling repo must live at `../SwiftUIComponents` relative to this checkout.
+`SwiftCommons` and `SwiftUIComponents` resolve from versioned remote releases declared in `Package.swift`. No sibling repositories are required.
 
 Run `swift package resolve` whenever either dependency changes.
 

@@ -12,6 +12,16 @@ version_at_least() {
   ruby -e 'exit(Gem::Version.new(ARGV[0]) >= Gem::Version.new(ARGV[1]) ? 0 : 1)' "$1" "$2"
 }
 
+# CI pins a toolchain so SDK selection cannot change when the runner default changes.
+if [[ -n "${XCODE_VERSION:-}" ]]; then
+  developer_path="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+  if [[ ! -d "${developer_path}" ]]; then
+    echo "error: required Xcode ${XCODE_VERSION} is not installed" >&2
+    exit 1
+  fi
+  sudo xcode-select -s "${developer_path}"
+fi
+
 current_version="$(swift_version_major_minor)"
 if [[ -n "${current_version}" ]] && version_at_least "${current_version}" "${minimum_swift_version}"; then
   swift --version

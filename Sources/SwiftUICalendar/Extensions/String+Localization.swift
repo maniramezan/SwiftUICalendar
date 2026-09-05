@@ -32,7 +32,13 @@ extension String {
   /// Returns a localized String using the package string catalogue (Bundle.module).
   /// Example: label.text = "hello_key".localized
   var localized: String {
-    String(localized: localizedResource)
+    localized(locale: .current)
+  }
+
+  func localized(locale: Locale) -> String {
+    String(
+      localized: LocalizedStringResource(
+        String.LocalizationValue(self), locale: locale, bundle: Bundle.module))
   }
 
   /// Returns a formatted localized string using the current locale.

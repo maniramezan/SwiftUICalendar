@@ -11,6 +11,9 @@ concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  XCODE_VERSION: "26.3"
+
 jobs:
   pr-checks:
     if: github.event_name == 'pull_request'
@@ -48,10 +51,24 @@ jobs:
       - name: Build package
         run: swift build -c debug
 
+      - name: Compare snapshot references
+        env:
+          SNAPSHOT_ASSERTIONS: true
+        run: swift test --filter Snapshot
+
       - name: Check test coverage
         env:
-          MINIMUM_COVERAGE: 79.5
+          MINIMUM_COVERAGE: 80
         run: bash ./scripts/check-coverage.sh
+
+      - name: Build iOS sample
+        run: >-
+          xcodebuild -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
+          -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
+          -derivedDataPath .build/SampleRelease CODE_SIGNING_ALLOWED=NO build
+
+      - name: Compile public API examples
+        run: bash ./scripts/check-examples.sh
 
       - name: Build DocC documentation
         run: bash ./scripts/build-docs.sh
@@ -99,8 +116,17 @@ jobs:
 
       - name: Check test coverage
         env:
-          MINIMUM_COVERAGE: 79.5
+          MINIMUM_COVERAGE: 80
         run: bash ./scripts/check-coverage.sh
+
+      - name: Build iOS sample
+        run: >-
+          xcodebuild -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
+          -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
+          -derivedDataPath .build/SampleRelease CODE_SIGNING_ALLOWED=NO build
+
+      - name: Compile public API examples
+        run: bash ./scripts/check-examples.sh
 
       - name: Build DocC documentation
         run: bash ./scripts/build-docs.sh

@@ -4,7 +4,7 @@ import Testing
 @testable import SwiftUICalendar
 
 @MainActor
-@Suite("CalendarBodyVerticalView Snapshot Tests")
+@Suite("CalendarBodyVerticalView Snapshot Tests", .enabled(if: snapshotsEnabled))
 struct CalendarBodyVerticalViewSnapshotTests {
 
   // Frame used for all vertical snapshots (shows roughly 1-2 months)

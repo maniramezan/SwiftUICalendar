@@ -4,7 +4,7 @@ import Testing
 @testable import SwiftUICalendar
 
 @MainActor
-@Suite("Day View Snapshot Tests")
+@Suite("Day View Snapshot Tests", .enabled(if: snapshotsEnabled))
 struct DayViewSnapshotTests {
 
   // Pinned date for context: June 15, 2025

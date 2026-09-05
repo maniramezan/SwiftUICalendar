@@ -52,36 +52,29 @@ struct CircleDayView: CalendarDayView {
   }
 
   var body: some View {
-    ZStack {
-      if context.isToday && !context.isSelected {
-        Circle()
-          .fill(Color.clear)
-          .adaptiveGlass(shape: .circle, interactive: true, tint: dayTheme.todayBorderColor)
-      } else {
-        Circle()
-          .fill(backgroundColor)
-          .overlay(Circle().strokeBorder(strokeColor, lineWidth: strokeWidth))
+    Button {
+      context.onSelect(context.date)
+    } label: {
+      ZStack {
+        if context.isToday && !context.isSelected {
+          Circle()
+            .fill(Color.clear)
+            .adaptiveGlass(shape: .circle, interactive: true, tint: dayTheme.todayBorderColor)
+        } else {
+          Circle()
+            .fill(backgroundColor)
+            .overlay(Circle().strokeBorder(strokeColor, lineWidth: strokeWidth))
+        }
+        Text(context.dayLabel)
+          .font(dayTypography.primaryFont)
+          .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
       }
-      Text(context.dayLabel)
-        .font(dayTypography.primaryFont)
-        .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
+      .contentShape(Circle())
     }
-    .contentShape(Circle())
-    .onTapGesture { context.onSelect(context.date) }
+    .buttonStyle(.plain)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
+    .accessibilityLabel(context.accessibilityLabel)
     .accessibilityAddTraits(accessibilityTraits)
-  }
-
-  private var accessibilityLabel: String {
-    var components = [context.date.formatted(date: .abbreviated, time: .omitted)]
-    if context.isToday {
-      components.append("Calendar.Day.Today".localized)
-    }
-    if context.isSelected {
-      components.append("Calendar.Day.Selected".localized)
-    }
-    return components.joined(separator: ", ")
   }
 
   private var accessibilityTraits: AccessibilityTraits {

@@ -21,11 +21,14 @@ import SwiftUI
 ///     }
 ///
 ///     var body: some View {
-///         Text(context.dayLabel)
+///         Button { context.onSelect(context.date) } label: {
+///           Text(context.dayLabel)
 ///             .padding(8)
 ///             .background(context.isSelected ? Color.blue : Color.clear)
 ///             .contentShape(Rectangle())
-///             .onTapGesture { context.onSelect(context.date) }
+///         }
+///         .buttonStyle(.plain)
+///         .accessibilityLabel(context.accessibilityLabel)
 ///     }
 /// }
 /// ```
@@ -55,6 +58,8 @@ public struct CalendarDayContext {
   public let onSelect: (Date) -> Void
   /// Optional secondary label, such as an alternate calendar day number.
   public let secondaryLabel: String?
+  /// Calendar, locale, and time zone used for spoken date labels.
+  public let calendar: Calendar
 
   /// Creates a day context with the provided values.
   ///
@@ -72,6 +77,7 @@ public struct CalendarDayContext {
   ///   - typography: Typography configuration for day rendering.
   ///   - onSelect: Callback invoked when the date is selected.
   ///   - secondaryLabel: Optional secondary label text.
+  ///   - calendar: Calendar context for accessible date descriptions.
   public init(
     date: Date,
     day: Int,
@@ -82,7 +88,8 @@ public struct CalendarDayContext {
     theme: Theme.Day,
     typography: Typography,
     onSelect: @escaping (Date) -> Void,
-    secondaryLabel: String? = nil
+    secondaryLabel: String? = nil,
+    calendar: Calendar = .current
   ) {
     self.date = date
     self.day = day
@@ -94,7 +101,29 @@ public struct CalendarDayContext {
     self.typography = typography
     self.onSelect = onSelect
     self.secondaryLabel = secondaryLabel
+    self.calendar = calendar
   }
+
+  /// A localized date and state description for built-in and custom accessible controls.
+  public var accessibilityLabel: String {
+    let locale = calendar.locale ?? .current
+    let formatter = DateFormatter()
+    formatter.calendar = calendar
+    formatter.locale = locale
+    formatter.timeZone = calendar.timeZone
+    formatter.setLocalizedDateFormatFromTemplate("GyMMMMd")
+    var parts = [formatter.string(from: date)]
+    if isToday { parts.append("Calendar.Day.Today".localized(locale: locale)) }
+    if isSelected { parts.append("Calendar.Day.Selected".localized(locale: locale)) }
+    if let secondaryLabel {
+      parts.append(
+        String(
+          format: "Calendar.Day.Secondary".localized(locale: locale), locale: locale, secondaryLabel
+        ))
+    }
+    return parts.joined(separator: ", ")
+  }
+
 }
 
 /// A day view that can be constructed from a `CalendarDayContext`.
@@ -112,10 +141,13 @@ public struct CalendarDayContext {
 ///     }
 ///
 ///     var body: some View {
-///         Text(context.dayLabel)
+///         Button { context.onSelect(context.date) } label: {
+///           Text(context.dayLabel)
 ///             .frame(width: 44, height: 44)
 ///             .overlay(Circle().stroke(context.isToday ? .orange : .clear))
-///             .onTapGesture { context.onSelect(context.date) }
+///         }
+///         .buttonStyle(.plain)
+///         .accessibilityLabel(context.accessibilityLabel)
 ///     }
 /// }
 /// ```

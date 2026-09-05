@@ -24,6 +24,9 @@ struct CalendarBodyHorizontalView: View {
     blendDuration: 0.08
   )
 
+  @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+  private let reduceMotionOverride: Bool?
+  private var reduceMotion: Bool { reduceMotionOverride ?? systemReduceMotion }
   @Environment(Theme.self) var theme
   @Environment(Typography.self) var typography
   @Environment(\.calendarConfiguration) private var configuration
@@ -131,8 +134,9 @@ struct CalendarBodyHorizontalView: View {
     viewModel.monthIdentifier(offset: 1) ?? currentMonth
   }
 
-  init(viewModel: CalendarViewModel) {
+  init(viewModel: CalendarViewModel, reduceMotion: Bool? = nil) {
     self.viewModel = viewModel
+    self.reduceMotionOverride = reduceMotion
   }
 
   static func layoutWidth(containerWidth: CGFloat, minCalendarWidth: CGFloat) -> CGFloat {
@@ -328,8 +332,7 @@ struct CalendarBodyHorizontalView: View {
       ZStack(alignment: .topLeading) {
         // Previous month — parked to the left.
         CalendarBodyView(
-          displayMonth: previousMonth.month,
-          displayYear: previousMonth.year,
+          monthIdentifier: previousMonth,
           showWeekdayHeader: false,
           hideOverflowDays: true,
           layoutWidth: pageWidth
@@ -345,8 +348,7 @@ struct CalendarBodyHorizontalView: View {
 
         // Current month (centered by default)
         CalendarBodyView(
-          displayMonth: currentMonth.month,
-          displayYear: currentMonth.year,
+          monthIdentifier: currentMonth,
           showWeekdayHeader: false,
           hideOverflowDays: true,
           layoutWidth: pageWidth
@@ -362,8 +364,7 @@ struct CalendarBodyHorizontalView: View {
 
         // Next month — parked to the right.
         CalendarBodyView(
-          displayMonth: nextMonth.month,
-          displayYear: nextMonth.year,
+          monthIdentifier: nextMonth,
           showWeekdayHeader: false,
           hideOverflowDays: true,
           layoutWidth: pageWidth
@@ -421,7 +422,7 @@ struct CalendarBodyHorizontalView: View {
             case .previous:
               goToPrevious(width: pageWidth)
             case .snapBack:
-              withAnimation(Self.snapBackAnimation) {
+              withAnimation(reduceMotion ? nil : Self.snapBackAnimation) {
                 dragOffset = 0
               }
             }
@@ -519,7 +520,8 @@ struct CalendarBodyHorizontalView: View {
     }
 
     isNavigating = true
-    withAnimation(Self.pagingAnimation, completionCriteria: .logicallyComplete) {
+    withAnimation(reduceMotion ? nil : Self.pagingAnimation, completionCriteria: .logicallyComplete)
+    {
       // Move until the parked next month reaches center.
       offset = Self.nextOffset(
         currentOffset: offset,
@@ -539,7 +541,8 @@ struct CalendarBodyHorizontalView: View {
     }
 
     isNavigating = true
-    withAnimation(Self.pagingAnimation, completionCriteria: .logicallyComplete) {
+    withAnimation(reduceMotion ? nil : Self.pagingAnimation, completionCriteria: .logicallyComplete)
+    {
       // Move until the parked previous month reaches center.
       offset = Self.previousOffset(
         currentOffset: offset,

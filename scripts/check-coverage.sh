@@ -7,9 +7,9 @@ source_root="${SOURCE_ROOT:-Sources/SwiftUICalendar}"
 export MINIMUM_COVERAGE="${minimum_coverage}"
 export SOURCE_ROOT="${source_root}"
 
-SNAPSHOT_RENDERING=true swift test --enable-code-coverage
+swift test "$@" --enable-code-coverage
 
-coverage_path="$(swift test --show-codecov-path)"
+coverage_path="$(swift test "$@" --show-codecov-path)"
 
 ruby -rjson -e '
   minimum = Float(ENV.fetch("MINIMUM_COVERAGE"))

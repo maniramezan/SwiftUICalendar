@@ -4,7 +4,7 @@ import Testing
 @testable import SwiftUICalendar
 
 @MainActor
-@Suite("CalendarBodyView Snapshot Tests (.none scroll mode)")
+@Suite("CalendarBodyView Snapshot Tests (.none scroll mode)", .enabled(if: snapshotsEnabled))
 struct CalendarBodyViewSnapshotTests {
 
   private func calendarBodyView(vm: CalendarViewModel, theme: Theme = Theme()) -> some View {

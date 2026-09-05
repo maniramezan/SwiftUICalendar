@@ -83,6 +83,9 @@ CalendarView(model: calendar, theme: theme)
 ### Essentials
 
 - <doc:GettingStarted>
+- <doc:Architecture>
+- ``CalendarSelection``
+- ``MonthIdentifier``
 - <doc:BuildingACalendarScreen>
 - ``CalendarView``
 - ``CalendarViewModel``

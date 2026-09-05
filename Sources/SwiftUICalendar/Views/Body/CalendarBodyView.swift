@@ -13,6 +13,7 @@ struct CalendarBodyView: View {
   @Environment(\.layoutDirection) private var layoutDirection
   @State private var containerWidth: CGFloat = 0
   private let layoutWidth: CGFloat?
+  private let monthIdentifier: MonthIdentifier?
   private let displayMonth: Int?
   private let displayYear: Int?
   private let showWeekdayHeader: Bool
@@ -46,9 +47,9 @@ struct CalendarBodyView: View {
   }
 
   private var snapshot: MonthSnapshot {
-    viewModel.monthSnapshot(for: MonthIdentifier(month: activeMonth, year: activeYear))
+    viewModel.monthSnapshot(for: activeIdentifier)
       ?? MonthSnapshot(
-        id: MonthIdentifier(month: activeMonth, year: activeYear),
+        id: activeIdentifier,
         title: "",
         days: []
       )
@@ -137,7 +138,8 @@ struct CalendarBodyView: View {
               onSelect: { selectedDate in
                 handleSelection(for: item, selectedDate: selectedDate)
               },
-              secondaryLabel: resolveSecondaryLabel(for: date)
+              secondaryLabel: resolveSecondaryLabel(for: date),
+              calendar: viewModel.engine.calendar
             )
 
             CalendarDayCell(context: context, renderer: theme.day.renderer)
@@ -170,9 +172,11 @@ struct CalendarBodyView: View {
   }
 
   init(
+    monthIdentifier: MonthIdentifier? = nil,
     displayMonth: Int? = nil, displayYear: Int? = nil, showWeekdayHeader: Bool = true,
     hideOverflowDays: Bool = false, navigatesOnOverflowTap: Bool = true, layoutWidth: CGFloat? = nil
   ) {
+    self.monthIdentifier = monthIdentifier
     self.displayMonth = displayMonth
     self.displayYear = displayYear
     self.showWeekdayHeader = showWeekdayHeader
@@ -199,6 +203,10 @@ private struct CalendarDayCell: View {
 }
 
 extension CalendarBodyView {
+  fileprivate var activeIdentifier: MonthIdentifier {
+    monthIdentifier ?? viewModel.componentMonth(month: activeMonth, year: activeYear)
+  }
+
   fileprivate var activeMonth: Int {
     displayMonth ?? viewModel.currentMonth
   }
@@ -217,9 +225,7 @@ extension CalendarBodyView {
     // navigation is allowed. In a vertical scroll the target month is already on screen, so
     // mutating `currentDate` here would trigger an unwanted scroll jump.
     if navigatesOnOverflowTap, !item.isInDisplayedMonth {
-      if let targetDate = viewModel.firstDate(month: item.month, year: item.year) {
-        try? viewModel.navigate(to: targetDate)
-      }
+      try? viewModel.navigate(to: selectedDate)
     }
     viewModel.select(selectedDate)
   }

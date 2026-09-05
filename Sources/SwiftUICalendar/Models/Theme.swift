@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Visual configuration for the calendar.
 ///
-/// Create a theme when you want to change scrolling, selection colors, or the view used for
+/// Create a theme when you want to change selection colors or the view used for
 /// each day cell. `Theme` is observable so SwiftUI refreshes the calendar when you mutate it.
 ///
 /// ```swift
@@ -27,10 +27,10 @@ import SwiftUI
   ///
   /// ```swift
   /// let first = Theme.default
-  /// first.scrollMode = .horizontal
+  /// first.day.selectedBackgroundColor = .purple
   ///
   /// let second = Theme.default
-  /// // second.scrollMode is still .none
+  /// // second.day.selectedBackgroundColor is still .blue
   /// ```
   public static var `default`: Theme { Theme() }
 

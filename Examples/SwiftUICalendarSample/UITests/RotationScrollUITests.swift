@@ -29,7 +29,10 @@ final class RotationScrollUITests: XCTestCase {
 
     // The first day of the current month must be visible within the portrait window — not
     // scrolled off-screen due to a stale scroll offset carried over from the landscape state.
-    let dayOne = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Jul 1,'")).firstMatch
+    let month = Date().formatted(.dateTime.month(.wide))
+    let dayOne = app.buttons.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "\(month) 1,")
+    ).firstMatch
     XCTAssertTrue(dayOne.waitForExistence(timeout: 3))
     let dayOneFrame = dayOne.frame
     XCTAssertTrue(

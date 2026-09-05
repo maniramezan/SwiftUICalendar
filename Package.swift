@@ -5,6 +5,7 @@ import PackageDescription
 
 let package = Package(
   name: "SwiftUICalendar",
+  defaultLocalization: "en",
   platforms: [
     .iOS(.v18),
     .macOS(.v15),
@@ -36,9 +37,9 @@ let package = Package(
         .product(name: "Components", package: "SwiftUIComponents"),
         .product(name: "DesignSystem", package: "SwiftUIComponents"),
       ],
-      exclude: ["SwiftUICalendar.docc"],
+      exclude: ["SwiftUICalendar.docc", "Resources/Localizable.xcstrings"],
       resources: [
-        .process("Resources/Localizable.xcstrings")
+        .process("Resources")
       ]
     ),
     .testTarget(

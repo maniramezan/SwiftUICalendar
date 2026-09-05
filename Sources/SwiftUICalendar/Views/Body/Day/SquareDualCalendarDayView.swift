@@ -48,56 +48,43 @@ struct SquareDualCalendarDayView: CalendarDayView {
   }
 
   var body: some View {
-    ZStack(alignment: .topLeading) {
-      RoundedRectangle(cornerRadius: cornerRadius)
-        .fill(backgroundColor)
-        .overlay(
-          RoundedRectangle(cornerRadius: cornerRadius)
-            .strokeBorder(borderColor, lineWidth: borderWidth)
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(outerPadding)
-
-      VStack(alignment: .leading, spacing: 2) {
-        Text(context.dayLabel)
-          .font(dayTypography.primaryFont)
-          .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
-
-        Spacer()
-
-        if let secondaryLabel = context.secondaryLabel {
-          Text(secondaryLabel)
-            .font(dayTypography.secondaryFont)
-            .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-      }
-      .padding(8)
-      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    .contentShape(Rectangle())
-    .onTapGesture {
+    Button {
       context.onSelect(context.date)
-    }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
-    .accessibilityAddTraits(accessibilityTraits)
-  }
+    } label: {
+      ZStack(alignment: .topLeading) {
+        RoundedRectangle(cornerRadius: cornerRadius)
+          .fill(backgroundColor)
+          .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+              .strokeBorder(borderColor, lineWidth: borderWidth)
+          )
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .padding(outerPadding)
 
-  private var accessibilityLabel: String {
-    var components: [String] = []
-    components.append("\(context.date.formatted(date: .abbreviated, time: .omitted))")
-    if context.isToday {
-      components.append("Calendar.Day.Today".localized)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(context.dayLabel)
+            .font(dayTypography.primaryFont)
+            .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
+
+          Spacer()
+
+          if let secondaryLabel = context.secondaryLabel {
+            Text(secondaryLabel)
+              .font(dayTypography.secondaryFont)
+              .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
+              .frame(maxWidth: .infinity, alignment: .trailing)
+          }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      .contentShape(Rectangle())
     }
-    if context.isSelected {
-      components.append("Calendar.Day.Selected".localized)
-    }
-    if let secondary = context.secondaryLabel {
-      components.append("Calendar.Day.Secondary".localized(with: secondary))
-    }
-    return components.joined(separator: ", ")
+    .buttonStyle(.plain)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(context.accessibilityLabel)
+    .accessibilityAddTraits(accessibilityTraits)
   }
 
   private var accessibilityTraits: AccessibilityTraits {
