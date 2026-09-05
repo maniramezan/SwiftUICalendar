@@ -48,3 +48,12 @@ func configurationExample() throws {
     scrollMode: .horizontal, horizontalHeightMode: .hugContent)
   _ = CalendarView(model: calendar, theme: theme, configuration: configuration)
 }
+
+@MainActor
+func controlledCalendarExample() throws -> some View {
+  let state = try CalendarState(calendarIdentifier: .gregorian)
+  return CalendarView(state: state) { action in
+    // An owning observable model or reducer applies this action to its state.
+    _ = action
+  }
+}

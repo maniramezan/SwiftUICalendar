@@ -169,3 +169,33 @@ Snapshot references live in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__`.
 ## License
 
 SwiftUICalendar is available under the MIT license. See [LICENSE](LICENSE) for details.
+
+## Optional Composable Architecture support
+
+MVVM remains the default. For reducer-owned state, enable the `TCA` SwiftPM trait on the
+package dependency and link its `SwiftUICalendarTCA` product:
+
+```swift
+.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "0.1.0", traits: ["TCA"])
+```
+
+```swift
+import ComposableArchitecture
+import SwiftUICalendar
+import SwiftUICalendarTCA
+
+let state = try CalendarState(calendarIdentifier: .gregorian)
+let store = Store(initialState: CalendarFeature.State(calendar: state)) {
+    CalendarFeature()
+}
+let calendar = TCACalendarView(store: store)
+```
+
+`CalendarFeature` uses the same atomic domain transitions as `CalendarViewModel`. The view
+renders store state and sends actions; it does not synchronize a second mutable model.
+Parents can handle selection-change and rejected-navigation delegate actions.
+
+The adapter selects TCA 1.25.5 on Swift 6.2/6.3 and TCA 1.26.2 on Swift 6.4+,
+with compatible dependency constraints for each toolchain.
+See [Architecture](Sources/SwiftUICalendar/SwiftUICalendar.docc/Architecture.md) for constraints,
+state ownership, and integration details. Validate both `swift test` and `swift test --traits TCA`.

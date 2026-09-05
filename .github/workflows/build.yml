@@ -61,6 +61,9 @@ jobs:
           MINIMUM_COVERAGE: 80
         run: bash ./scripts/check-coverage.sh
 
+      - name: Test optional TCA integration
+        run: swift test --traits TCA
+
       - name: Build iOS sample
         run: >-
           xcodebuild -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
@@ -118,6 +121,9 @@ jobs:
         env:
           MINIMUM_COVERAGE: 80
         run: bash ./scripts/check-coverage.sh
+
+      - name: Test optional TCA integration
+        run: swift test --traits TCA
 
       - name: Build iOS sample
         run: >-

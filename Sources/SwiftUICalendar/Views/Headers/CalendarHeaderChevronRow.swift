@@ -12,7 +12,7 @@ struct CalendarHeaderChevronRow<Content: View>: View {
   @ViewBuilder var content: () -> Content
 
   var body: some View {
-    HStack {
+    HStack(spacing: 3) {
       Button(action: onPrevious) {
         Image(systemName: "chevron.backward")
           .font(.body.weight(.semibold))

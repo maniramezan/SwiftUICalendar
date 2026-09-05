@@ -45,9 +45,9 @@ import SwiftUI
   // MARK: - Properties
 
   /// The earliest supported year in the visible era. Relative navigation can cross eras.
-  public private(set) var minYear: Int
+  public var minYear: Int { state.minYear }
   /// The latest supported year in the visible era.
-  public private(set) var maxYear: Int
+  public var maxYear: Int { state.maxYear }
 
   private let gregorianCalendar = Calendar(identifier: .gregorian)
 
@@ -55,10 +55,22 @@ import SwiftUI
 
   var engine: CalendarEngine { CalendarEngine(calendar: calendar) }
 
-  private var calendar: Calendar {
-    didSet {
-      updateYearBoundaries(including: currentDate)
-    }
+  /// The authoritative value state for a locally owned model.
+  public private(set) var state: CalendarState
+  @ObservationIgnored private var onAction: ((CalendarAction) -> Void)?
+  private var calendar: Calendar { state.calendar }
+
+  /// Creates an observable owner for existing value state.
+  public init(state: CalendarState) { self.state = state }
+
+  // A rendering projection forwards actions without mutating its snapshot.
+  init(state: CalendarState, onAction: @escaping (CalendarAction) -> Void) {
+    self.state = state
+    self.onAction = onAction
+  }
+
+  private func perform(_ action: CalendarAction) throws {
+    if let onAction { onAction(action) } else { try state.apply(action) }
   }
 
   var headerTitles: [String] {
@@ -143,25 +155,17 @@ import SwiftUI
   /// calendar.selection = .multiple([])
   /// ```
   public var selection: Selection {
-    get { storedSelection }
-    set { storedSelection = newValue.normalized(in: calendar) }
+    get { state.selection }
+    set { try? perform(.setSelection(newValue)) }
   }
-
-  private var storedSelection: Selection
 
   /// The date representing the currently visible month.
   ///
   /// Use `try calendar.navigate(to: date)` to change the visible month. The supported interval
   /// is January 1, 1900 through December 31, 2100 in the Gregorian calendar.
   public internal(set) var currentDate: Date {
-    get { storedCurrentDate }
-    set {
-      guard isWithinSupportedYear(newValue) else {
-        logger.error("Ignoring currentDate outside the supported calendar range")
-        return
-      }
-      storedCurrentDate = newValue
-    }
+    get { state.currentDate }
+    set { try? perform(.navigate(newValue)) }
   }
 
   /// Stable calendar components for the currently visible month.
@@ -171,67 +175,27 @@ import SwiftUI
 
   /// Moves the calendar to an absolute date within its supported range.
   public func navigate(to date: Date) throws {
-    guard isWithinSupportedYear(date) else {
-      logger.error("Cannot navigate outside the supported calendar range")
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
-    storedCurrentDate = date
+    try perform(.navigate(date))
   }
 
   /// Moves to a regular month in the current era, preserving the day when possible.
   /// Use `navigate(toMonth:)` with a complete identifier for leap months or another era.
   public func navigate(toMonth month: Int, year: Int) throws {
-    guard
-      let identifier = months(in: year).first(where: {
-        $0.month == month && $0.identifier.isLeapMonth == false
-      })?.identifier
-    else {
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
-    try navigateInVisibleEra(toMonth: identifier)
+    try perform(.navigateComponents(month: month, year: year))
   }
 
   /// Moves to an unambiguous month, including leap months and historical eras.
   public func navigate(toMonth month: MonthIdentifier) throws {
-    guard
-      let date = engine.navigationDate(
-        in: month, preferredDay: calendar.component(.day, from: currentDate))
-    else {
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
-    try navigate(to: date)
+    try perform(.navigateMonth(month))
   }
 
   /// Moves to a year in the currently visible era. Boundary years clamp to a supported date.
   public func navigate(toYear year: Int) throws {
-    let months = engine.months(in: year, relativeTo: currentDate)
-    guard (minYear...maxYear).contains(year),
-      let month = months.first(where: {
-        $0.month == currentMonth && $0.isLeapMonth == visibleMonth.isLeapMonth
-      })
-        ?? months.first(where: { $0.month == currentMonth })
-        ?? months.last(where: { $0.month < currentMonth }) ?? months.first
-    else { throw Calendar.CalendarError.cannotCalculateDate }
-    try navigateInVisibleEra(toMonth: month)
+    try perform(.navigateYear(year))
   }
 
   func navigateInVisibleEra(toMonth month: MonthIdentifier) throws {
-    guard
-      let date = engine.navigationDate(
-        in: month, preferredDay: calendar.component(.day, from: currentDate)),
-      let monthInterval = engine.interval(of: month)
-    else {
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
-    let era = calendar.dateInterval(of: .era, for: currentDate)
-    let start = max(monthInterval.start, era?.start ?? monthInterval.start)
-    let end = min(monthInterval.end, era?.end ?? monthInterval.end)
-    guard start < end else { throw Calendar.CalendarError.cannotCalculateDate }
-    try navigate(to: min(max(date, start), end.addingTimeInterval(-1)))
-  }
-
-  private var storedCurrentDate: Date {
-    didSet { updateYearBoundaries(including: storedCurrentDate) }
+    try perform(.navigateVisibleEraMonth(month))
   }
 
   /// Creates a view model for a given calendar system and selection mode.
@@ -263,20 +227,8 @@ import SwiftUI
   private init(calendar: Calendar, currentDate: Date, selection: Selection, locale: Locale) {
     var calendar = calendar
     calendar.locale = locale
-    let bounds = CalendarEngine(calendar: calendar).yearBounds(containing: currentDate)
-    self.minYear = bounds.lowerBound
-    self.maxYear = bounds.upperBound
-    self.calendar = calendar
-    self.storedCurrentDate = currentDate
-    self.storedSelection = selection.normalized(in: calendar)
-
-    updateYearBoundaries(including: currentDate)
-  }
-
-  private func updateYearBoundaries(including currentDate: Date? = nil) {
-    let bounds = engine.yearBounds(containing: currentDate ?? self.currentDate)
-    minYear = bounds.lowerBound
-    maxYear = bounds.upperBound
+    // The convenience initializer supplies today's supported date.
+    self.state = CalendarState(calendar: calendar, clamping: currentDate, selection: selection)
   }
 
   func convertGregorianYearToCurrentCalendar(_ year: Int) throws -> Int {
@@ -304,10 +256,7 @@ import SwiftUI
   /// calendar.updateCalendar(identifier: .hebrew)
   /// ```
   public func updateCalendar(identifier: Calendar.Identifier) {
-    let locale = Self.locale(for: identifier)
-    var calendar = Calendar(identifier: identifier)
-    calendar.locale = locale
-    self.calendar = calendar
+    try? perform(.setCalendar(identifier))
   }
 
   func updateMonthToNextMonth() throws {
@@ -319,35 +268,21 @@ import SwiftUI
   /// Throws `Calendar.CalendarError.cannotCalculateDate` when the offset cannot be
   /// computed or the target month falls outside the supported navigation range.
   public func updateMonth(byAdding months: Int) throws {
-    guard months != 0 else { return }
-    guard let month = monthIdentifier(offset: months) else {
-      throw Calendar.CalendarError.cannotCalculateDate
-    }
-    try navigate(toMonth: month)
+    try perform(.offsetMonths(months))
   }
 
   func updateMonthToPreviousMonth() throws {
     try updateMonth(byAdding: -1)
   }
 
-  private func relativeYearDate(_ offset: Int) -> Date? {
-    guard let date = calendar.date(byAdding: .year, value: offset, to: currentDate),
-      let interval = calendar.dateInterval(of: .year, for: date),
-      engine.intersectsSupportedDates(interval)
-    else { return nil }
-    return min(
-      max(date, engine.supportedDates.lowerBound),
-      engine.supportedDates.upperBound.addingTimeInterval(-1))
-  }
+  private func relativeYearDate(_ offset: Int) -> Date? { state.relativeYearDate(offset) }
 
   func updateYearToNextYear() throws {
-    guard let date = relativeYearDate(1) else { throw Calendar.CalendarError.cannotCalculateDate }
-    try navigate(to: date)
+    try perform(.offsetYears(1))
   }
 
   func updateYearToPreviousYear() throws {
-    guard let date = relativeYearDate(-1) else { throw Calendar.CalendarError.cannotCalculateDate }
-    try navigate(to: date)
+    try perform(.offsetYears(-1))
   }
 
   private func metadata(for date: Date) -> MonthMetadata {
@@ -465,8 +400,6 @@ import SwiftUI
     engine.start(of: componentMonth(month: month, year: year))
   }
 
-  private func isWithinSupportedYear(_ date: Date) -> Bool { engine.contains(date) }
-
   func isToday(_ day: Int) -> Bool {
     date(for: day).map(calendar.isDateInToday) ?? false
   }
@@ -484,47 +417,18 @@ import SwiftUI
     selection.contains(date, in: calendar)
   }
 
-  func select(_ date: Date) {
-    selection = selection.selecting(date, in: calendar)
+  func select(_ date: Date, navigating: Bool = false) {
+    try? perform(.select(date, navigating: navigating))
   }
 
   // MARK: - Today navigation
 
   func goToToday() {
-    let today = Date()
-    currentDate = today
-
-    if case .single = selection {
-      selection = .single(calendar.startOfDay(for: today))
-    }
+    try? perform(.today)
   }
 
   private static func locale(for identifier: Calendar.Identifier) -> Locale {
-    switch identifier {
-    case .buddhist:
-      return Locale(identifier: "th_TH@calendar=buddhist")
-    case .hebrew:
-      return Locale(identifier: "he_IL@calendar=hebrew")
-    case .islamic:
-      return Locale(identifier: "ar_SA@calendar=islamic")
-        .withNumberingSystemIdentifier(.arab)
-    case .islamicCivil:
-      return Locale(identifier: "ar_SA@calendar=islamic-civil")
-        .withNumberingSystemIdentifier(.arab)
-    case .islamicTabular:
-      return Locale(identifier: "ar_SA@calendar=islamic-tbla")
-        .withNumberingSystemIdentifier(.arab)
-    case .islamicUmmAlQura:
-      return Locale(identifier: "ar_SA@calendar=islamic-umalqura")
-        .withNumberingSystemIdentifier(.arab)
-    case .japanese:
-      return Locale(identifier: "ja_JP@calendar=japanese")
-    case .persian:
-      return Locale(identifier: "fa_IR@calendar=persian")
-        .withNumberingSystemIdentifier(.arabExtended)
-    default:
-      return Locale(calendarIdentifier: identifier)
-    }
+    CalendarState.locale(for: identifier)
   }
 }
 

@@ -31,6 +31,7 @@ struct YearMenuPickerView: View {
         .padding(.vertical, 4)
     }
     .menuIndicator(.hidden)
+    .fixedSize(horizontal: true, vertical: false)
     .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
     .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
   }

@@ -64,3 +64,7 @@ bash ./scripts/check-examples.sh  # compile public API usage without @testable
 PR, main, and recording workflows select Xcode 26.3 on macos-15. Record and compare references on the same OS/toolchain; local beta SDK snapshots require review and regeneration on the CI runner before merge. `swift test` asserts snapshots by default; `SNAPSHOT_ASSERTIONS=false swift test` explicitly skips the snapshot suites for logic-only work.
 
 Edit `Resources/Localizable.xcstrings` and run `python3 scripts/export-localizations.py` after changing translations. Generated `.strings` resources support SwiftPM builds, and lint checks that they match the catalog.
+
+## Optional TCA checks
+
+Changes to shared calendar state, controlled rendering, or `SwiftUICalendarTCA` require both `swift test` and `swift test --traits TCA`. Reducer tests use exhaustive `TestStore` assertions; the default build must continue to work with the trait disabled.

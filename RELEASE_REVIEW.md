@@ -28,9 +28,13 @@ Additional release fixes:
 
 The existing MVVM entry point, `CalendarView(model:)`, is preserved. Foundation arithmetic lives in `Domain/CalendarEngine.swift`; selection is a Sendable `CalendarSelection` value with independent transition rules. `CalendarViewModel.Selection` remains an alias. The observable model owns state and derives presentation snapshots; view-local scrolling state remains in SwiftUI.
 
-The optional TCA adapter is a documented follow-up, not part of these correctness fixes. It needs a state/action rendering surface with reducer-owned value state and shared domain operations. Adding a trait around the current model would not establish that ownership boundary. See the DocC Architecture article for the integration contract. No TCA dependency was introduced.
+The optional `TCA` trait adds `SwiftUICalendarTCA`, `CalendarFeature`, and `TCACalendarView`.
+Both MVVM and the reducer use atomic `CalendarState` transitions. Controlled rendering forwards
+`CalendarAction` intents without mutating a presentation copy. Reducer state contains only value
+state; Today uses TCA's injectable clock. See the Architecture article for dependency/toolchain
+constraints and delegate actions.
 
-## Local validation
+## Review-fix validation (commit 7228276)
 
 Environment: macOS 27.0 beta (26A5425a), Xcode 27.0 beta (27A5252f), Swift 6.4.
 
@@ -53,3 +57,25 @@ The iOS simulator sample builds successfully, and all four rotation/scroll UI te
 3. **Install the candidate tag from a fresh consumer checkout.** Consumer source compilation passed, and network dependency resolution passed; the candidate tag has not been created yet.
 
 This report accompanies the review-fix commit. No tag, PR, or release has been created.
+
+## TCA implementation validation
+
+- TCA-enabled compilation and exhaustive reducer tests passed on Swift 6.4 with TCA 1.26.2.
+- The shared-state refactor passed the existing 284 tests with the trait disabled.
+- Controlled rendering snapshots cover Gregorian/Persian and all scroll modes, including a mounted store update.
+- Visual inspection exposed a collapsing macOS year-menu label; its intrinsic width and header spacing are now fixed. References were refreshed after this change.
+- Final coverage, simulator, and fresh-consumer runs were stopped at the user's request; the user will run remaining validation. The Swift 6.2/TCA 1.25.5 branch still needs CI validation.
+- Formatting was applied and `git diff --check` passed. No final post-header-change full-suite pass is claimed.
+
+Before release, run:
+
+```bash
+swift test
+swift test --traits TCA
+MINIMUM_COVERAGE=80 bash scripts/check-coverage.sh --traits TCA
+bash scripts/lint.sh
+bash scripts/check-examples.sh
+bash scripts/build-docs.sh
+```
+
+Also rerun the sample simulator tests and CI's pinned-toolchain snapshots. TCA remains disabled by default.

@@ -224,10 +224,8 @@ extension CalendarBodyView {
     // Tapping a day from an adjacent month navigates the calendar to that month — but only when
     // navigation is allowed. In a vertical scroll the target month is already on screen, so
     // mutating `currentDate` here would trigger an unwanted scroll jump.
-    if navigatesOnOverflowTap, !item.isInDisplayedMonth {
-      try? viewModel.navigate(to: selectedDate)
-    }
-    viewModel.select(selectedDate)
+    viewModel.select(
+      selectedDate, navigating: navigatesOnOverflowTap && !item.isInDisplayedMonth)
   }
 
 }

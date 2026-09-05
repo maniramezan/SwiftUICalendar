@@ -61,6 +61,20 @@ public struct CalendarView: View {
     self.configuration = configuration
   }
 
+  /// Renders externally owned state and forwards interactions to its owner.
+  /// The view never changes this state or maintains a synchronized mutable copy.
+  public init(
+    state: CalendarState,
+    theme: Theme = .default,
+    typography: Typography = .default,
+    configuration: CalendarConfiguration = CalendarConfiguration(),
+    onAction: @escaping (CalendarAction) -> Void
+  ) {
+    self.init(
+      model: CalendarViewModel(state: state, onAction: onAction),
+      theme: theme, typography: typography, configuration: configuration)
+  }
+
   @ViewBuilder
   private var calendarBodyContent: some View {
     switch configuration.scrollMode {

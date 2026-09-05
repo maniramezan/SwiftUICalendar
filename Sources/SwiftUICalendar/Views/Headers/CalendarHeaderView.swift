@@ -7,7 +7,7 @@ struct CalendarHeaderView: View {
 
   var body: some View {
     ViewThatFits(in: .horizontal) {
-      HStack {
+      HStack(spacing: 3) {
         CalendarHeaderMonthView()
           .id("row-month")
         CalendarHeaderYearView()
@@ -29,10 +29,11 @@ struct CalendarHeaderView: View {
   @ViewBuilder
   private var macOSTodayButton: some View {
     #if os(macOS)
-      // Navigate to today without mutating the user's selection, matching the iOS Today button.
+      // Today selects the current day in single-selection mode on both platforms.
       Button("Calendar.Today".localized) {
         model.goToToday()
       }
+      .fixedSize()
     #endif
   }
 }
