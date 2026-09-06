@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-minimum_swift_version="${MINIMUM_SWIFT_VERSION:-6.2}"
+minimum_swift_version="${MINIMUM_SWIFT_VERSION:-6.4}"
 
 swift_version_major_minor() {
   swift --version | ruby -ne 'if $_ =~ /Swift version (\d+\.\d+)/; puts $1; exit; end'

@@ -1,7 +1,7 @@
 # SwiftUICalendar
 
 [![Build](https://img.shields.io/github/actions/workflow/status/maniramezan/SwiftUICalendar/build.yml?branch=main&label=build&style=flat-square)](https://github.com/maniramezan/SwiftUICalendar/actions/workflows/build.yml)
-[![Swift](https://img.shields.io/badge/Swift-6.2-orange?style=flat-square&logo=swift)](https://www.swift.org)
+[![Swift](https://img.shields.io/badge/Swift-6.4-orange?style=flat-square&logo=swift)](https://www.swift.org)
 [![Platforms](https://img.shields.io/badge/platforms-iOS%2018%20%7C%20macOS%2015-lightgrey?style=flat-square)](Package.swift)
 [![SPM](https://img.shields.io/badge/SPM-compatible-brightgreen?style=flat-square)](https://swift.org/package-manager/)
 [![Documentation](https://img.shields.io/badge/DocC-GitHub%20Pages-blue?style=flat-square)](https://maniramezan.github.io/SwiftUICalendar/documentation/swiftuicalendar/)
@@ -18,7 +18,7 @@ These images are generated from the package snapshot references for the actual `
 
 ## Requirements
 
-- Swift 6.2+
+- Swift 6.4+
 - iOS 18+
 - macOS 15+
 
@@ -195,7 +195,18 @@ let calendar = TCACalendarView(store: store)
 renders store state and sends actions; it does not synchronize a second mutable model.
 Parents can handle selection-change and rejected-navigation delegate actions.
 
-The adapter selects TCA 1.25.5 on Swift 6.2/6.3 and TCA 1.26.2 on Swift 6.4+,
-with compatible dependency constraints for each toolchain.
+The adapter requires Swift 6.4+ and uses TCA 1.26.2..<1.27.0.
 See [Architecture](Sources/SwiftUICalendar/SwiftUICalendar.docc/Architecture.md) for constraints,
 state ownership, and integration details. Validate both `swift test` and `swift test --traits TCA`.
+
+### Dependency resolution with traits
+
+Enabling `TCA` changes the dependency graph, so switching between default and TCA-enabled
+builds can update `Package.resolved`. This is expected SwiftPM behavior. The root lockfile
+records this repository’s development resolution; downstream apps resolve and pin their
+own dependencies.
+
+Keep the committed root lockfile in the TCA-enabled configuration. After validating both
+configurations, run `swift package resolve --traits TCA` before reviewing dependency changes.
+Do not commit lockfile changes caused only by switching traits. A default build may still
+rewrite the local lockfile; the committed configuration does not force TCA on consumers.

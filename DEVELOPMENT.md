@@ -73,3 +73,11 @@ Edit `Resources/Localizable.xcstrings` and run `python3 scripts/export-localizat
 ## Optional TCA checks
 
 Changes to shared calendar state, controlled rendering, or `SwiftUICalendarTCA` require both `swift test` and `swift test --traits TCA`. Reducer tests use exhaustive `TestStore` assertions; the default build must continue to work with the trait disabled.
+
+## Trait-dependent resolution
+
+Use Swift 6.4 or newer for all configurations. Validate both `swift test` and
+`swift test --traits TCA` after manifest changes. Switching traits can rewrite
+`Package.resolved`; restore the canonical development resolution with
+`swift package resolve --traits TCA` after checks, and review the diff before committing.
+CI selects an installed Swift 6.4+ toolchain and fails if none is available.

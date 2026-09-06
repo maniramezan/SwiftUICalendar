@@ -71,10 +71,9 @@ Send `.view(CalendarAction)` for programmatic changes. Handle
 `.delegate(.navigationRejected(action))` to report rejected navigation. Delegate actions do not
 mutate calendar state. Override `date.now` in reducer tests to control Today.
 
-The manifest selects TCA 1.25.5 on Swift 6.2/6.3 and TCA 1.26.2 on Swift 6.4 or newer.
-Each branch constrains the related Point-Free dependencies to a consistent issue-reporting
-package identity. The older branch uses the versions in TCA's own release lockfile; the newer
-branch requires the renamed dependency family. This prevents duplicate module names and
+The package requires Swift 6.4 or newer and uses TCA 1.26.2..<1.27.0.
+The manifest constrains the related Point-Free dependencies to the renamed issue-reporting
+package family. This prevents duplicate module names and
 incompatible dependency traits during resolution. These constraints can limit versions in a
 consuming app; update and validate the family together.
 

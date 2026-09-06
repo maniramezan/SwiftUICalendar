@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  XCODE_VERSION: "26.3"
+  MINIMUM_SWIFT_VERSION: "6.4"
 
 jobs:
   pr-checks:
