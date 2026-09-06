@@ -13,11 +13,12 @@ concurrency:
 
 env:
   MINIMUM_SWIFT_VERSION: "6.4"
+  XCODE_VERSION: "27.0"
 
 jobs:
   pr-checks:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    runs-on: macos-15
+    runs-on: xcode-27
     permissions:
       contents: read
     defaults:
@@ -73,7 +74,7 @@ jobs:
 
   main-validation:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: macos-15
+    runs-on: xcode-27
     permissions:
       contents: read
     defaults:
