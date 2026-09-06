@@ -62,7 +62,7 @@ jobs:
         run: bash ./scripts/check-coverage.sh
 
       - name: Test optional TCA integration
-        run: swift test --traits TCA
+        run: swift test --traits TCA --no-parallel
 
       - name: Build iOS sample
         run: >-
@@ -123,7 +123,7 @@ jobs:
         run: bash ./scripts/check-coverage.sh
 
       - name: Test optional TCA integration
-        run: swift test --traits TCA
+        run: swift test --traits TCA --no-parallel
 
       - name: Build iOS sample
         run: >-
