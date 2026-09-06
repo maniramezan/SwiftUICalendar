@@ -172,11 +172,11 @@ SwiftUICalendar is available under the MIT license. See [LICENSE](LICENSE) for d
 
 ## Optional Composable Architecture support
 
-MVVM remains the default. For reducer-owned state, enable the `TCA` SwiftPM trait on the
-package dependency and link its `SwiftUICalendarTCA` product:
+Both MVVM and TCA are available without package traits. Link `SwiftUICalendar` for MVVM,
+or `SwiftUICalendarTCA` for reducer-owned state:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "0.1.0", traits: ["TCA"])
+.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "0.1.0")
 ```
 
 ```swift
@@ -197,16 +197,9 @@ Parents can handle selection-change and rejected-navigation delegate actions.
 
 The adapter requires Swift 6.4+ and uses TCA 1.26.2..<1.27.0.
 See [Architecture](Sources/SwiftUICalendar/SwiftUICalendar.docc/Architecture.md) for constraints,
-state ownership, and integration details. Validate both `swift test` and `swift test --traits TCA`.
+state ownership, and integration details. Run `swift test` to validate both integrations.
 
-### Dependency resolution with traits
-
-Enabling `TCA` changes the dependency graph, so switching between default and TCA-enabled
-builds can update `Package.resolved`. This is expected SwiftPM behavior. The root lockfile
-records this repository’s development resolution; downstream apps resolve and pin their
-own dependencies.
-
-Keep the committed root lockfile in the TCA-enabled configuration. After validating both
-configurations, run `swift package resolve --traits TCA` before reviewing dependency changes.
-Do not commit lockfile changes caused only by switching traits. A default build may still
-rewrite the local lockfile; the committed configuration does not force TCA on consumers.
+The base `SwiftUICalendar` target does not depend on ComposableArchitecture. Consumers
+choose the integration by linking its product; SwiftPM can still resolve the TCA package
+metadata even when only the base product is used. Downstream apps maintain their own
+`Package.resolved`.

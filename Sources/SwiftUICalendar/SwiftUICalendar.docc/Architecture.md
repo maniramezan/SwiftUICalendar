@@ -41,15 +41,14 @@ There is no two-way synchronization or mutable model stored in reducer state.
 
 ## Optional TCA Integration
 
-Enable the `TCA` package trait and link the `SwiftUICalendarTCA` product. The default product
+Link the `SwiftUICalendarTCA` product; no package trait is required. The base product
 continues to work without compiling or linking ComposableArchitecture. SwiftPM may still
 resolve optional dependency metadata.
 
 ```swift
 .package(
     url: "https://github.com/maniramezan/SwiftUICalendar",
-    from: "0.1.0",
-    traits: ["TCA"]
+    from: "0.1.0"
 )
 ```
 
@@ -77,5 +76,4 @@ package family. This prevents duplicate module names and
 incompatible dependency traits during resolution. These constraints can limit versions in a
 consuming app; update and validate the family together.
 
-Run `swift test` for default MVVM coverage and `swift test --traits TCA` for the optional
-reducer, controlled-view snapshots, and integration tests.
+Run `swift test` for MVVM coverage, reducer tests, controlled-view snapshots, and integration tests.

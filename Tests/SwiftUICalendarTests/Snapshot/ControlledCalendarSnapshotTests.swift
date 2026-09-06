@@ -1,12 +1,9 @@
+import ComposableArchitecture
 import Foundation
+import SwiftUICalendarTCA
 import Testing
 
 @testable import SwiftUICalendar
-
-#if TCA
-  import ComposableArchitecture
-  import SwiftUICalendarTCA
-#endif
 
 @MainActor
 @Suite("Externally owned calendar structural snapshots", .enabled(if: snapshotsEnabled))
@@ -25,19 +22,17 @@ struct ControlledCalendarSnapshotTests {
       named: "controlled-\(identifier)-\(mode)")
   }
 
-  #if TCA
-    @Test("TCA reducer state renders and observes parent-driven changes")
-    func tcaRendering() {
-      let initial = CalendarViewModel.snapshot(identifier: .persian).state
-      let store = Store(initialState: CalendarFeature.State(calendar: initial)) {
-        CalendarFeature()
-      }
-      assertCalendarStructure(model: CalendarViewModel(state: store.calendar), named: "tca-persian")
-
-      store.send(.view(.setCalendar(.gregorian)))
-      store.send(.view(.offsetMonths(1)))
-      #expect(CalendarViewModel(state: store.calendar).visibleMonth.month == 7)
-      assertCalendarStructure(model: CalendarViewModel(state: store.calendar), named: "tca-july")
+  @Test("TCA reducer state renders and observes parent-driven changes")
+  func tcaRendering() {
+    let initial = CalendarViewModel.snapshot(identifier: .persian).state
+    let store = Store(initialState: CalendarFeature.State(calendar: initial)) {
+      CalendarFeature()
     }
-  #endif
+    assertCalendarStructure(model: CalendarViewModel(state: store.calendar), named: "tca-persian")
+
+    store.send(.view(.setCalendar(.gregorian)))
+    store.send(.view(.offsetMonths(1)))
+    #expect(CalendarViewModel(state: store.calendar).visibleMonth.month == 7)
+    assertCalendarStructure(model: CalendarViewModel(state: store.calendar), named: "tca-july")
+  }
 }

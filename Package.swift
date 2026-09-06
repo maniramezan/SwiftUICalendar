@@ -31,9 +31,6 @@ let package = Package(
       targets: ["SwiftUICalendar"]),
     .library(name: "SwiftUICalendarTCA", targets: ["SwiftUICalendarTCA"]),
   ],
-  traits: [
-    .trait(name: "TCA", description: "Build the optional Composable Architecture integration")
-  ],
   dependencies: [
     .package(
       url: "https://github.com/maniramezan/SwiftCommons",
@@ -65,29 +62,26 @@ let package = Package(
       name: "SwiftUICalendarTCA",
       dependencies: [
         "SwiftUICalendar",
-        .product(name: "Clocks", package: "swift-clocks", condition: .when(traits: ["TCA"])),
-        .product(name: "CasePaths", package: "swift-case-paths", condition: .when(traits: ["TCA"])),
+        .product(name: "Clocks", package: "swift-clocks"),
+        .product(name: "CasePaths", package: "swift-case-paths"),
         .product(
-          name: "Perception", package: "swift-perception", condition: .when(traits: ["TCA"])),
+          name: "Perception", package: "swift-perception"),
         .product(
-          name: "ComposableArchitecture", package: "swift-composable-architecture",
-          condition: .when(traits: ["TCA"])),
+          name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]),
     .testTarget(
       name: "SwiftUICalendarTCATests",
       dependencies: [
         "SwiftUICalendarTCA",
         .product(
-          name: "ComposableArchitecture", package: "swift-composable-architecture",
-          condition: .when(traits: ["TCA"])),
+          name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]),
     .testTarget(
       name: "SwiftUICalendarTests",
       dependencies: [
         "SwiftUICalendarTCA",
         .product(
-          name: "ComposableArchitecture", package: "swift-composable-architecture",
-          condition: .when(traits: ["TCA"])),
+          name: "ComposableArchitecture", package: "swift-composable-architecture"),
         "SwiftUICalendar",
         .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
       ],

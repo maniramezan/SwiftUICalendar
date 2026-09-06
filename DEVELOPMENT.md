@@ -30,7 +30,7 @@ Every PR that touches `Sources/` MUST include corresponding tests:
 ### Structural Snapshot Tests
 - Text baselines (`.txt`) stored in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__/`. They
   serialize rendering-relevant state, not pixels, so they are machine- and OS-independent.
-- To (re)record: `SNAPSHOT_RECORD_MODE=all swift test --filter Snapshot --traits TCA`, then run once
+- To (re)record: `SNAPSHOT_RECORD_MODE=all swift test --filter Snapshot`, then run once
   more without the env var to verify. Commit the regenerated `.txt` files; review the diff.
 - `assertCalendarStructure(...)` / `assertDayContextStructure(...)`; renderer in `CalendarStructureRenderer.swift`.
 
@@ -70,14 +70,12 @@ snapshot suites for logic-only work.
 
 Edit `Resources/Localizable.xcstrings` and run `python3 scripts/export-localizations.py` after changing translations. Generated `.strings` resources support SwiftPM builds, and lint checks that they match the catalog.
 
-## Optional TCA checks
+## TCA checks
 
-Changes to shared calendar state, controlled rendering, or `SwiftUICalendarTCA` require both `swift test` and `swift test --traits TCA`. Reducer tests use exhaustive `TestStore` assertions; the default build must continue to work with the trait disabled.
+Both integrations are tested by `swift test`, including exhaustive `TestStore` reducer
+assertions and controlled-view structural snapshots. `SwiftUICalendarTCA` is an opt-in
+product with unconditional target dependencies; no package trait is required.
 
-## Trait-dependent resolution
-
-Use Swift 6.4 or newer for all configurations. Validate both `swift test` and
-`swift test --traits TCA` after manifest changes. Switching traits can rewrite
-`Package.resolved`; restore the canonical development resolution with
-`swift package resolve --traits TCA` after checks, and review the diff before committing.
-CI selects an installed Swift 6.4+ toolchain and fails if none is available.
+Use Swift 6.4 or newer for all configurations. Run `swift package resolve` after manifest
+changes and review any `Package.resolved` diff. CI selects an installed Swift 6.4+
+toolchain and fails if none is available.
