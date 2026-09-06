@@ -38,4 +38,41 @@
     return bitmap.representation(using: .png, properties: [:])
   }
 
+  /// Pumps the main run loop until `view` renders `requiredStableFrames` consecutive identical
+  /// frames, or `timeout` elapses.
+  ///
+  /// A fixed `Task.sleep` is not a render-complete signal for a SwiftUI `NSHostingView`: after a
+  /// live model mutation the tree settles asynchronously over several run-loop turns (observation
+  /// delivery, `onChange`, `LazyVStack` scroll re-anchoring, implicit animations). Waiting for the
+  /// rendered pixels to stop changing makes that settle deterministic regardless of wall-clock
+  /// timing or how busy the shared run loop is under parallel test execution. Because the whole
+  /// wait is synchronous, the calling test never suspends and no other `@MainActor` test can
+  /// interleave between the wait and the snapshot.
+  ///
+  /// Returns `true` if the render stabilized, `false` if it timed out (the caller may still
+  /// snapshot the last frame; a genuinely wrong render is then caught by the assertion).
+  @discardableResult
+  @MainActor
+  func waitForStableRender(
+    _ view: NSView,
+    timeout: TimeInterval = 5,
+    minimumFrames: Int = 8,
+    requiredStableFrames: Int = 4,
+    pollInterval: TimeInterval = 1.0 / 60.0
+  ) -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    var previous: Data?
+    var identicalRun = 1
+    var pumped = 0
+    while Date() < deadline {
+      RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(pollInterval))
+      pumped += 1
+      let frame = renderPNGData(view)
+      identicalRun = (frame != nil && frame == previous) ? identicalRun + 1 : 1
+      previous = frame
+      if pumped >= minimumFrames && identicalRun >= requiredStableFrames { return true }
+    }
+    return false
+  }
+
 #endif

@@ -42,26 +42,28 @@ struct ReleaseRegressionSnapshotTests {
 
   #if os(macOS)
     @Test("Mounted vertical calendar resets its anchor after switching systems")
-    func mountedVerticalSwitch() async throws {
+    func mountedVerticalSwitch() throws {
+      let size = CGSize(width: 390, height: 600)
       let vm = CalendarViewModel.snapshot()
       let view = CalendarView(
         model: vm, configuration: CalendarConfiguration(scrollMode: .vertical)
       )
-      .frame(width: 390, height: 600)
+      .frame(width: size.width, height: size.height)
       .environment(\.colorScheme, .light)
       .background(Color.white)
-      let hosted = hostView(view, size: CGSize(width: 390, height: 600))
+      let hosted = hostView(view, size: size)
       defer { hosted.window.contentView = nil }
       for identifier in [Calendar.Identifier.persian, .gregorian] {
         vm.updateCalendar(identifier: identifier)
-        // Let SwiftUI deliver observation and onChange updates to the already-mounted tree.
-        try await Task.sleep(for: .milliseconds(500))
-        hosted.hosting.layoutSubtreeIfNeeded()
+        // Wait for the already-mounted tree to fully settle (observation delivery, onChange,
+        // LazyVStack scroll re-anchoring) instead of guessing a sleep duration. The wait is
+        // synchronous, so the snapshot below sees a stable frame regardless of run-loop load.
+        #expect(waitForStableRender(hosted.hosting), "render did not stabilize for \(identifier)")
         let expected = try #require(vm.monthIdentifier())
         #expect(expected.calendarIdentifier == identifier)
         withSnapshotTesting(record: globalRecordMode) {
           assertSnapshot(
-            of: hosted.hosting, as: calendarImageStrategy(size: CGSize(width: 390, height: 600)),
+            of: hosted.hosting, as: calendarImageStrategy(size: size),
             named: "switched-\(identifier)")
         }
       }
