@@ -55,7 +55,7 @@ struct ReleaseRegressionSnapshotTests {
       for identifier in [Calendar.Identifier.persian, .gregorian] {
         vm.updateCalendar(identifier: identifier)
         // Let SwiftUI deliver observation and onChange updates to the already-mounted tree.
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: .milliseconds(500))
         hosted.hosting.layoutSubtreeIfNeeded()
         let expected = try #require(vm.monthIdentifier())
         #expect(expected.calendarIdentifier == identifier)
