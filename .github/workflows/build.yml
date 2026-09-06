@@ -54,7 +54,7 @@ jobs:
       - name: Compare snapshot references
         env:
           SNAPSHOT_ASSERTIONS: true
-        run: swift test --filter Snapshot
+        run: swift test --filter Snapshot --no-parallel
 
       - name: Check test coverage
         env:
@@ -115,7 +115,7 @@ jobs:
       - name: Run full tests
         env:
           SNAPSHOT_ASSERTIONS: true
-        run: swift test
+        run: swift test --no-parallel
 
       - name: Check test coverage
         env:
