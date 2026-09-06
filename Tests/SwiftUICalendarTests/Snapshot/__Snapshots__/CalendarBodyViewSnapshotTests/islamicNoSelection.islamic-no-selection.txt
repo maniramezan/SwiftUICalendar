@@ -1,0 +1,19 @@
+calendar: islamic-umalqura
+locale: ar_SA@calendar=islamic-umalqura;numbers=arab
+layoutDirection: rightToLeft
+scrollMode: none
+gridSizing: adaptive
+horizontalHeightMode: sixRows
+showsHeader: true
+dayRenderer: circle
+secondaryLabel: none
+selection: single(none)
+layout(width=390): cell=48.86 gridWidth=390 compactWidth=false
+weekdayHeader: ح ن ث ر خ ج س
+
+month: ذو الحجة [islamic-umalqura y1446 m12 era0] rows=5
+  ٢٧(·)        ٢٨(·)        ٢٩(·)        ١            ٢            ٣            ٤
+  ٥            ٦            ٧            ٨            ٩            ١٠           ١١
+  ١٢           ١٣           ١٤           ١٥           ١٦           ١٧           ١٨
+  ١٩           ٢٠           ٢١           ٢٢           ٢٣           ٢٤           ٢٥
+  ٢٦           ٢٧           ٢٨           ٢٩           ١(·)         ٢(·)         ٣(·)

@@ -1,20 +1,11 @@
-import SwiftUI
+import Foundation
 import Testing
 
 @testable import SwiftUICalendar
 
 @MainActor
-@Suite("CalendarBodyView Snapshot Tests (.none scroll mode)", .enabled(if: snapshotsEnabled))
+@Suite("CalendarBodyView structural snapshots (.none scroll mode)", .enabled(if: snapshotsEnabled))
 struct CalendarBodyViewSnapshotTests {
-
-  private func calendarBodyView(vm: CalendarViewModel, theme: Theme = Theme()) -> some View {
-    CalendarBodyView()
-      .environment(vm)
-      .environment(theme)
-      .environment(Typography.default)
-      .environment(\.locale, vm.locale)
-      .environment(\.layoutDirection, vm.layoutDirection)
-  }
 
   private func makeSelectedDate(day: Int) -> Date {
     Calendar(identifier: .gregorian)
@@ -31,7 +22,7 @@ struct CalendarBodyViewSnapshotTests {
   @Test("No selection")
   func noSelection() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
-    assertCalendarSnapshot(of: calendarBodyView(vm: vm), named: "no-selection")
+    assertCalendarStructure(model: vm, named: "no-selection")
   }
 
   // MARK: - Wide window (macOS) — compact grid, capped row height
@@ -39,8 +30,8 @@ struct CalendarBodyViewSnapshotTests {
   @Test("Wide window keeps day spacing compact while capping row height")
   func wideWindowKeepsDaySpacingCompact() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
-    // Capped cells stay in a centered compact grid instead of being distributed across the window.
-    assertCalendarSnapshot(of: calendarBodyView(vm: vm), width: 700, named: "wide-700-fill")
+    // Capped cells stay in a natural-width compact grid instead of stretching across the window.
+    assertCalendarStructure(model: vm, width: 700, named: "wide-700-fill")
   }
 
   @Test("Wide window keeps square day cells square")
@@ -50,33 +41,29 @@ struct CalendarBodyViewSnapshotTests {
     theme.day.useSquareDualCalendarDayView()
     theme.day.emptyDayBorderColor = .pink
     theme.day.emptyDayBorderColorWidth = 1
-    // At 700 pt the columns are wide; the square cell must stay a centered square, not a rectangle.
-    assertCalendarSnapshot(
-      of: calendarBodyView(vm: vm, theme: theme), width: 700, named: "wide-700-square")
+    assertCalendarStructure(model: vm, theme: theme, width: 700, named: "wide-700-square")
   }
 
   @Test("Single date selected")
   func singleDateSelected() {
-    let selected = makeSelectedDate(day: 15)
-    let vm = CalendarViewModel.snapshot(selection: .single(selected))
-    assertCalendarSnapshot(of: calendarBodyView(vm: vm), named: "single-selected")
+    let vm = CalendarViewModel.snapshot(selection: .single(makeSelectedDate(day: 15)))
+    assertCalendarStructure(model: vm, named: "single-selected")
   }
 
   @Test("Date range selected")
   func dateRangeSelected() {
-    let start = makeSelectedDate(day: 10)
-    let end = makeSelectedDate(day: 20)
-    let vm = CalendarViewModel.snapshot(selection: .range(start, end))
-    assertCalendarSnapshot(of: calendarBodyView(vm: vm), named: "range-selected")
+    let vm = CalendarViewModel.snapshot(
+      selection: .range(makeSelectedDate(day: 10), makeSelectedDate(day: 20)))
+    assertCalendarStructure(model: vm, named: "range-selected")
   }
 
   @Test("Multiple dates selected")
   func multipleDatesSelected() {
-    let d1 = makeSelectedDate(day: 5)
-    let d2 = makeSelectedDate(day: 15)
-    let d3 = makeSelectedDate(day: 25)
-    let vm = CalendarViewModel.snapshot(selection: .multiple([d1, d2, d3]))
-    assertCalendarSnapshot(of: calendarBodyView(vm: vm), named: "multiple-selected")
+    let vm = CalendarViewModel.snapshot(
+      selection: .multiple([
+        makeSelectedDate(day: 5), makeSelectedDate(day: 15), makeSelectedDate(day: 25),
+      ]))
+    assertCalendarStructure(model: vm, named: "multiple-selected")
   }
 
   @Test("Square dual day view with Persian secondary labels")
@@ -84,8 +71,7 @@ struct CalendarBodyViewSnapshotTests {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
     let theme = Theme()
     theme.day.useSquareDualCalendarDayView(secondaryLabel: .persian)
-    assertCalendarSnapshot(
-      of: calendarBodyView(vm: vm, theme: theme), named: "square-dual-persian-labels")
+    assertCalendarStructure(model: vm, theme: theme, named: "square-dual-persian-labels")
   }
 
   @Test("Square day borders fill full cell bounds")
@@ -98,10 +84,7 @@ struct CalendarBodyViewSnapshotTests {
     theme.day.emptyDayBorderColor = .pink
     theme.day.emptyDayBorderColorWidth = 1
 
-    assertCalendarSnapshot(
-      of: calendarBodyView(vm: vm, theme: theme),
-      named: "square-full-cell-borders"
-    )
+    assertCalendarStructure(model: vm, theme: theme, named: "square-full-cell-borders")
   }
 
   // MARK: - Persian calendar
@@ -109,11 +92,7 @@ struct CalendarBodyViewSnapshotTests {
   @Test("Persian calendar, no selection")
   func persianNoSelection() {
     let vm = CalendarViewModel.snapshot(identifier: .persian, selection: .single(nil))
-    assertCalendarSnapshot(
-      of: calendarBodyView(vm: vm)
-        .environment(\.layoutDirection, .rightToLeft),
-      named: "persian-no-selection"
-    )
+    assertCalendarStructure(model: vm, named: "persian-no-selection")
   }
 
   @Test("Persian calendar, single selection")
@@ -121,11 +100,7 @@ struct CalendarBodyViewSnapshotTests {
     let persianDate = Calendar(identifier: .persian)
       .date(from: DateComponents(year: 1404, month: 3, day: 15))
     let vm = CalendarViewModel.snapshot(identifier: .persian, selection: .single(persianDate))
-    assertCalendarSnapshot(
-      of: calendarBodyView(vm: vm)
-        .environment(\.layoutDirection, .rightToLeft),
-      named: "persian-single-selection"
-    )
+    assertCalendarStructure(model: vm, named: "persian-single-selection")
   }
 
   // MARK: - Hebrew
@@ -133,11 +108,7 @@ struct CalendarBodyViewSnapshotTests {
   @Test("Hebrew calendar, no selection")
   func hebrewNoSelection() {
     let vm = CalendarViewModel.snapshot(identifier: .hebrew, selection: .single(nil))
-    assertCalendarSnapshot(
-      of: calendarBodyView(vm: vm)
-        .environment(\.layoutDirection, vm.layoutDirection),
-      named: "hebrew-no-selection"
-    )
+    assertCalendarStructure(model: vm, named: "hebrew-no-selection")
   }
 
   // MARK: - Islamic (Umm al-Qura)
@@ -145,11 +116,7 @@ struct CalendarBodyViewSnapshotTests {
   @Test("Islamic (UmmAlQura), no selection")
   func islamicNoSelection() {
     let vm = CalendarViewModel.snapshot(identifier: .islamicUmmAlQura, selection: .single(nil))
-    assertCalendarSnapshot(
-      of: calendarBodyView(vm: vm)
-        .environment(\.layoutDirection, vm.layoutDirection),
-      named: "islamic-no-selection"
-    )
+    assertCalendarStructure(model: vm, named: "islamic-no-selection")
   }
 
   // MARK: - Chinese
@@ -157,7 +124,7 @@ struct CalendarBodyViewSnapshotTests {
   @Test("Chinese calendar, no selection")
   func chineseNoSelection() {
     let vm = CalendarViewModel.snapshot(identifier: .chinese, selection: .single(nil))
-    assertCalendarSnapshot(of: calendarBodyView(vm: vm), named: "chinese-no-selection")
+    assertCalendarStructure(model: vm, named: "chinese-no-selection")
   }
 
   // MARK: - Width variants
@@ -165,12 +132,12 @@ struct CalendarBodyViewSnapshotTests {
   @Test("Narrow width (320pt — iPhone SE)")
   func narrowWidth() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
-    assertCalendarSnapshot(of: calendarBodyView(vm: vm), width: 320, named: "narrow-320")
+    assertCalendarStructure(model: vm, width: 320, named: "narrow-320")
   }
 
   @Test("Wide width (428pt — iPhone Pro Max)")
   func wideWidth() {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
-    assertCalendarSnapshot(of: calendarBodyView(vm: vm), width: 428, named: "wide-428")
+    assertCalendarStructure(model: vm, width: 428, named: "wide-428")
   }
 }

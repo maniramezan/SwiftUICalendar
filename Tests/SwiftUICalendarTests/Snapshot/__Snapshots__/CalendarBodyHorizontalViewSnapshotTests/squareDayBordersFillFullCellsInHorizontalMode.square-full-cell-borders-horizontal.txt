@@ -1,0 +1,32 @@
+calendar: gregorian
+locale: en_US@calendar=gregorian
+layoutDirection: leftToRight
+scrollMode: horizontal
+gridSizing: adaptive
+horizontalHeightMode: hugContent
+showsHeader: true
+dayRenderer: square
+secondaryLabel: none
+selection: single(none)
+layout(width=390): cell=48.86 gridWidth=390 compactWidth=false
+weekdayHeader: S M T W T F S
+
+month: January [gregorian y2026 m1 era1] rows=5
+  28(·)        29(·)        30(·)        31(·)        1            2            3
+  4            5            6            7            8            9            10
+  11           12           13           14           15           16           17
+  18           19           20           21           22           23           24
+  25           26           27           28           29           30           31
+
+month: February [gregorian y2026 m2 era1] rows=4
+  1            2            3            4            5            6            7
+  8            9            10           11           12           13           14
+  15           16           17           18           19           20           21
+  22           23           24           25           26           27           28
+
+month: March [gregorian y2026 m3 era1] rows=5
+  1            2            3            4            5            6            7
+  8            9            10           11           12           13           14
+  15           16           17           18           19           20           21
+  22           23           24           25           26           27           28
+  29           30           31           1(·)         2(·)         3(·)         4(·)

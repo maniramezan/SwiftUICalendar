@@ -27,10 +27,12 @@ Every PR that touches `Sources/` MUST include corresponding tests:
 - **New/changed view** → at least one snapshot test updated or added in `Tests/SwiftUICalendarTests/Snapshot/`.
 - **New public API method** → positive case + edge/nil case.
 
-### Snapshot Tests
-- Reference images stored in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__/`.
-- To record: set `globalRecordMode = .all` in `SnapshotConfiguration.swift`, run tests, **revert to `.missing`**, commit reference images alongside code.
-- Never commit with `globalRecordMode = .all`.
+### Structural Snapshot Tests
+- Text baselines (`.txt`) stored in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__/`. They
+  serialize rendering-relevant state, not pixels, so they are machine- and OS-independent.
+- To (re)record: `SNAPSHOT_RECORD_MODE=all swift test --filter Snapshot --traits TCA`, then run once
+  more without the env var to verify. Commit the regenerated `.txt` files; review the diff.
+- `assertCalendarStructure(...)` / `assertDayContextStructure(...)`; renderer in `CalendarStructureRenderer.swift`.
 
 ### Required Test Scenarios per PR
 1. Cover the affected scroll mode (`.none` / `.vertical` / `.horizontal`)
@@ -61,7 +63,10 @@ bash ./scripts/check-examples.sh  # compile public API usage without @testable
 
 ## Snapshot Toolchain
 
-PR, main, and recording workflows select Xcode 26.3 on macos-15. Record and compare references on the same OS/toolchain; local beta SDK snapshots require review and regeneration on the CI runner before merge. `swift test` asserts snapshots by default; `SNAPSHOT_ASSERTIONS=false swift test` explicitly skips the snapshot suites for logic-only work.
+Structural snapshots are plain text derived from the model and the pure layout math, so they compare
+identically on any machine — a green local `swift test` is authoritative and no CI re-recording step
+is needed. `swift test` asserts them by default; `SNAPSHOT_ASSERTIONS=false swift test` skips the
+snapshot suites for logic-only work.
 
 Edit `Resources/Localizable.xcstrings` and run `python3 scripts/export-localizations.py` after changing translations. Generated `.strings` resources support SwiftPM builds, and lint checks that they match the catalog.
 

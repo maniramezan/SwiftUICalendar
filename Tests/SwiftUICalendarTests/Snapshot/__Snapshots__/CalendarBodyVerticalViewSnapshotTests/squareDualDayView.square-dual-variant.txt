@@ -1,0 +1,33 @@
+calendar: gregorian
+locale: en_US@calendar=gregorian
+layoutDirection: leftToRight
+scrollMode: vertical
+gridSizing: adaptive
+horizontalHeightMode: sixRows
+showsHeader: true
+dayRenderer: square
+secondaryLabel: persian
+selection: single(none)
+layout(width=390): cell=48.86 gridWidth=390 compactWidth=false
+weekdayHeader: S M T W T F S
+
+month: May [gregorian y2025 m5 era1] rows=5
+  27/۰۷(·)     28/۰۸(·)     29/۰۹(·)     30/۱۰(·)     1/۱۱         2/۱۲         3/۱۳
+  4/۱۴         5/۱۵         6/۱۶         7/۱۷         8/۱۸         9/۱۹         10/۲۰
+  11/۲۱        12/۲۲        13/۲۳        14/۲۴        15/۲۵        16/۲۶        17/۲۷
+  18/۲۸        19/۲۹        20/۳۰        21/۳۱        22/۰۱        23/۰۲        24/۰۳
+  25/۰۴        26/۰۵        27/۰۶        28/۰۷        29/۰۸        30/۰۹        31/۱۰
+
+month: June [gregorian y2025 m6 era1] rows=5
+  1/۱۱         2/۱۲         3/۱۳         4/۱۴         5/۱۵         6/۱۶         7/۱۷
+  8/۱۸         9/۱۹         10/۲۰        11/۲۱        12/۲۲        13/۲۳        14/۲۴
+  15/۲۵        16/۲۶        17/۲۷        18/۲۸        19/۲۹        20/۳۰        21/۳۱
+  22/۰۱        23/۰۲        24/۰۳        25/۰۴        26/۰۵        27/۰۶        28/۰۷
+  29/۰۸        30/۰۹        1/۱۰(·)      2/۱۱(·)      3/۱۲(·)      4/۱۳(·)      5/۱۴(·)
+
+month: July [gregorian y2025 m7 era1] rows=5
+  29/۰۸(·)     30/۰۹(·)     1/۱۰         2/۱۱         3/۱۲         4/۱۳         5/۱۴
+  6/۱۵         7/۱۶         8/۱۷         9/۱۸         10/۱۹        11/۲۰        12/۲۱
+  13/۲۲        14/۲۳        15/۲۴        16/۲۵        17/۲۶        18/۲۷        19/۲۸
+  20/۲۹        21/۳۰        22/۳۱        23/۰۱        24/۰۲        25/۰۳        26/۰۴
+  27/۰۵        28/۰۶        29/۰۷        30/۰۸        31/۰۹        1/۱۰(·)      2/۱۱(·)

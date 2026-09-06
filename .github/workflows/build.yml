@@ -16,7 +16,7 @@ env:
 
 jobs:
   pr-checks:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     permissions:
       contents: read
@@ -51,9 +51,7 @@ jobs:
       - name: Build package
         run: swift build -c debug
 
-      - name: Compare snapshot references
-        env:
-          SNAPSHOT_ASSERTIONS: true
+      - name: Check structural snapshots
         run: swift test --filter Snapshot --no-parallel
 
       - name: Check test coverage
@@ -113,8 +111,6 @@ jobs:
         run: swift build -c debug
 
       - name: Run full tests
-        env:
-          SNAPSHOT_ASSERTIONS: true
         run: swift test --no-parallel
 
       - name: Check test coverage
@@ -144,38 +140,6 @@ jobs:
         uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: SwiftUICalendar/.build/docs
-
-  record-snapshots:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-15
-    permissions:
-      contents: read
-    defaults:
-      run:
-        working-directory: SwiftUICalendar
-    steps:
-      - name: Checkout SwiftUICalendar
-        uses: actions/checkout@v7.0.1
-        with:
-          path: SwiftUICalendar
-
-      - name: Select Swift toolchain
-        run: bash ./scripts/select-swift-toolchain.sh
-
-      - name: Resolve package dependencies
-        run: swift package resolve
-
-      - name: Record snapshot baselines
-        env:
-          SNAPSHOT_ASSERTIONS: true
-          SNAPSHOT_RECORD_MODE: all
-        run: swift test --filter Snapshot --traits TCA --no-parallel || true
-
-      - name: Upload recorded snapshots
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: recorded-snapshots
-          path: SwiftUICalendar/Tests/SwiftUICalendarTests/Snapshot/__Snapshots__
 
   deploy-docs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

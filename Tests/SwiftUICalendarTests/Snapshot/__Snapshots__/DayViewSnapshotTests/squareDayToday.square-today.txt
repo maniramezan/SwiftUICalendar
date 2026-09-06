@@ -1,0 +1,10 @@
+dayRenderer: square
+dayLabel: 15
+secondaryLabel: none
+isToday: true
+isSelected: false
+isInCurrentMonth: true
+emptyDayBorderColor: clear
+emptyDayBorderColorWidth: 0
+todayBorderColor: pink
+selectedBackgroundColor: blue

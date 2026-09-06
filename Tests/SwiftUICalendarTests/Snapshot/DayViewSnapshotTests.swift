@@ -1,28 +1,35 @@
-import SwiftUI
+import Foundation
 import Testing
 
 @testable import SwiftUICalendar
 
 @MainActor
-@Suite("Day View Snapshot Tests", .enabled(if: snapshotsEnabled))
+@Suite("Day cell structural snapshots", .enabled(if: snapshotsEnabled))
 struct DayViewSnapshotTests {
 
   // Pinned date for context: June 15, 2025
   private let pinnedDate = Calendar(identifier: .gregorian)
     .date(from: DateComponents(year: 2025, month: 6, day: 15))!
 
+  private func circleTheme() -> Theme { Theme() }
+
+  private func squareTheme(secondaryLabel: Theme.Day.SecondaryLabelMode? = nil) -> Theme {
+    let theme = Theme()
+    theme.day.useSquareDualCalendarDayView(secondaryLabel: secondaryLabel)
+    return theme
+  }
+
   private func makeContext(
-    day: Int = 15,
     dayLabel: String = "15",
     isToday: Bool = false,
     isSelected: Bool = false,
     isInCurrentMonth: Bool = true,
     secondaryLabel: String? = nil,
-    theme: Theme.Day = Theme().day
+    theme: Theme.Day
   ) -> CalendarDayContext {
     CalendarDayContext(
       date: pinnedDate,
-      day: day,
+      day: 15,
       dayLabel: dayLabel,
       isToday: isToday,
       isSelected: isSelected,
@@ -34,88 +41,84 @@ struct DayViewSnapshotTests {
     )
   }
 
-  // MARK: - CircleDayView
+  // MARK: - Circle renderer
 
-  @Test("CircleDayView: normal state")
+  @Test("Circle day: normal state")
   func circleDayNormal() {
-    let view = CircleDayView(context: makeContext())
-      .frame(width: 44, height: 44)
-    assertCalendarSnapshot(of: view, width: 44, height: 44, named: "circle-normal")
+    let theme = circleTheme()
+    assertDayContextStructure(
+      makeContext(theme: theme.day), rendererFor: theme, named: "circle-normal")
   }
 
-  @Test("CircleDayView: today state")
+  @Test("Circle day: today state")
   func circleDayToday() {
-    let view = CircleDayView(context: makeContext(isToday: true))
-      .frame(width: 44, height: 44)
-    assertCalendarSnapshot(of: view, width: 44, height: 44, named: "circle-today")
+    let theme = circleTheme()
+    assertDayContextStructure(
+      makeContext(isToday: true, theme: theme.day), rendererFor: theme, named: "circle-today")
   }
 
-  @Test("CircleDayView: selected state")
+  @Test("Circle day: selected state")
   func circleDaySelected() {
-    let view = CircleDayView(context: makeContext(isSelected: true))
-      .frame(width: 44, height: 44)
-    assertCalendarSnapshot(of: view, width: 44, height: 44, named: "circle-selected")
+    let theme = circleTheme()
+    assertDayContextStructure(
+      makeContext(isSelected: true, theme: theme.day), rendererFor: theme, named: "circle-selected")
   }
 
-  @Test("CircleDayView: today and selected")
+  @Test("Circle day: today and selected")
   func circleDayTodayAndSelected() {
-    let view = CircleDayView(context: makeContext(isToday: true, isSelected: true))
-      .frame(width: 44, height: 44)
-    assertCalendarSnapshot(of: view, width: 44, height: 44, named: "circle-today-selected")
+    let theme = circleTheme()
+    assertDayContextStructure(
+      makeContext(isToday: true, isSelected: true, theme: theme.day),
+      rendererFor: theme, named: "circle-today-selected")
   }
 
-  @Test("CircleDayView: out-of-month state")
+  @Test("Circle day: out-of-month state")
   func circleDayOutOfMonth() {
-    let view = CircleDayView(context: makeContext(isInCurrentMonth: false))
-      .frame(width: 44, height: 44)
-      .foregroundStyle(Color.gray)
-    assertCalendarSnapshot(of: view, width: 44, height: 44, named: "circle-out-of-month")
+    let theme = circleTheme()
+    assertDayContextStructure(
+      makeContext(isInCurrentMonth: false, theme: theme.day),
+      rendererFor: theme, named: "circle-out-of-month")
   }
 
-  // MARK: - SquareDualCalendarDayView
+  // MARK: - Square dual renderer
 
-  @Test("SquareDualCalendarDayView: normal state")
+  @Test("Square day: normal state")
   func squareDayNormal() {
-    let view = SquareDualCalendarDayView(context: makeContext())
-      .frame(width: 50, height: 50)
-    assertCalendarSnapshot(of: view, width: 50, height: 50, named: "square-normal")
+    let theme = squareTheme()
+    assertDayContextStructure(
+      makeContext(theme: theme.day), rendererFor: theme, named: "square-normal")
   }
 
-  @Test("SquareDualCalendarDayView: with Persian secondary label")
+  @Test("Square day: with Persian secondary label")
   func squareDayWithPersianSecondaryLabel() {
+    let theme = squareTheme(secondaryLabel: .persian)
     let persianLabel = Theme.Day.SecondaryLabelMode.persian.label(for: pinnedDate)
-    let view = SquareDualCalendarDayView(
-      context: makeContext(secondaryLabel: persianLabel)
-    )
-    .frame(width: 50, height: 50)
-    assertCalendarSnapshot(of: view, width: 50, height: 50, named: "square-persian-label")
+    assertDayContextStructure(
+      makeContext(secondaryLabel: persianLabel, theme: theme.day),
+      rendererFor: theme, named: "square-persian-label")
   }
 
-  @Test("SquareDualCalendarDayView: today state")
+  @Test("Square day: today state")
   func squareDayToday() {
-    let view = SquareDualCalendarDayView(context: makeContext(isToday: true))
-      .frame(width: 50, height: 50)
-    assertCalendarSnapshot(of: view, width: 50, height: 50, named: "square-today")
+    let theme = squareTheme()
+    assertDayContextStructure(
+      makeContext(isToday: true, theme: theme.day), rendererFor: theme, named: "square-today")
   }
 
-  @Test("SquareDualCalendarDayView: selected state")
+  @Test("Square day: selected state")
   func squareDaySelected() {
-    let view = SquareDualCalendarDayView(context: makeContext(isSelected: true))
-      .frame(width: 50, height: 50)
-    assertCalendarSnapshot(of: view, width: 50, height: 50, named: "square-selected")
+    let theme = squareTheme()
+    assertDayContextStructure(
+      makeContext(isSelected: true, theme: theme.day), rendererFor: theme, named: "square-selected")
   }
 
-  @Test("SquareDualCalendarDayView: out-of-month border state")
+  @Test("Square day: out-of-month border state")
   func squareDayOutOfMonthBorder() {
-    let theme = Theme()
+    let theme = squareTheme()
     theme.day.emptyDayBorderColor = .pink
     theme.day.emptyDayBorderColorWidth = 1
-
-    let view = SquareDualCalendarDayView(
-      context: makeContext(isInCurrentMonth: false, theme: theme.day)
-    )
-    .frame(width: 50, height: 50)
-
-    assertCalendarSnapshot(of: view, width: 50, height: 50, named: "square-out-of-month-border")
+    assertDayContextStructure(
+      makeContext(isInCurrentMonth: false, theme: theme.day),
+      rendererFor: theme, named: "square-out-of-month-border")
   }
 }

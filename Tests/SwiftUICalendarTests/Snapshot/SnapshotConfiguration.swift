@@ -1,13 +1,12 @@
 import Foundation
 import SnapshotTesting
-import SwiftUI
 
 @testable import SwiftUICalendar
 
 // MARK: - Global record mode
-// ⚠️ Set to .all to record baseline snapshots, then revert to .missing before committing.
-// `SNAPSHOT_RECORD_MODE=all` lets CI record baselines on the exact runner image without
-// requiring a source change (see the `record-snapshots` workflow_dispatch job).
+// Structural snapshots are plain text and render identically on every machine, so recording is a
+// normal local step: set `SNAPSHOT_RECORD_MODE=all` (or flip this to `.all`) to regenerate the
+// `.txt` baselines, then run once more to verify.
 let globalRecordMode: SnapshotTestingConfiguration.Record = {
   if ProcessInfo.processInfo.environment["SNAPSHOT_RECORD_MODE"] == "all" {
     return .all
@@ -27,58 +26,11 @@ extension CalendarViewModel {
     selection: Selection = .single(nil)
   ) -> CalendarViewModel {
     let vm = CalendarViewModel(calendarIdentifier: identifier, selection: selection)
-    vm.currentDate = Calendar(identifier: .gregorian)
-      .date(from: DateComponents(year: 2025, month: 6, day: 1))!
+    if let pinned = Calendar(identifier: .gregorian)
+      .date(from: DateComponents(year: 2025, month: 6, day: 1))
+    {
+      vm.currentDate = pinned
+    }
     return vm
-  }
-}
-
-// MARK: - Platform-agnostic snapshot assertion
-
-/// Asserts an image snapshot of a SwiftUI view at the given width.
-/// On iOS/tvOS uses UIHostingController; on macOS uses NSHostingView.
-/// Call site's `#filePath`, `#function`, and `#line` are forwarded automatically.
-@MainActor
-func assertCalendarSnapshot<V: View>(
-  of view: V,
-  width: CGFloat = 390,
-  height: CGFloat? = nil,
-  named name: String? = nil,
-  file: StaticString = #filePath,
-  testName: String = #function,
-  line: UInt = #line
-) {
-  withSnapshotTesting(record: globalRecordMode) {
-    #if os(iOS) || os(tvOS)
-      let layout: SwiftUISnapshotLayout = {
-        if let h = height {
-          return .fixed(width: width, height: h)
-        }
-        return .fixed(width: width, height: 460)
-      }()
-      assertSnapshot(
-        of: view,
-        as: .image(layout: layout),
-        named: name,
-        file: file,
-        testName: testName,
-        line: line
-      )
-    #elseif os(macOS)
-      let targetHeight = height ?? 460
-      let size = CGSize(width: width, height: targetHeight)
-      let hosting = NSHostingView(
-        rootView: view.frame(width: width, height: targetHeight)
-          .environment(\.colorScheme, .light).background(Color.white))
-      hosting.frame = CGRect(origin: .zero, size: size)
-      assertSnapshot(
-        of: hosting,
-        as: calendarImageStrategy(size: size),
-        named: name,
-        file: file,
-        testName: testName,
-        line: line
-      )
-    #endif
   }
 }

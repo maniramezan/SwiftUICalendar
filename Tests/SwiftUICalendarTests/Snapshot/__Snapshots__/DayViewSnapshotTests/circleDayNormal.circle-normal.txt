@@ -1,0 +1,10 @@
+dayRenderer: circle
+dayLabel: 15
+secondaryLabel: none
+isToday: false
+isSelected: false
+isInCurrentMonth: true
+emptyDayBorderColor: clear
+emptyDayBorderColorWidth: 0
+todayBorderColor: pink
+selectedBackgroundColor: blue

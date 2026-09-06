@@ -26,7 +26,7 @@ Sources/SwiftUICalendar/
   Resources/     # Localizable.xcstrings (processed at build time)
 Tests/SwiftUICalendarTests/
   Unit/          # Swift Testing (@Test/@Suite) — logic tests
-  Snapshot/      # Snapshot tests using swift-snapshot-testing
+  Snapshot/      # Structural (text) snapshots — CalendarStructureRenderer + swift-snapshot-testing .lines
 Examples/SwiftUICalendarSample/   # Sample Xcode project
 ```
 
@@ -50,19 +50,25 @@ All changes to `Sources/` require tests. `swift test` must pass before merge.
 - Annotate `@Suite` struct with `@MainActor` (models are `@Observable`).
 - Use `CalendarViewModel.test(identifier:selection:)` factory (defined in `CalendarViewModel.swift`).
 
-### Snapshot Tests (`Tests/.../Snapshot/`)
-- Required for any new or modified SwiftUI view.
+### Structural Snapshot Tests (`Tests/.../Snapshot/`)
+- Text (`.txt`) snapshots that serialize the state driving rendering — resolved month grid, selection
+  roles, localization, layout direction, and the `CalendarGridLayout` math. No simulator, no pixel
+  diffing; they render identically on every machine and OS, so a local `swift test` is authoritative.
+- Required for any new or modified SwiftUI view or rendering-relevant model change.
 - Use `CalendarViewModel.snapshot(identifier:selection:)` factory (defined in `SnapshotConfiguration.swift`, pins to June 1, 2025).
-- Use `assertCalendarSnapshot(of:width:height:named:)` helper for assertions.
-- Views under test need these environment values: `vm`, `theme`, `Typography.default`, `\.locale`, `\.layoutDirection`.
-- **Recording flow**: set `globalRecordMode = .all` in `SnapshotConfiguration.swift`, run tests, **revert to `.missing`**, commit `.png` reference images. Never merge with `.all`.
-- Snapshot tests are macOS/iOS only.
+- Use `assertCalendarStructure(model:configuration:theme:width:monthSpan:named:)`; day-cell tests use
+  `assertDayContextStructure(_:rendererFor:named:)`. Renderer lives in `CalendarStructureRenderer.swift`.
+- **Recording flow**: `SNAPSHOT_RECORD_MODE=all swift test --filter Snapshot --traits TCA`, then run
+  once more without the env var to verify. Commit the regenerated `.txt` files. Diffs are readable —
+  review them.
+- Genuine view-layer behavior (LazyVStack anchor recovery, hit targets, glass fallbacks) belongs in a
+  hosted unit test under `Tests/.../Unit/`, not here.
 
 ### Coverage Requirements
 | Area | Minimum |
 |------|---------|
-| Scroll modes (`.none`, `.vertical`, `.horizontal`) | Snapshot per mode |
-| Day view types (`CircleDayView`, `SquareDualCalendarDayView`) | All visual states |
+| Scroll modes (`.none`, `.vertical`, `.horizontal`) | Structural snapshot per mode |
+| Day view types (`circle`, `square` renderers) | All context states |
 | Calendar systems | Gregorian + Persian |
 | `CalendarViewModel` public/internal methods | ≥ 1 positive + ≥ 1 edge case each |
 
