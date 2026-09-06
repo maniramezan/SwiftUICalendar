@@ -12,6 +12,11 @@ if [[ -z "${symbol_graph_path}" ]]; then
   exit 1
 fi
 
+symbol_graph_filter_dir="$(mktemp -d)"
+trap 'rm -f "${symbol_graph_log}"; rm -rf "${symbol_graph_filter_dir}"' EXIT
+cp "${symbol_graph_path}"/SwiftUICalendar.symbols.json "${symbol_graph_filter_dir}/"
+cp "${symbol_graph_path}"/SwiftUICalendar@*.symbols.json "${symbol_graph_filter_dir}/" 2>/dev/null || true
+
 output_path=".build/docs"
 hosting_args=()
 if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
@@ -19,7 +24,7 @@ if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
 fi
 
 xcrun docc convert Sources/SwiftUICalendar/SwiftUICalendar.docc \
-  --additional-symbol-graph-dir "${symbol_graph_path}" \
+  --additional-symbol-graph-dir "${symbol_graph_filter_dir}" \
   --output-path "${output_path}" \
   --fallback-display-name SwiftUICalendar \
   --fallback-bundle-identifier com.maniramezan.SwiftUICalendar \

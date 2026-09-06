@@ -169,7 +169,7 @@ jobs:
         env:
           SNAPSHOT_ASSERTIONS: true
           SNAPSHOT_RECORD_MODE: all
-        run: swift test --filter Snapshot || true
+        run: swift test --filter Snapshot --traits TCA || true
 
       - name: Upload recorded snapshots
         uses: actions/upload-artifact@v7.0.1
