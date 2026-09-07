@@ -69,4 +69,36 @@ struct CalendarFeatureTests {
     #expect(store.state.calendar.visibleMonth.year == 1404)
     await store.send(.view(.today))
   }
+
+  @Test("scroll-follow steps exactly one month per offset action")
+  func scrollFollowsBackward() async throws {
+    let initial = try CalendarState(currentDate: date(2025, 6, 1))
+    let store = TestStore(initialState: CalendarFeature.State(calendar: initial)) {
+      CalendarFeature()
+    }
+    store.exhaustivity = .on
+    var previous = initial
+    for step in 1...5 {
+      let expected = try CalendarState(currentDate: date(2025, 6 - step, 1))
+      await store.send(.view(.offsetMonths(-1))) { $0.calendar = expected }
+      previous = expected
+    }
+    let expectedFinal = try date(2025, 1, 1)
+    #expect(previous.currentDate == expectedFinal)
+
+    // And forward
+    let forwardInitial = try CalendarState(currentDate: date(2025, 6, 1))
+    let forwardStore = TestStore(initialState: CalendarFeature.State(calendar: forwardInitial)) {
+      CalendarFeature()
+    }
+    forwardStore.exhaustivity = .on
+    var forwardPrevious = forwardInitial
+    for step in 1...5 {
+      let expected = try CalendarState(currentDate: date(2025, 6 + step, 1))
+      await forwardStore.send(.view(.offsetMonths(1))) { $0.calendar = expected }
+      forwardPrevious = expected
+    }
+    let expectedForwardFinal = try date(2025, 11, 1)
+    #expect(forwardPrevious.currentDate == expectedForwardFinal)
+  }
 }

@@ -10,12 +10,14 @@
 		0800B0FF7B1509D12497E075 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E54579990729F48D9711EB1C /* Foundation.framework */; };
 		23B4853F2FFF39A300EBA2D3 /* SwiftUICalendar in Frameworks */ = {isa = PBXBuildFile; productRef = 23B4853E2FFF39A300EBA2D3 /* SwiftUICalendar */; };
 		97D5DA2327270B15AF5F87E0 /* FixedCalendarRotationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65DFA5C248CF6B4A1407F103 /* FixedCalendarRotationUITests.swift */; };
+		TCA7TCA7TCA7TCA7TCA7TCA7 /* SwiftUICalendarTCA in Frameworks */ = {isa = PBXBuildFile; productRef = TCA6TCA6TCA6TCA6TCA6TCA6 /* SwiftUICalendarTCA */; };
 		AD8C13B9F81AD2711651598B /* RotationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19E320E4735E2BF199961795 /* RotationUITests.swift */; };
 		BF1BF1BF1BF1BF1BF1BF1BF1BF1BF1BF1 /* SwiftUICalendarSampleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR1FR1FR1FR1FR1FR1FR1FR1FR1FR1FR1 /* SwiftUICalendarSampleApp.swift */; };
 		BF2BF2BF2BF2BF2BF2BF2BF2BF2BF2BF2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR2FR2FR2FR2FR2FR2FR2FR2FR2FR2FR2 /* ContentView.swift */; };
 		BF4BF4BF4BF4BF4BF4BF4BF4BF4BF4BF4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FR3FR3FR3FR3FR3FR3FR3FR3FR3FR3FR3 /* Assets.xcassets */; };
 		BF5BF5BF5BF5BF5BF5BF5BF5BF5BF5BF5 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FR4FR4FR4FR4FR4FR4FR4FR4FR4FR4FR4 /* Preview Assets.xcassets */; };
 		CEF0A276FCE07DDF2864D0B2 /* RotationScrollUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B74EBA24E3B3906FF0CC376E /* RotationScrollUITests.swift */; };
+		RE1RE1RE1RE1RE1RE1RE1RE1RE1RE1RE1 /* VerticalScrollDateUpdateReproUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RF1RF1RF1RF1RF1RF1RF1RF1RF1RF1RF1 /* VerticalScrollDateUpdateReproUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,6 +35,7 @@
 		58DF2AC09BF10371A3BE55BF /* SwiftUICalendarSampleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftUICalendarSampleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		65DFA5C248CF6B4A1407F103 /* FixedCalendarRotationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FixedCalendarRotationUITests.swift; path = UITests/FixedCalendarRotationUITests.swift; sourceTree = "<group>"; };
 		B74EBA24E3B3906FF0CC376E /* RotationScrollUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RotationScrollUITests.swift; path = UITests/RotationScrollUITests.swift; sourceTree = "<group>"; };
+		RF1RF1RF1RF1RF1RF1RF1RF1RF1RF1RF1 /* VerticalScrollDateUpdateReproUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VerticalScrollDateUpdateReproUITests.swift; path = UITests/VerticalScrollDateUpdateReproUITests.swift; sourceTree = "<group>"; };
 		E54579990729F48D9711EB1C /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		FR1FR1FR1FR1FR1FR1FR1FR1FR1FR1FR1 /* SwiftUICalendarSampleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUICalendarSampleApp.swift; sourceTree = "<group>"; };
 		FR2FR2FR2FR2FR2FR2FR2FR2FR2FR2FR2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -55,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				23B4853F2FFF39A300EBA2D3 /* SwiftUICalendar in Frameworks */,
+				TCA7TCA7TCA7TCA7TCA7TCA7 /* SwiftUICalendarTCA in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,6 +92,7 @@
 				19E320E4735E2BF199961795 /* RotationUITests.swift */,
 				B74EBA24E3B3906FF0CC376E /* RotationScrollUITests.swift */,
 				65DFA5C248CF6B4A1407F103 /* FixedCalendarRotationUITests.swift */,
+				RF1RF1RF1RF1RF1RF1RF1RF1RF1RF1RF1 /* VerticalScrollDateUpdateReproUITests.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -161,6 +166,7 @@
 			name = SwiftUICalendarSample;
 			packageProductDependencies = (
 				23B4853E2FFF39A300EBA2D3 /* SwiftUICalendar */,
+				TCA6TCA6TCA6TCA6TCA6TCA6 /* SwiftUICalendarTCA */,
 			);
 			productName = SwiftUICalendarSample;
 			productReference = PR1PR1PR1PR1PR1PR1PR1PR1PR1PR1PR1 /* SwiftUICalendarSample.app */;
@@ -230,6 +236,7 @@
 				AD8C13B9F81AD2711651598B /* RotationUITests.swift in Sources */,
 				CEF0A276FCE07DDF2864D0B2 /* RotationScrollUITests.swift in Sources */,
 				97D5DA2327270B15AF5F87E0 /* FixedCalendarRotationUITests.swift in Sources */,
+				RE1RE1RE1RE1RE1RE1RE1RE1RE1RE1RE1 /* VerticalScrollDateUpdateReproUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -491,6 +498,10 @@
 		23B4853E2FFF39A300EBA2D3 /* SwiftUICalendar */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftUICalendar;
+		};
+		TCA6TCA6TCA6TCA6TCA6TCA6 /* SwiftUICalendarTCA */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SwiftUICalendarTCA;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

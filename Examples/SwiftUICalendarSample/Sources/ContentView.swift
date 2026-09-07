@@ -1,5 +1,7 @@
+import ComposableArchitecture
 import SwiftUI
 import SwiftUICalendar
+import SwiftUICalendarTCA
 
 struct ContentView: View {
   @State private var calendarIdentifier: Calendar.Identifier = .gregorian
@@ -7,8 +9,10 @@ struct ContentView: View {
   @State private var scrollMode: CalendarConfiguration.ScrollMode = .none
   @State private var dayViewMode: DayViewMode = .circle
   @State private var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode = .sixRows
+  @State private var architecture: SampleArchitecture = .mvvm
   @State private var viewModel = CalendarViewModel(
-    calendarIdentifier: .gregorian, selection: .single(Date()))
+    calendarIdentifier: .gregorian, selection: .single(nil))
+  @State private var tcaStore: StoreOf<CalendarFeature>?
   @State private var theme = Theme()
   @State private var typography = Typography.default
   @State private var isSettingsPresented = false
@@ -16,12 +20,15 @@ struct ContentView: View {
   var body: some View {
     NavigationStack {
       SampleCalendarContent(
+        architecture: architecture,
         viewModel: viewModel,
+        tcaStore: tcaStore,
         theme: theme,
         typography: typography,
         scrollMode: scrollMode,
         horizontalHeightMode: horizontalHeightMode
       )
+      .id(architecture)
       .navigationTitle("Calendar")
       .toolbar {
         ToolbarItem(placement: .primaryAction) {
@@ -34,12 +41,16 @@ struct ContentView: View {
     }
     .sheet(isPresented: $isSettingsPresented) {
       ConfigurationView(
+        architecture: $architecture,
         calendarIdentifier: $calendarIdentifier,
         selectionMode: $selectionMode,
         scrollMode: $scrollMode,
         horizontalHeightMode: $horizontalHeightMode,
         dayViewMode: $dayViewMode
       )
+    }
+    .onChange(of: architecture) { _, _ in
+      resettleArchitecture()
     }
     .onChange(of: calendarIdentifier) { _, _ in
       applyCalendarIdentifier()
@@ -52,13 +63,45 @@ struct ContentView: View {
     }
   }
 
+  // MARK: - Architecture switching
+
+  private func resettleArchitecture() {
+    let selection = selectionMode.selectionValue(baseDate: Date())
+    switch architecture {
+    case .mvvm:
+      tcaStore = nil
+      viewModel = CalendarViewModel(
+        calendarIdentifier: calendarIdentifier, selection: selection)
+    case .tca:
+      let seed = CalendarViewModel(
+        calendarIdentifier: calendarIdentifier, selection: selection)
+      tcaStore = StoreOf<CalendarFeature>(
+        initialState: CalendarFeature.State(calendar: seed.state),
+        reducer: { CalendarFeature() }
+      )
+    }
+  }
+
+  // MARK: - Settings application
+
   private func applyCalendarIdentifier() {
-    viewModel.updateCalendar(identifier: calendarIdentifier)
+    switch architecture {
+    case .mvvm:
+      viewModel.updateCalendar(identifier: calendarIdentifier)
+    case .tca:
+      tcaStore?.send(.view(.setCalendar(calendarIdentifier)))
+    }
     applyDayConfiguration()
   }
 
   private func applySelectionMode() {
-    viewModel.selection = selectionMode.selectionValue(baseDate: Date())
+    let selection = selectionMode.selectionValue(baseDate: Date())
+    switch architecture {
+    case .mvvm:
+      viewModel.selection = selection
+    case .tca:
+      tcaStore?.send(.view(.setSelection(selection)))
+    }
   }
 
   private func applyDayConfiguration() {
@@ -86,7 +129,9 @@ struct ContentView: View {
 }
 
 private struct SampleCalendarContent: View {
+  let architecture: SampleArchitecture
   let viewModel: CalendarViewModel
+  let tcaStore: StoreOf<CalendarFeature>?
   let theme: Theme
   let typography: Typography
   let scrollMode: CalendarConfiguration.ScrollMode
@@ -96,24 +141,40 @@ private struct SampleCalendarContent: View {
     Group {
       if scrollMode == .none {
         ScrollView {
-          CalendarView(
-            model: viewModel,
+          SampleCalendarPath(
+            architecture: architecture,
+            viewModel: viewModel,
+            tcaStore: tcaStore,
             theme: theme,
             typography: typography,
-            configuration: configuration
+            scrollMode: scrollMode,
+            horizontalHeightMode: horizontalHeightMode
           )
         }
       } else {
-        CalendarView(
-          model: viewModel,
+        SampleCalendarPath(
+          architecture: architecture,
+          viewModel: viewModel,
+          tcaStore: tcaStore,
           theme: theme,
           typography: typography,
-          configuration: configuration
+          scrollMode: scrollMode,
+          horizontalHeightMode: horizontalHeightMode
         )
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
   }
+}
+
+private struct SampleCalendarPath: View {
+  let architecture: SampleArchitecture
+  let viewModel: CalendarViewModel
+  let tcaStore: StoreOf<CalendarFeature>?
+  let theme: Theme
+  let typography: Typography
+  let scrollMode: CalendarConfiguration.ScrollMode
+  let horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode
 
   private var configuration: CalendarConfiguration {
     CalendarConfiguration(
@@ -121,11 +182,30 @@ private struct SampleCalendarContent: View {
       horizontalHeightMode: horizontalHeightMode
     )
   }
+
+  var body: some View {
+    if let tcaStore, architecture == .tca {
+      TCACalendarView(
+        store: tcaStore,
+        theme: theme,
+        typography: typography,
+        configuration: configuration
+      )
+    } else {
+      CalendarView(
+        model: viewModel,
+        theme: theme,
+        typography: typography,
+        configuration: configuration
+      )
+    }
+  }
 }
 
 private struct ConfigurationView: View {
   @Environment(\.dismiss) private var dismiss
 
+  @Binding var architecture: SampleArchitecture
   @Binding var calendarIdentifier: Calendar.Identifier
   @Binding var selectionMode: SelectionMode
   @Binding var scrollMode: CalendarConfiguration.ScrollMode
@@ -135,6 +215,16 @@ private struct ConfigurationView: View {
   var body: some View {
     NavigationStack {
       Form {
+        Section("Architecture") {
+          Picker("State Owner", selection: $architecture) {
+            ForEach(SampleArchitecture.allCases) { path in
+              Text(path.title).tag(path)
+            }
+          }
+          .pickerStyle(.segmented)
+          .accessibilityIdentifier("state-owner-picker")
+        }
+
         Section("Calendar") {
           Picker("Calendar", selection: $calendarIdentifier) {
             Text("Gregorian").tag(Calendar.Identifier.gregorian)
@@ -157,6 +247,7 @@ private struct ConfigurationView: View {
             Text("Horizontal").tag(CalendarConfiguration.ScrollMode.horizontal)
           }
           .pickerStyle(.segmented)
+          .accessibilityIdentifier("scroll-mode-picker")
 
           if scrollMode == .horizontal {
             Picker("Horizontal Height", selection: $horizontalHeightMode) {
@@ -183,7 +274,24 @@ private struct ConfigurationView: View {
         }
       }
     }
-    .presentationDetents([.medium, .large])
+    .presentationDetents([.large])
+    .presentationDragIndicator(.hidden)
+  }
+}
+
+private enum SampleArchitecture: String, CaseIterable, Identifiable {
+  case mvvm
+  case tca
+
+  var id: String { rawValue }
+
+  var title: String {
+    switch self {
+    case .mvvm:
+      return "MVVM"
+    case .tca:
+      return "TCA"
+    }
   }
 }
 

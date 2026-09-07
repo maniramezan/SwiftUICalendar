@@ -52,4 +52,11 @@ struct CalendarBodyVerticalViewSnapshotTests {
     assertCalendarStructure(
       model: vm, configuration: config, theme: theme, monthSpan: 1, named: "square-dual-variant")
   }
+
+  @Test("Gregorian scroll window spans several months")
+  func gregorianScrollWindow() {
+    let vm = CalendarViewModel.snapshot(selection: .single(nil))
+    assertCalendarStructure(
+      model: vm, configuration: config, monthSpan: 3, named: "gregorian-scroll-window")
+  }
 }

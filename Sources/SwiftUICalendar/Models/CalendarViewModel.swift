@@ -58,6 +58,11 @@ import SwiftUI
   /// The authoritative value state for a locally owned model.
   public private(set) var state: CalendarState
   @ObservationIgnored private var onAction: ((CalendarAction) -> Void)?
+  // Month titles are resolved on the scroll rendering hot path (once per visible month per
+  // frame), where constructing a `DateFormatter` per call shows up as jank. Titles are cached per
+  // calendar/locale signature and only invalidated when that signature changes.
+  @ObservationIgnored internal private(set) var monthTitleCache: [String: String] = [:]
+  @ObservationIgnored private var monthTitleCacheSignature = ""
   private var calendar: Calendar { state.calendar }
 
   /// Creates an observable owner for existing value state.
@@ -376,13 +381,23 @@ import SwiftUI
   }
 
   func monthSymbol(for identifier: MonthIdentifier) -> String {
+    let signature = calendarSignature
+    if monthTitleCacheSignature != signature {
+      monthTitleCache.removeAll(keepingCapacity: true)
+      monthTitleCacheSignature = signature
+    }
+    // Key includes leap-month flag: Chinese leap months have distinct names ("Sixth Monthbis").
+    let key = "\(identifier.year)-\(identifier.month)-\(identifier.isLeapMonth ? 1 : 0)"
+    if let cached = monthTitleCache[key] { return cached }
     guard let date = engine.start(of: identifier) else { return "" }
     let formatter = DateFormatter()
     formatter.calendar = calendar
     formatter.locale = locale
     formatter.timeZone = calendar.timeZone
     formatter.dateFormat = "LLLL"
-    return formatter.string(from: date)
+    let title = formatter.string(from: date)
+    monthTitleCache[key] = title
+    return title
   }
 
   func yearTitle(_ year: Int) -> String {
