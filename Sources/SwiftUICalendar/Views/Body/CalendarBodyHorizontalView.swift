@@ -390,7 +390,10 @@ struct CalendarBodyHorizontalView: View {
       .onPreferenceChange(HorizontalMonthHeightPreferenceKey.self) { heights in
         updateMeasuredHeight(heights.values.max() ?? 0)
       }
-      .simultaneousGesture(
+      // The day cells are Buttons. A simultaneous drag lets a Button finish its press when a
+      // swipe starts on a cell, which changes the month and selects that day. Give the pager
+      // priority so a moving touch belongs to paging; stationary touches still reach the Button.
+      .highPriorityGesture(
         DragGesture()
           .onChanged { value in
             guard !isNavigating else {
