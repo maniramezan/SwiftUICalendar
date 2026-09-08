@@ -39,9 +39,7 @@ jobs:
           path: |
             SwiftUICalendar/.build
             SwiftUICalendar/.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('SwiftUICalendar/Package.swift', 'SwiftUICalendar/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
+          key: ${{ runner.os }}-spm-${{ hashFiles('SwiftUICalendar/Package.swift', 'SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
       - name: Resolve package dependencies
         run: swift package resolve
@@ -95,9 +93,7 @@ jobs:
           path: |
             SwiftUICalendar/.build
             SwiftUICalendar/.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('SwiftUICalendar/Package.swift', 'SwiftUICalendar/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
+          key: ${{ runner.os }}-spm-${{ hashFiles('SwiftUICalendar/Package.swift', 'SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
       - name: Resolve package dependencies
         run: swift package resolve
