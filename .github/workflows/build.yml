@@ -59,9 +59,11 @@ jobs:
         run: bash ./scripts/check-coverage.sh
 
       - name: Build iOS sample
+        # Allow the locked TCA dependency macros on fresh, noninteractive CI runners.
         run: >-
           xcodebuild -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
           -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
+          -skipMacroValidation
           -derivedDataPath .build/SampleRelease CODE_SIGNING_ALLOWED=NO build
 
       - name: Compile public API examples
@@ -113,9 +115,11 @@ jobs:
         run: bash ./scripts/check-coverage.sh
 
       - name: Build iOS sample
+        # Allow the locked TCA dependency macros on fresh, noninteractive CI runners.
         run: >-
           xcodebuild -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
           -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
+          -skipMacroValidation
           -derivedDataPath .build/SampleRelease CODE_SIGNING_ALLOWED=NO build
 
       - name: Compile public API examples
