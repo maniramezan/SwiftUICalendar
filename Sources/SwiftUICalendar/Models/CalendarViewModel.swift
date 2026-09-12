@@ -63,6 +63,11 @@ import SwiftUI
   // calendar/locale signature and only invalidated when that signature changes.
   @ObservationIgnored internal private(set) var monthTitleCache: [String: String] = [:]
   @ObservationIgnored private var monthTitleCacheSignature = ""
+  // Grids, month offsets, and date formatters live in a cache keyed by calendar signature rather
+  // than by model instance. `CalendarView`'s externally owned (TCA) initializer builds a fresh
+  // rendering projection on every store mutation, so an instance-scoped cache would start cold on
+  // every frame of a scroll. Injectable so tests get an isolated cache.
+  @ObservationIgnored var renderCache: CalendarRenderCache = .shared
   private var calendar: Calendar { state.calendar }
 
   /// Creates an observable owner for existing value state.
@@ -348,28 +353,36 @@ import SwiftUI
 
   func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil) -> MonthIdentifier?
   {
-    engine.month(offset: offset, from: identifier ?? visibleMonth)
+    let engine = engine
+    return renderCache.month(
+      offset: offset, from: identifier ?? visibleMonth, calendar: calendar, engine: engine)
   }
 
+  /// Builds the grid for `identifier`, reusing cached calendar geometry.
+  ///
+  /// Only `isToday` and `isSelected` are resolved here — everything else comes from
+  /// ``CalendarRenderCache``. Splitting it this way means a selection tap, which changes nothing
+  /// about the calendar, costs a pass over the cached days instead of rebuilding the grid.
   func monthSnapshot(for identifier: MonthIdentifier) -> MonthSnapshot? {
-    guard let start = engine.start(of: identifier),
-      let count = calendar.range(of: .day, in: .month, for: start)?.count
+    let calendar = calendar
+    guard
+      let geometry = renderCache.monthGeometry(
+        for: identifier, calendar: calendar, engine: engine)
     else { return nil }
-    let leading = calendar.component(.weekday, from: start) - 1
-    let total = ((leading + count + 6) / 7) * 7
-    let days = (0..<total).compactMap { index -> MonthSnapshot.Day? in
-      guard let date = calendar.date(byAdding: .day, value: index - leading, to: start) else {
-        return nil
+
+    return CalendarSignpost.rendering.measure("buildMonthSnapshot") {
+      // Both predicates are hoisted out of the per-day loop: `startOfDay` and the selection
+      // normalization are the same for every cell in the grid.
+      let today = calendar.startOfDay(for: Date())
+      let isSelected = selection.matcher(in: calendar)
+      let days = geometry.days.map { day in
+        MonthSnapshot.Day(
+          id: day.id, date: day.date, day: day.day, dayLabel: day.dayLabel, month: day.month,
+          year: day.year, isInDisplayedMonth: day.isInDisplayedMonth,
+          isToday: day.dayStart == today, isSelected: isSelected(day.dayStart))
       }
-      let day = calendar.component(.day, from: date)
-      return MonthSnapshot.Day(
-        id: "day-\(date.timeIntervalSinceReferenceDate)", date: date, day: day,
-        dayLabel: NumberFormatter.formatDay(day, locale: locale),
-        month: calendar.component(.month, from: date), year: calendar.component(.year, from: date),
-        isInDisplayedMonth: index >= leading && index < leading + count,
-        isToday: calendar.isDateInToday(date), isSelected: isSelected(date: date))
+      return MonthSnapshot(id: identifier, title: monthSymbol(for: identifier), days: days)
     }
-    return MonthSnapshot(id: identifier, title: monthSymbol(for: identifier), days: days)
   }
 
   func monthSymbol(for month: Int) -> String {
@@ -390,12 +403,9 @@ import SwiftUI
     let key = "\(identifier.year)-\(identifier.month)-\(identifier.isLeapMonth ? 1 : 0)"
     if let cached = monthTitleCache[key] { return cached }
     guard let date = engine.start(of: identifier) else { return "" }
-    let formatter = DateFormatter()
-    formatter.calendar = calendar
-    formatter.locale = locale
-    formatter.timeZone = calendar.timeZone
-    formatter.dateFormat = "LLLL"
-    let title = formatter.string(from: date)
+    let title = CalendarSignpost.rendering.measure("resolveMonthTitle") {
+      renderCache.formatter(format: "LLLL", calendar: calendar).string(from: date)
+    }
     monthTitleCache[key] = title
     return title
   }
@@ -403,11 +413,7 @@ import SwiftUI
   func yearTitle(_ year: Int) -> String {
     let number = NumberFormatter.formatYear(year, locale: locale)
     guard calendar.identifier == .japanese || calendar.identifier == .chinese else { return number }
-    let formatter = DateFormatter()
-    formatter.calendar = calendar
-    formatter.locale = locale
-    formatter.timeZone = calendar.timeZone
-    formatter.dateFormat = "G"
+    let formatter = renderCache.formatter(format: "G", calendar: calendar)
     return "\(formatter.string(from: currentDate)) \(number)"
   }
 

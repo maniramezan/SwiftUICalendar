@@ -4,12 +4,32 @@ import Foundation
 struct CalendarEngine: Sendable {
   let calendar: Calendar
 
+  /// The navigable interval, January 1 1900 through December 31 2100 in the Gregorian calendar.
+  ///
+  /// Resolved once per time zone rather than per access. Every offset, containment, and navigation
+  /// check reads this, so the vertical scroll hits it several times per realized month — building a
+  /// Gregorian `Calendar` and two dates each time showed up as scroll jank.
   var supportedDates: Range<Date> {
+    Self.supportedDates(in: calendar.timeZone)
+  }
+
+  private static let supportedDatesLock = NSLock()
+  nonisolated(unsafe) private static var supportedDatesByTimeZone: [TimeZone: Range<Date>] = [:]
+
+  private static func supportedDates(in timeZone: TimeZone) -> Range<Date> {
+    supportedDatesLock.lock()
+    defer { supportedDatesLock.unlock() }
+    if let cached = supportedDatesByTimeZone[timeZone] { return cached }
+
     var gregorian = Calendar(identifier: .gregorian)
-    gregorian.timeZone = calendar.timeZone
-    let start = gregorian.date(from: DateComponents(year: 1900, month: 1, day: 1))!
-    let end = gregorian.date(from: DateComponents(year: 2101, month: 1, day: 1))!
-    return start..<end
+    gregorian.timeZone = timeZone
+    let start = gregorian.date(from: DateComponents(year: 1900, month: 1, day: 1))
+    let end = gregorian.date(from: DateComponents(year: 2101, month: 1, day: 1))
+    // These components are always resolvable in the Gregorian calendar; the fallbacks exist only so
+    // the range stays well formed without a force unwrap.
+    let range = (start ?? .distantPast)..<(end ?? .distantFuture)
+    supportedDatesByTimeZone[timeZone] = range
+    return range
   }
 
   func contains(_ date: Date) -> Bool {
