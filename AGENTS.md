@@ -64,11 +64,17 @@ Resolving one month grid costs roughly six `Calendar` calls per day plus a `Numb
 lookup. A vertical scroll keeps six to eight months realized and every model mutation re-evaluates
 all of their bodies, so uncached grids put ~2,500 calendar operations inside a single frame.
 
-- `CalendarRenderCache` (`Models/CalendarRenderCache.swift`) memoizes month grid geometry, month
-  offset resolution, and `DateFormatter` instances, keyed by a **calendar/locale/time-zone
-  signature** — deliberately not by model instance. `CalendarView`'s externally owned (TCA)
-  initializer builds a fresh `CalendarViewModel` projection on every store mutation, so an
-  instance-scoped cache starts cold on exactly the frames that are busiest.
+- `CalendarRenderCache` (`Models/CalendarRenderCache.swift`) memoizes month grid geometry and
+  month offset resolution, keyed by a **calendar/locale/time-zone signature** — not by model
+  instance, so multiple calendar instances share the memoized work. `DateFormatter` construction
+  delegates to SwiftCommons' `DateFormatter.formatter(dateFormat:calendar:)` /
+  `formatter(template:calendar:)` (`FormatterCache`-backed) instead of a locally owned dictionary.
+- `CalendarView`'s externally owned (TCA) integration (`init(state:onAction:)`) keeps a single
+  `CalendarViewModel` alive across store mutations via `@State`, syncing it in place through
+  `CalendarViewModel.sync(state:onAction:)` on every re-render instead of constructing a fresh
+  instance — replacing the instance wholesale would defeat `@Observable`'s per-property diffing
+  and force a full re-render of every view reading `@Environment(CalendarViewModel.self)` on
+  every store mutation, not just the ones whose data changed.
 - Cached entries hold geometry only. `isToday` and `isSelected` are applied on read in
   `CalendarViewModel.monthSnapshot(for:)`, so a selection tap never invalidates a grid.
 - Inject a private `CalendarRenderCache()` via `viewModel.renderCache` in tests; the shared

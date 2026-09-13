@@ -66,7 +66,6 @@ final class CalendarRenderCache {
   private var monthGeometryOrder: [MonthKey] = []
   private var monthOffsets: [OffsetKey: MonthIdentifier?] = [:]
   private var monthOffsetOrder: [OffsetKey] = []
-  private var formatters: [String: DateFormatter] = [:]
 
   // MARK: - Signature
 
@@ -153,22 +152,22 @@ final class CalendarRenderCache {
 
   /// Returns a `DateFormatter` configured for `calendar` and `format`, reusing it across calls.
   ///
-  /// `DateFormatter` construction dominates month-title resolution. Sharing instances by signature
-  /// keeps title lookups cheap even when the owning view model is rebuilt every frame.
+  /// `DateFormatter` construction dominates month-title resolution. Delegating to SwiftCommons'
+  /// `FormatterCache`-backed helper keeps title lookups cheap even when the owning view model is
+  /// rebuilt every frame, without this package maintaining its own duplicate formatter cache.
   func formatter(format: String, calendar: Calendar) -> DateFormatter {
-    let key = "\(Self.signature(for: calendar))|\(format)"
-    if let cached = formatters[key] {
-      return cached
-    }
+    DateFormatter.formatter(dateFormat: format, calendar: calendar)
+  }
 
-    let formatter = DateFormatter()
-    formatter.calendar = calendar
-    formatter.locale = calendar.locale ?? Locale(calendarIdentifier: calendar.identifier)
-    formatter.timeZone = calendar.timeZone
-    formatter.dateFormat = format
-    formatters[key] = formatter
-    logger.debug("Created date formatter for \(key, privacy: .public)")
-    return formatter
+  /// Returns a `DateFormatter` configured from a localized date-format template (see
+  /// `setLocalizedDateFormatFromTemplate`), reusing it across calls.
+  ///
+  /// Resolving a template into a concrete pattern is a locale/CLDR lookup, considerably more
+  /// expensive than `formatter(format:calendar:)`'s literal pattern. Every accessible day cell
+  /// resolves one on read (`CalendarDayContext.accessibilityLabel`), so leaving it unmemoized
+  /// dominated scroll frame time — this was the largest single cost in a fast-scroll profile.
+  func templateFormatter(template: String, calendar: Calendar) -> DateFormatter {
+    DateFormatter.formatter(template: template, calendar: calendar)
   }
 
   // MARK: - Diagnostics
@@ -184,7 +183,6 @@ final class CalendarRenderCache {
     monthGeometryOrder.removeAll(keepingCapacity: true)
     monthOffsets.removeAll(keepingCapacity: true)
     monthOffsetOrder.removeAll(keepingCapacity: true)
-    formatters.removeAll(keepingCapacity: true)
     logger.debug("Render cache cleared")
   }
 

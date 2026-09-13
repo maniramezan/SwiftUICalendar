@@ -105,13 +105,13 @@ public struct CalendarDayContext {
   }
 
   /// A localized date and state description for built-in and custom accessible controls.
-  public var accessibilityLabel: String {
+  @MainActor public var accessibilityLabel: String {
     let locale = calendar.locale ?? .current
-    let formatter = DateFormatter()
-    formatter.calendar = calendar
-    formatter.locale = locale
-    formatter.timeZone = calendar.timeZone
-    formatter.setLocalizedDateFormatFromTemplate("GyMMMMd")
+    // `setLocalizedDateFormatFromTemplate` resolves a locale/CLDR pattern lookup, which is
+    // expensive enough that doing it fresh per cell dominates scroll frame time — see
+    // `CalendarRenderCache.templateFormatter(template:calendar:)`.
+    let formatter = CalendarRenderCache.shared.templateFormatter(
+      template: "GyMMMMd", calendar: calendar)
     var parts = [formatter.string(from: date)]
     if isToday { parts.append("Calendar.Day.Today".localized(locale: locale)) }
     if isSelected { parts.append("Calendar.Day.Selected".localized(locale: locale)) }
