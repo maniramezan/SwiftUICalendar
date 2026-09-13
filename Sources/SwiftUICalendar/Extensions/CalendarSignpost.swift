@@ -17,12 +17,12 @@ import SwiftCommons
 /// Recording is free when no tool is attached; `SignpostRecorder` short-circuits on `isEnabled`.
 enum CalendarSignpost {
 
-  /// The subsystem shared with ``Logger/swiftUICalendar(for:)``.
-  static let subsystem = "SwiftUICalendar"
+    /// The subsystem shared with ``Logger/swiftUICalendar(for:)``.
+    static let subsystem = "SwiftUICalendar"
 
-  /// Intervals for scroll-driven work: window resets, settle passes, external navigation.
-  static let scroll = SignpostRecorder(subsystem: subsystem, category: "Scroll")
+    /// Intervals for scroll-driven work: window resets, settle passes, external navigation.
+    static let scroll = SignpostRecorder(subsystem: subsystem, category: "Scroll")
 
-  /// Intervals for month grid, title, and offset resolution.
-  static let rendering = SignpostRecorder(subsystem: subsystem, category: "Rendering")
+    /// Intervals for month grid, title, and offset resolution.
+    static let rendering = SignpostRecorder(subsystem: subsystem, category: "Rendering")
 }

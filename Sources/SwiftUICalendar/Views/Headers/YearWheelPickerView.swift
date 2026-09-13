@@ -6,55 +6,57 @@ import SwiftUI
 /// offered, so `CalendarConfiguration.YearSelection.Style.wheel` behaves consistently even when a developer
 /// restricts the selectable range to a small number of years.
 struct YearWheelPickerView: View {
-  let items: [YearItem]
-  @Binding var currentValue: YearItem
+    let items: [YearItem]
+    @Binding var currentValue: YearItem
 
-  @State private var isPresented = false
+    @State private var isPresented = false
 
-  var body: some View {
-    #if os(iOS)
-      Button(action: { isPresented = true }) {
-        Text(currentValue.title)
-          .lineLimit(1)
-          .minimumScaleFactor(0.6)
-          .allowsTightening(true)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 4)
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
-      .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
-      .sheet(isPresented: $isPresented) {
-        NavigationStack {
-          Picker("", selection: $currentValue) {
-            ForEach(items) { item in
-              Text(item.title).tag(item)
+    var body: some View {
+        #if os(iOS)
+            Button(action: { isPresented = true }) {
+                Text(currentValue.title)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .allowsTightening(true)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
             }
-          }
-          .pickerStyle(.wheel)
-          .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-              Button("Calendar.Done".localized) {
-                isPresented = false
-              }
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
+            )
+            .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+            .sheet(isPresented: $isPresented) {
+                NavigationStack {
+                    Picker("", selection: $currentValue) {
+                        ForEach(items) { item in
+                            Text(item.title).tag(item)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Calendar.Done".localized) {
+                                isPresented = false
+                            }
+                        }
+                    }
+                }
+                .presentationDetents([.height(280)])
+                .presentationDragIndicator(.visible)
             }
-          }
-        }
-        .presentationDetents([.height(280)])
-        .presentationDragIndicator(.visible)
-      }
-    #else
-      // The wheel picker style is unavailable outside iOS; fall back to a native dropdown menu so
-      // the control is still usable.
-      YearMenuPickerView(items: items, currentValue: $currentValue)
-    #endif
-  }
+        #else
+            // The wheel picker style is unavailable outside iOS; fall back to a native dropdown menu so
+            // the control is still usable.
+            YearMenuPickerView(items: items, currentValue: $currentValue)
+        #endif
+    }
 }
 
 #Preview {
-  @Previewable @State var currentValue = YearItem(id: 2026, title: "2026")
-  YearWheelPickerView(
-    items: (2000...2050).map { YearItem(id: $0, title: "\($0)") },
-    currentValue: $currentValue
-  )
+    @Previewable @State var currentValue = YearItem(id: 2026, title: "2026")
+    YearWheelPickerView(
+        items: (2000...2050).map { YearItem(id: $0, title: "\($0)") },
+        currentValue: $currentValue
+    )
 }

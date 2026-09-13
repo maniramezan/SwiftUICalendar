@@ -21,459 +21,463 @@ import SwiftUI
 @MainActor
 @Observable public class CalendarViewModel {
 
-  // MARK: - Selection mode
+    // MARK: - Selection mode
 
-  /// Selection mode for the calendar.
-  ///
-  /// The enum value also stores the selected date payload for the active mode. Switching modes
-  /// replaces the selection semantics immediately.
-  ///
-  /// ```swift
-  /// let single = CalendarViewModel.Selection.single(Date())
-  /// let range = CalendarViewModel.Selection.range(startDate, endDate)
-  /// let multiple = CalendarViewModel.Selection.multiple([firstDate, secondDate])
-  /// ```
-  public typealias Selection = CalendarSelection
+    /// Selection mode for the calendar.
+    ///
+    /// The enum value also stores the selected date payload for the active mode. Switching modes
+    /// replaces the selection semantics immediately.
+    ///
+    /// ```swift
+    /// let single = CalendarViewModel.Selection.single(Date())
+    /// let range = CalendarViewModel.Selection.range(startDate, endDate)
+    /// let multiple = CalendarViewModel.Selection.multiple([firstDate, secondDate])
+    /// ```
+    public typealias Selection = CalendarSelection
 
-  struct MonthMetadata: Equatable {
-    let identifier: MonthIdentifier
-    let numberOfDays: Int
-    var month: Int { identifier.month }
-    var year: Int { identifier.year }
-  }
-
-  // MARK: - Properties
-
-  /// The earliest supported year in the visible era. Relative navigation can cross eras.
-  public var minYear: Int { state.minYear }
-  /// The latest supported year in the visible era.
-  public var maxYear: Int { state.maxYear }
-
-  private let gregorianCalendar = Calendar(identifier: .gregorian)
-
-  private let logger = Logger.swiftUICalendar(for: CalendarViewModel.self)
-
-  var engine: CalendarEngine { CalendarEngine(calendar: calendar) }
-
-  /// The authoritative value state for a locally owned model.
-  public private(set) var state: CalendarState
-  @ObservationIgnored private var onAction: ((CalendarAction) -> Void)?
-  // Month titles are resolved on the scroll rendering hot path (once per visible month per
-  // frame), where constructing a `DateFormatter` per call shows up as jank. Titles are cached per
-  // calendar/locale signature and only invalidated when that signature changes.
-  @ObservationIgnored internal private(set) var monthTitleCache: [String: String] = [:]
-  @ObservationIgnored private var monthTitleCacheSignature = ""
-  // Grids, month offsets, and date formatters live in a cache keyed by calendar signature rather
-  // than by model instance. `CalendarView`'s externally owned (TCA) initializer builds a fresh
-  // rendering projection on every store mutation, so an instance-scoped cache would start cold on
-  // every frame of a scroll. Injectable so tests get an isolated cache.
-  @ObservationIgnored var renderCache: CalendarRenderCache = .shared
-  private var calendar: Calendar { state.calendar }
-
-  /// Creates an observable owner for existing value state.
-  public init(state: CalendarState) { self.state = state }
-
-  // A rendering projection forwards actions without mutating its snapshot.
-  init(state: CalendarState, onAction: @escaping (CalendarAction) -> Void) {
-    self.state = state
-    self.onAction = onAction
-  }
-
-  private func perform(_ action: CalendarAction) throws {
-    if let onAction { onAction(action) } else { try state.apply(action) }
-  }
-
-  var headerTitles: [String] {
-    calendar.veryShortWeekdaySymbols
-  }
-
-  var locale: Locale {
-    calendar.locale ?? Locale(calendarIdentifier: calendar.identifier)
-  }
-
-  /// The identifier of the active calendar system.
-  ///
-  /// Call ``updateCalendar(identifier:)`` to change this value while preserving the represented
-  /// dates in the current selection.
-  public var calendarIdentifier: Calendar.Identifier {
-    calendar.identifier
-  }
-
-  var calendarSignature: String {
-    "\(calendar.identifier)-\(locale.identifier)"
-  }
-
-  var startOfMonthDay: Int {
-    engine.start(of: visibleMonth).map { calendar.component(.weekday, from: $0) } ?? 1
-  }
-
-  var layoutDirection: LayoutDirection {
-    // Calendars whose native script is right-to-left (Hebrew, Islamic, Persian) lay out RTL
-    // regardless of the system locale's language. This keeps a Hebrew or Islamic calendar
-    // mirrored even on an English system, where the resolved locale would otherwise report LTR.
-    if calendarIdentifier.prefersRightToLeftLayout {
-      return .rightToLeft
-    }
-    if let languageCode = locale.language.languageCode?.identifier {
-      let direction = Locale.Language(identifier: languageCode).characterDirection
-      return direction == .rightToLeft ? .rightToLeft : .leftToRight
-    }
-    return .leftToRight
-  }
-
-  var numberOfDaysInMonth: Int {
-    calendar.range(of: .day, in: .month, for: currentDate)?.count ?? 30
-  }
-
-  var currentMonthName: String {
-    monthSymbol(for: visibleMonth)
-  }
-
-  public internal(set) var currentYear: Int {
-    get {
-      calendar.year(from: currentDate)
-    }
-    set {
-      try? navigate(toYear: newValue)
-    }
-  }
-
-  public internal(set) var currentMonth: Int {
-    get {
-      calendar.month(from: currentDate)
-    }
-    set {
-      try? navigate(toMonth: newValue, year: currentYear)
-    }
-  }
-
-  var monthSymbols: [String] {
-    calendar.monthSymbols
-  }
-
-  var canNavigateToPreviousMonth: Bool { monthIdentifier(offset: -1) != nil }
-  var canNavigateToNextMonth: Bool { monthIdentifier(offset: 1) != nil }
-  var canNavigateToPreviousYear: Bool { relativeYearDate(-1) != nil }
-  var canNavigateToNextYear: Bool { relativeYearDate(1) != nil }
-
-  /// Current selection state for the calendar.
-  ///
-  /// Read this value to respond to user selection, or assign a new value to programmatically
-  /// change modes or selected dates.
-  ///
-  /// ```swift
-  /// calendar.selection = .multiple([])
-  /// ```
-  public var selection: Selection {
-    get { state.selection }
-    set { try? perform(.setSelection(newValue)) }
-  }
-
-  /// The date representing the currently visible month.
-  ///
-  /// Use `try calendar.navigate(to: date)` to change the visible month. The supported interval
-  /// is January 1, 1900 through December 31, 2100 in the Gregorian calendar.
-  public internal(set) var currentDate: Date {
-    get { state.currentDate }
-    set { try? perform(.navigate(newValue)) }
-  }
-
-  /// Stable calendar components for the currently visible month.
-  public var visibleMonth: MonthIdentifier {
-    engine.month(containing: currentDate)
-  }
-
-  /// Moves the calendar to an absolute date within its supported range.
-  public func navigate(to date: Date) throws {
-    try perform(.navigate(date))
-  }
-
-  /// Moves to a regular month in the current era, preserving the day when possible.
-  /// Use `navigate(toMonth:)` with a complete identifier for leap months or another era.
-  public func navigate(toMonth month: Int, year: Int) throws {
-    try perform(.navigateComponents(month: month, year: year))
-  }
-
-  /// Moves to an unambiguous month, including leap months and historical eras.
-  public func navigate(toMonth month: MonthIdentifier) throws {
-    try perform(.navigateMonth(month))
-  }
-
-  /// Moves to a year in the currently visible era. Boundary years clamp to a supported date.
-  public func navigate(toYear year: Int) throws {
-    try perform(.navigateYear(year))
-  }
-
-  func navigateInVisibleEra(toMonth month: MonthIdentifier) throws {
-    try perform(.navigateVisibleEraMonth(month))
-  }
-
-  /// Creates a view model for a given calendar system and selection mode.
-  ///
-  /// The initializer configures a locale that matches the selected calendar identifier. Persian
-  /// and Islamic calendars use localized numbering systems by default.
-  ///
-  /// - Parameters:
-  ///   - calendarIdentifier: The calendar system to use.
-  ///   - selection: Initial selection state.
-  ///
-  /// ```swift
-  /// let gregorian = CalendarViewModel(calendarIdentifier: .gregorian)
-  /// let persianRange = CalendarViewModel(
-  ///     calendarIdentifier: .persian,
-  ///     selection: .range(nil, nil)
-  /// )
-  /// ```
-  public convenience init(
-    calendarIdentifier: Calendar.Identifier, selection: Selection = .single(nil)
-  ) {
-    let locale = Self.locale(for: calendarIdentifier)
-    var calendar = Calendar(identifier: calendarIdentifier)
-    calendar.locale = locale
-
-    self.init(calendar: calendar, currentDate: Date(), selection: selection, locale: locale)
-  }
-
-  private init(calendar: Calendar, currentDate: Date, selection: Selection, locale: Locale) {
-    var calendar = calendar
-    calendar.locale = locale
-    // The convenience initializer supplies today's supported date.
-    self.state = CalendarState(calendar: calendar, clamping: currentDate, selection: selection)
-  }
-
-  func convertGregorianYearToCurrentCalendar(_ year: Int) throws -> Int {
-    guard
-      let gregorianDate = gregorianCalendar.date(
-        from: DateComponents(
-          year: year,
-          month: 1,
-          day: 1))
-    else {
-      throw Calendar.CalendarError.cannotCalculateDate
+    struct MonthMetadata: Equatable {
+        let identifier: MonthIdentifier
+        let numberOfDays: Int
+        var month: Int { identifier.month }
+        var year: Int { identifier.year }
     }
 
-    return calendar.component(.year, from: gregorianDate)
-  }
+    // MARK: - Properties
 
-  /// Updates the calendar identifier and locale, retaining selection and current date.
-  ///
-  /// Use this when a user switches calendar systems from a picker. Existing selected `Date`
-  /// values are preserved because `Date` is calendar independent.
-  ///
-  /// - Parameter identifier: The new calendar system to use.
-  ///
-  /// ```swift
-  /// calendar.updateCalendar(identifier: .hebrew)
-  /// ```
-  public func updateCalendar(identifier: Calendar.Identifier) {
-    try? perform(.setCalendar(identifier))
-  }
+    /// The earliest supported year in the visible era. Relative navigation can cross eras.
+    public var minYear: Int { state.minYear }
+    /// The latest supported year in the visible era.
+    public var maxYear: Int { state.maxYear }
 
-  func updateMonthToNextMonth() throws {
-    try updateMonth(byAdding: 1)
-  }
+    private let gregorianCalendar = Calendar(identifier: .gregorian)
 
-  /// Moves the calendar by a relative number of months, preserving the day when possible.
-  ///
-  /// Throws `Calendar.CalendarError.cannotCalculateDate` when the offset cannot be
-  /// computed or the target month falls outside the supported navigation range.
-  public func updateMonth(byAdding months: Int) throws {
-    try perform(.offsetMonths(months))
-  }
+    private let logger = Logger.swiftUICalendar(for: CalendarViewModel.self)
 
-  func updateMonthToPreviousMonth() throws {
-    try updateMonth(byAdding: -1)
-  }
+    var engine: CalendarEngine { CalendarEngine(calendar: calendar) }
 
-  private func relativeYearDate(_ offset: Int) -> Date? { state.relativeYearDate(offset) }
+    /// The authoritative value state for a locally owned model.
+    public private(set) var state: CalendarState
+    @ObservationIgnored private var onAction: ((CalendarAction) -> Void)?
+    // Month titles are resolved on the scroll rendering hot path (once per visible month per
+    // frame), where constructing a `DateFormatter` per call shows up as jank. Titles are cached per
+    // calendar/locale signature and only invalidated when that signature changes.
+    @ObservationIgnored internal private(set) var monthTitleCache: [String: String] = [:]
+    @ObservationIgnored private var monthTitleCacheSignature = ""
+    // Grids, month offsets, and date formatters live in a cache keyed by calendar signature rather
+    // than by model instance. `CalendarView`'s externally owned (TCA) initializer builds a fresh
+    // rendering projection on every store mutation, so an instance-scoped cache would start cold on
+    // every frame of a scroll. Injectable so tests get an isolated cache.
+    @ObservationIgnored var renderCache: CalendarRenderCache = .shared
+    private var calendar: Calendar { state.calendar }
 
-  func updateYearToNextYear() throws {
-    try perform(.offsetYears(1))
-  }
+    /// Creates an observable owner for existing value state.
+    public init(state: CalendarState) { self.state = state }
 
-  func updateYearToPreviousYear() throws {
-    try perform(.offsetYears(-1))
-  }
-
-  private func metadata(for date: Date) -> MonthMetadata {
-    let identifier = engine.month(containing: date)
-    return MonthMetadata(
-      identifier: identifier,
-      numberOfDays: calendar.range(of: .day, in: .month, for: date)?.count ?? 0)
-  }
-
-  func monthMetadata(offset: Int) -> MonthMetadata? {
-    calendar.date(byAdding: .month, value: offset, to: currentDate).map(metadata(for:))
-  }
-
-  func monthMetadata(month: Int, year: Int) -> MonthMetadata? {
-    months(in: year).first(where: { $0.month == month })
-  }
-
-  func monthMetadata(month: Int, year: Int, offset: Int) -> MonthMetadata? {
-    guard let start = firstDate(month: month, year: year),
-      let date = calendar.date(byAdding: .month, value: offset, to: start)
-    else { return nil }
-    return metadata(for: date)
-  }
-
-  func months(in year: Int) -> [MonthMetadata] {
-    engine.months(in: year, relativeTo: currentDate).compactMap { identifier in
-      engine.start(of: identifier).map(metadata(for:))
+    // A rendering projection forwards actions without mutating its snapshot.
+    init(state: CalendarState, onAction: @escaping (CalendarAction) -> Void) {
+        self.state = state
+        self.onAction = onAction
     }
-  }
 
-  func date(for day: Int) -> Date? {
-    engine.date(day: day, in: visibleMonth)
-  }
-
-  func date(for day: Int, month: Int, year: Int) -> Date? {
-    engine.date(day: day, in: componentMonth(month: month, year: year))
-  }
-
-  func componentMonth(month: Int, year: Int) -> MonthIdentifier {
-    if month == visibleMonth.month && year == visibleMonth.year { return visibleMonth }
-    return MonthIdentifier(
-      month: month, year: year, calendarIdentifier: calendar.identifier,
-      era: calendar.component(.era, from: currentDate))
-  }
-
-  func startOfMonthDay(month: Int, year: Int) -> Int {
-    firstDate(month: month, year: year).map { calendar.component(.weekday, from: $0) } ?? 1
-  }
-
-  func numberOfDaysInMonth(month: Int, year: Int) -> Int {
-    guard let date = firstDate(month: month, year: year) else { return numberOfDaysInMonth }
-    return calendar.range(of: .day, in: .month, for: date)?.count ?? numberOfDaysInMonth
-  }
-
-  func rowCount(month: Int, year: Int) -> Int {
-    monthSnapshot(for: componentMonth(month: month, year: year))?.rowCount ?? 1
-  }
-
-  func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil) -> MonthIdentifier?
-  {
-    let engine = engine
-    return renderCache.month(
-      offset: offset, from: identifier ?? visibleMonth, calendar: calendar, engine: engine)
-  }
-
-  /// Builds the grid for `identifier`, reusing cached calendar geometry.
-  ///
-  /// Only `isToday` and `isSelected` are resolved here — everything else comes from
-  /// ``CalendarRenderCache``. Splitting it this way means a selection tap, which changes nothing
-  /// about the calendar, costs a pass over the cached days instead of rebuilding the grid.
-  func monthSnapshot(for identifier: MonthIdentifier) -> MonthSnapshot? {
-    let calendar = calendar
-    guard
-      let geometry = renderCache.monthGeometry(
-        for: identifier, calendar: calendar, engine: engine)
-    else { return nil }
-
-    return CalendarSignpost.rendering.measure("buildMonthSnapshot") {
-      // Both predicates are hoisted out of the per-day loop: `startOfDay` and the selection
-      // normalization are the same for every cell in the grid.
-      let today = calendar.startOfDay(for: Date())
-      let isSelected = selection.matcher(in: calendar)
-      let days = geometry.days.map { day in
-        MonthSnapshot.Day(
-          id: day.id, date: day.date, day: day.day, dayLabel: day.dayLabel, month: day.month,
-          year: day.year, isInDisplayedMonth: day.isInDisplayedMonth,
-          isToday: day.dayStart == today, isSelected: isSelected(day.dayStart))
-      }
-      return MonthSnapshot(id: identifier, title: monthSymbol(for: identifier), days: days)
+    private func perform(_ action: CalendarAction) throws {
+        if let onAction { onAction(action) } else { try state.apply(action) }
     }
-  }
 
-  func monthSymbol(for month: Int) -> String {
-    monthSymbol(for: month, year: currentYear)
-  }
-
-  func monthSymbol(for month: Int, year: Int) -> String {
-    monthSymbol(for: componentMonth(month: month, year: year))
-  }
-
-  func monthSymbol(for identifier: MonthIdentifier) -> String {
-    let signature = calendarSignature
-    if monthTitleCacheSignature != signature {
-      monthTitleCache.removeAll(keepingCapacity: true)
-      monthTitleCacheSignature = signature
+    var headerTitles: [String] {
+        calendar.veryShortWeekdaySymbols
     }
-    // Key includes leap-month flag: Chinese leap months have distinct names ("Sixth Monthbis").
-    let key = "\(identifier.year)-\(identifier.month)-\(identifier.isLeapMonth ? 1 : 0)"
-    if let cached = monthTitleCache[key] { return cached }
-    guard let date = engine.start(of: identifier) else { return "" }
-    let title = CalendarSignpost.rendering.measure("resolveMonthTitle") {
-      renderCache.formatter(format: "LLLL", calendar: calendar).string(from: date)
+
+    var locale: Locale {
+        calendar.locale ?? Locale(calendarIdentifier: calendar.identifier)
     }
-    monthTitleCache[key] = title
-    return title
-  }
 
-  func yearTitle(_ year: Int) -> String {
-    let number = NumberFormatter.formatYear(year, locale: locale)
-    guard calendar.identifier == .japanese || calendar.identifier == .chinese else { return number }
-    let formatter = renderCache.formatter(format: "G", calendar: calendar)
-    return "\(formatter.string(from: currentDate)) \(number)"
-  }
+    /// The identifier of the active calendar system.
+    ///
+    /// Call ``updateCalendar(identifier:)`` to change this value while preserving the represented
+    /// dates in the current selection.
+    public var calendarIdentifier: Calendar.Identifier {
+        calendar.identifier
+    }
 
-  func firstDate(month: Int, year: Int) -> Date? {
-    engine.start(of: componentMonth(month: month, year: year))
-  }
+    var calendarSignature: String {
+        "\(calendar.identifier)-\(locale.identifier)"
+    }
 
-  func isToday(_ day: Int) -> Bool {
-    date(for: day).map(calendar.isDateInToday) ?? false
-  }
+    var startOfMonthDay: Int {
+        engine.start(of: visibleMonth).map { calendar.component(.weekday, from: $0) } ?? 1
+    }
 
-  func isToday(day: Int, month: Int, year: Int) -> Bool {
-    date(for: day, month: month, year: year).map(calendar.isDateInToday) ?? false
-  }
+    var layoutDirection: LayoutDirection {
+        // Calendars whose native script is right-to-left (Hebrew, Islamic, Persian) lay out RTL
+        // regardless of the system locale's language. This keeps a Hebrew or Islamic calendar
+        // mirrored even on an English system, where the resolved locale would otherwise report LTR.
+        if calendarIdentifier.prefersRightToLeftLayout {
+            return .rightToLeft
+        }
+        if let languageCode = locale.language.languageCode?.identifier {
+            let direction = Locale.Language(identifier: languageCode).characterDirection
+            return direction == .rightToLeft ? .rightToLeft : .leftToRight
+        }
+        return .leftToRight
+    }
 
-  func isSelected(_ day: Int) -> Bool {
-    guard let date = date(for: day) else { return false }
-    return isSelected(date: date)
-  }
+    var numberOfDaysInMonth: Int {
+        calendar.range(of: .day, in: .month, for: currentDate)?.count ?? 30
+    }
 
-  func isSelected(date: Date) -> Bool {
-    selection.contains(date, in: calendar)
-  }
+    var currentMonthName: String {
+        monthSymbol(for: visibleMonth)
+    }
 
-  func select(_ date: Date, navigating: Bool = false) {
-    try? perform(.select(date, navigating: navigating))
-  }
+    public internal(set) var currentYear: Int {
+        get {
+            calendar.year(from: currentDate)
+        }
+        set {
+            try? navigate(toYear: newValue)
+        }
+    }
 
-  // MARK: - Today navigation
+    public internal(set) var currentMonth: Int {
+        get {
+            calendar.month(from: currentDate)
+        }
+        set {
+            try? navigate(toMonth: newValue, year: currentYear)
+        }
+    }
 
-  func goToToday() {
-    try? perform(.today)
-  }
+    var monthSymbols: [String] {
+        calendar.monthSymbols
+    }
 
-  private static func locale(for identifier: Calendar.Identifier) -> Locale {
-    CalendarState.locale(for: identifier)
-  }
+    var canNavigateToPreviousMonth: Bool { monthIdentifier(offset: -1) != nil }
+    var canNavigateToNextMonth: Bool { monthIdentifier(offset: 1) != nil }
+    var canNavigateToPreviousYear: Bool { relativeYearDate(-1) != nil }
+    var canNavigateToNextYear: Bool { relativeYearDate(1) != nil }
+
+    /// Current selection state for the calendar.
+    ///
+    /// Read this value to respond to user selection, or assign a new value to programmatically
+    /// change modes or selected dates.
+    ///
+    /// ```swift
+    /// calendar.selection = .multiple([])
+    /// ```
+    public var selection: Selection {
+        get { state.selection }
+        set { try? perform(.setSelection(newValue)) }
+    }
+
+    /// The date representing the currently visible month.
+    ///
+    /// Use `try calendar.navigate(to: date)` to change the visible month. The supported interval
+    /// is January 1, 1900 through December 31, 2100 in the Gregorian calendar.
+    public internal(set) var currentDate: Date {
+        get { state.currentDate }
+        set { try? perform(.navigate(newValue)) }
+    }
+
+    /// Stable calendar components for the currently visible month.
+    public var visibleMonth: MonthIdentifier {
+        engine.month(containing: currentDate)
+    }
+
+    /// Moves the calendar to an absolute date within its supported range.
+    public func navigate(to date: Date) throws {
+        try perform(.navigate(date))
+    }
+
+    /// Moves to a regular month in the current era, preserving the day when possible.
+    /// Use `navigate(toMonth:)` with a complete identifier for leap months or another era.
+    public func navigate(toMonth month: Int, year: Int) throws {
+        try perform(.navigateComponents(month: month, year: year))
+    }
+
+    /// Moves to an unambiguous month, including leap months and historical eras.
+    public func navigate(toMonth month: MonthIdentifier) throws {
+        try perform(.navigateMonth(month))
+    }
+
+    /// Moves to a year in the currently visible era. Boundary years clamp to a supported date.
+    public func navigate(toYear year: Int) throws {
+        try perform(.navigateYear(year))
+    }
+
+    func navigateInVisibleEra(toMonth month: MonthIdentifier) throws {
+        try perform(.navigateVisibleEraMonth(month))
+    }
+
+    /// Creates a view model for a given calendar system and selection mode.
+    ///
+    /// The initializer configures a locale that matches the selected calendar identifier. Persian
+    /// and Islamic calendars use localized numbering systems by default.
+    ///
+    /// - Parameters:
+    ///   - calendarIdentifier: The calendar system to use.
+    ///   - selection: Initial selection state.
+    ///
+    /// ```swift
+    /// let gregorian = CalendarViewModel(calendarIdentifier: .gregorian)
+    /// let persianRange = CalendarViewModel(
+    ///     calendarIdentifier: .persian,
+    ///     selection: .range(nil, nil)
+    /// )
+    /// ```
+    public convenience init(
+        calendarIdentifier: Calendar.Identifier, selection: Selection = .single(nil)
+    ) {
+        let locale = Self.locale(for: calendarIdentifier)
+        var calendar = Calendar(identifier: calendarIdentifier)
+        calendar.locale = locale
+
+        self.init(calendar: calendar, currentDate: Date(), selection: selection, locale: locale)
+    }
+
+    private init(calendar: Calendar, currentDate: Date, selection: Selection, locale: Locale) {
+        var calendar = calendar
+        calendar.locale = locale
+        // The convenience initializer supplies today's supported date.
+        self.state = CalendarState(calendar: calendar, clamping: currentDate, selection: selection)
+    }
+
+    func convertGregorianYearToCurrentCalendar(_ year: Int) throws -> Int {
+        guard
+            let gregorianDate = gregorianCalendar.date(
+                from: DateComponents(
+                    year: year,
+                    month: 1,
+                    day: 1))
+        else {
+            throw Calendar.CalendarError.cannotCalculateDate
+        }
+
+        return calendar.component(.year, from: gregorianDate)
+    }
+
+    /// Updates the calendar identifier and locale, retaining selection and current date.
+    ///
+    /// Use this when a user switches calendar systems from a picker. Existing selected `Date`
+    /// values are preserved because `Date` is calendar independent.
+    ///
+    /// - Parameter identifier: The new calendar system to use.
+    ///
+    /// ```swift
+    /// calendar.updateCalendar(identifier: .hebrew)
+    /// ```
+    public func updateCalendar(identifier: Calendar.Identifier) {
+        try? perform(.setCalendar(identifier))
+    }
+
+    func updateMonthToNextMonth() throws {
+        try updateMonth(byAdding: 1)
+    }
+
+    /// Moves the calendar by a relative number of months, preserving the day when possible.
+    ///
+    /// Throws `Calendar.CalendarError.cannotCalculateDate` when the offset cannot be
+    /// computed or the target month falls outside the supported navigation range.
+    public func updateMonth(byAdding months: Int) throws {
+        try perform(.offsetMonths(months))
+    }
+
+    func updateMonthToPreviousMonth() throws {
+        try updateMonth(byAdding: -1)
+    }
+
+    private func relativeYearDate(_ offset: Int) -> Date? { state.relativeYearDate(offset) }
+
+    func updateYearToNextYear() throws {
+        try perform(.offsetYears(1))
+    }
+
+    func updateYearToPreviousYear() throws {
+        try perform(.offsetYears(-1))
+    }
+
+    private func metadata(for date: Date) -> MonthMetadata {
+        let identifier = engine.month(containing: date)
+        return MonthMetadata(
+            identifier: identifier,
+            numberOfDays: calendar.range(of: .day, in: .month, for: date)?.count ?? 0)
+    }
+
+    func monthMetadata(offset: Int) -> MonthMetadata? {
+        calendar.date(byAdding: .month, value: offset, to: currentDate).map(metadata(for:))
+    }
+
+    func monthMetadata(month: Int, year: Int) -> MonthMetadata? {
+        months(in: year).first(where: { $0.month == month })
+    }
+
+    func monthMetadata(month: Int, year: Int, offset: Int) -> MonthMetadata? {
+        guard let start = firstDate(month: month, year: year),
+            let date = calendar.date(byAdding: .month, value: offset, to: start)
+        else { return nil }
+        return metadata(for: date)
+    }
+
+    func months(in year: Int) -> [MonthMetadata] {
+        engine.months(in: year, relativeTo: currentDate).compactMap { identifier in
+            engine.start(of: identifier).map(metadata(for:))
+        }
+    }
+
+    func date(for day: Int) -> Date? {
+        engine.date(day: day, in: visibleMonth)
+    }
+
+    func date(for day: Int, month: Int, year: Int) -> Date? {
+        engine.date(day: day, in: componentMonth(month: month, year: year))
+    }
+
+    func componentMonth(month: Int, year: Int) -> MonthIdentifier {
+        if month == visibleMonth.month && year == visibleMonth.year { return visibleMonth }
+        return MonthIdentifier(
+            month: month, year: year, calendarIdentifier: calendar.identifier,
+            era: calendar.component(.era, from: currentDate))
+    }
+
+    func startOfMonthDay(month: Int, year: Int) -> Int {
+        firstDate(month: month, year: year).map { calendar.component(.weekday, from: $0) } ?? 1
+    }
+
+    func numberOfDaysInMonth(month: Int, year: Int) -> Int {
+        guard let date = firstDate(month: month, year: year) else { return numberOfDaysInMonth }
+        return calendar.range(of: .day, in: .month, for: date)?.count ?? numberOfDaysInMonth
+    }
+
+    func rowCount(month: Int, year: Int) -> Int {
+        monthSnapshot(for: componentMonth(month: month, year: year))?.rowCount ?? 1
+    }
+
+    func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil)
+        -> MonthIdentifier?
+    {
+        let engine = engine
+        return renderCache.month(
+            offset: offset, from: identifier ?? visibleMonth, calendar: calendar, engine: engine)
+    }
+
+    /// Builds the grid for `identifier`, reusing cached calendar geometry.
+    ///
+    /// Only `isToday` and `isSelected` are resolved here — everything else comes from
+    /// ``CalendarRenderCache``. Splitting it this way means a selection tap, which changes nothing
+    /// about the calendar, costs a pass over the cached days instead of rebuilding the grid.
+    func monthSnapshot(for identifier: MonthIdentifier) -> MonthSnapshot? {
+        let calendar = calendar
+        guard
+            let geometry = renderCache.monthGeometry(
+                for: identifier, calendar: calendar, engine: engine)
+        else { return nil }
+
+        return CalendarSignpost.rendering.measure("buildMonthSnapshot") {
+            // Both predicates are hoisted out of the per-day loop: `startOfDay` and the selection
+            // normalization are the same for every cell in the grid.
+            let today = calendar.startOfDay(for: Date())
+            let isSelected = selection.matcher(in: calendar)
+            let days = geometry.days.map { day in
+                MonthSnapshot.Day(
+                    id: day.id, date: day.date, day: day.day, dayLabel: day.dayLabel,
+                    month: day.month,
+                    year: day.year, isInDisplayedMonth: day.isInDisplayedMonth,
+                    isToday: day.dayStart == today, isSelected: isSelected(day.dayStart))
+            }
+            return MonthSnapshot(id: identifier, title: monthSymbol(for: identifier), days: days)
+        }
+    }
+
+    func monthSymbol(for month: Int) -> String {
+        monthSymbol(for: month, year: currentYear)
+    }
+
+    func monthSymbol(for month: Int, year: Int) -> String {
+        monthSymbol(for: componentMonth(month: month, year: year))
+    }
+
+    func monthSymbol(for identifier: MonthIdentifier) -> String {
+        let signature = calendarSignature
+        if monthTitleCacheSignature != signature {
+            monthTitleCache.removeAll(keepingCapacity: true)
+            monthTitleCacheSignature = signature
+        }
+        // Key includes leap-month flag: Chinese leap months have distinct names ("Sixth Monthbis").
+        let key = "\(identifier.year)-\(identifier.month)-\(identifier.isLeapMonth ? 1 : 0)"
+        if let cached = monthTitleCache[key] { return cached }
+        guard let date = engine.start(of: identifier) else { return "" }
+        let title = CalendarSignpost.rendering.measure("resolveMonthTitle") {
+            renderCache.formatter(format: "LLLL", calendar: calendar).string(from: date)
+        }
+        monthTitleCache[key] = title
+        return title
+    }
+
+    func yearTitle(_ year: Int) -> String {
+        let number = NumberFormatter.formatYear(year, locale: locale)
+        guard calendar.identifier == .japanese || calendar.identifier == .chinese else {
+            return number
+        }
+        let formatter = renderCache.formatter(format: "G", calendar: calendar)
+        return "\(formatter.string(from: currentDate)) \(number)"
+    }
+
+    func firstDate(month: Int, year: Int) -> Date? {
+        engine.start(of: componentMonth(month: month, year: year))
+    }
+
+    func isToday(_ day: Int) -> Bool {
+        date(for: day).map(calendar.isDateInToday) ?? false
+    }
+
+    func isToday(day: Int, month: Int, year: Int) -> Bool {
+        date(for: day, month: month, year: year).map(calendar.isDateInToday) ?? false
+    }
+
+    func isSelected(_ day: Int) -> Bool {
+        guard let date = date(for: day) else { return false }
+        return isSelected(date: date)
+    }
+
+    func isSelected(date: Date) -> Bool {
+        selection.contains(date, in: calendar)
+    }
+
+    func select(_ date: Date, navigating: Bool = false) {
+        try? perform(.select(date, navigating: navigating))
+    }
+
+    // MARK: - Today navigation
+
+    func goToToday() {
+        try? perform(.today)
+    }
+
+    private static func locale(for identifier: Calendar.Identifier) -> Locale {
+        CalendarState.locale(for: identifier)
+    }
 }
 
 extension Calendar.Identifier {
-  /// Whether this calendar system's native script is written right-to-left.
-  ///
-  /// Used to drive `CalendarViewModel.layoutDirection` so calendars like Hebrew and Islamic stay
-  /// mirrored even when the resolved system locale reports a left-to-right language.
-  var prefersRightToLeftLayout: Bool {
-    switch self {
-    case .hebrew, .islamic, .islamicCivil, .islamicUmmAlQura, .islamicTabular, .persian:
-      return true
-    default:
-      return false
+    /// Whether this calendar system's native script is written right-to-left.
+    ///
+    /// Used to drive `CalendarViewModel.layoutDirection` so calendars like Hebrew and Islamic stay
+    /// mirrored even when the resolved system locale reports a left-to-right language.
+    var prefersRightToLeftLayout: Bool {
+        switch self {
+        case .hebrew, .islamic, .islamicCivil, .islamicUmmAlQura, .islamicTabular, .persian:
+            return true
+        default:
+            return false
+        }
     }
-  }
 }
 
 // MARK: Testing
 
 extension CalendarViewModel {
-  static func test(
-    identifier: Calendar.Identifier = .gregorian, selection: Selection = .single(nil)
-  ) -> CalendarViewModel {
-    CalendarViewModel(calendarIdentifier: identifier, selection: selection)
-  }
+    static func test(
+        identifier: Calendar.Identifier = .gregorian, selection: Selection = .single(nil)
+    ) -> CalendarViewModel {
+        CalendarViewModel(calendarIdentifier: identifier, selection: selection)
+    }
 }
