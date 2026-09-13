@@ -33,15 +33,28 @@ extension CalendarSelection {
   }
 
   func contains(_ date: Date, in calendar: Calendar) -> Bool {
-    let date = calendar.startOfDay(for: date)
+    matcher(in: calendar)(calendar.startOfDay(for: date))
+  }
+
+  /// Returns a predicate over start-of-day dates, with the selection normalized exactly once.
+  ///
+  /// ``contains(_:in:)`` re-normalizes on every call, which means a `Calendar.startOfDay` round
+  /// trip per selected date per day cell. A month grid asks about 35–42 days and a scrolling
+  /// calendar rebuilds several grids per frame, so hoisting the normalization out of that loop
+  /// matters. Callers building a whole grid should take the matcher once and reuse it.
+  ///
+  /// - Parameter calendar: The calendar whose day boundaries define the comparison.
+  /// - Returns: A predicate that expects dates already snapped to the start of their day.
+  func matcher(in calendar: Calendar) -> (Date) -> Bool {
     switch normalized(in: calendar) {
     case .single(let selected):
-      return selected == date
+      return { selected == $0 }
     case .range(let start, let end):
-      guard let start else { return false }
-      return start <= date && date <= (end ?? start)
+      guard let start else { return { _ in false } }
+      let end = end ?? start
+      return { start <= $0 && $0 <= end }
     case .multiple(let dates):
-      return dates.contains(date)
+      return { dates.contains($0) }
     }
   }
 

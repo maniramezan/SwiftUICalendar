@@ -37,6 +37,48 @@ Examples/SwiftUICalendarSample/   # Sample Xcode project
 - Use `// MARK:` pragmas to section files.
 - Use `Logger.swiftUICalendar(for: YourType.self)` for logging (wraps `SwiftCommons` logger with subsystem `"SwiftUICalendar"`). Pre-built loggers: `.calendarUI`, `.calendarLogic`, `.calendarInteraction`, `.calendarConfiguration`.
 
+## Logging and Signposts
+
+Both sit on `SwiftCommons` and share the `SwiftUICalendar` subsystem, so one Instruments or
+`log stream` filter covers messages and intervals together.
+
+- **Messages** — `Logger.swiftUICalendar(for: Self.self)`. Log window resets, external navigation,
+  and calendar switches at `.info`; per-scroll bookkeeping at `.debug`. Never swallow an error with
+  `try?` in a view: catch it and call `logger.error(_:error:context:)` with the month or action that
+  failed. Log month/year numbers and identifiers, never selected dates.
+- **Intervals** — `CalendarSignpost.rendering` and `CalendarSignpost.scroll`, both
+  `SwiftCommons.SignpostRecorder`. Use `measure("name") { … }` for scoped work and
+  `begin`/`end` when a gesture's start and finish arrive in separate callbacks. Names must be
+  string literals. Recording costs nothing when no profiler is attached, so no `#if` guards.
+
+Profile a stall with the **os_signpost** instrument, or:
+
+```bash
+xcrun xctrace record --template 'os_signpost' --attach <pid>
+log stream --predicate 'subsystem == "SwiftUICalendar"' --level debug
+```
+
+## Rendering Performance
+
+Resolving one month grid costs roughly six `Calendar` calls per day plus a `NumberFormatter`
+lookup. A vertical scroll keeps six to eight months realized and every model mutation re-evaluates
+all of their bodies, so uncached grids put ~2,500 calendar operations inside a single frame.
+
+- `CalendarRenderCache` (`Models/CalendarRenderCache.swift`) memoizes month grid geometry, month
+  offset resolution, and `DateFormatter` instances, keyed by a **calendar/locale/time-zone
+  signature** — deliberately not by model instance. `CalendarView`'s externally owned (TCA)
+  initializer builds a fresh `CalendarViewModel` projection on every store mutation, so an
+  instance-scoped cache starts cold on exactly the frames that are busiest.
+- Cached entries hold geometry only. `isToday` and `isSelected` are applied on read in
+  `CalendarViewModel.monthSnapshot(for:)`, so a selection tap never invalidates a grid.
+- Inject a private `CalendarRenderCache()` via `viewModel.renderCache` in tests; the shared
+  instance persists across tests and would make entry-count assertions order-dependent.
+- Keep per-day loops free of `Calendar` work. `CalendarSelection.matcher(in:)` normalizes a
+  selection once for a whole grid; `CalendarEngine.supportedDates` is resolved once per time zone.
+- In a `View`, mutating `@State` that only exists for bookkeeping invalidates the body. The vertical
+  calendar keeps its scroll-settle counter in a reference type (`ScrollSettleCoordinator`) for that
+  reason.
+
 ## Planning Workflow
 
 Read and follow `DEVELOPMENT.md` before starting any task. It contains the planning checklist and required test-run matrix.

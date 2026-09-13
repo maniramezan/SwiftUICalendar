@@ -51,6 +51,25 @@ bash ./scripts/build-docs.sh  # build static DocC output
 bash ./scripts/check-examples.sh  # compile public API usage without @testable
 ```
 
+## Profiling
+
+The calendar emits OSLog messages and signpost intervals on the `SwiftUICalendar` subsystem
+(categories `Scroll` and `Rendering`). Use them before changing rendering code for performance —
+see the Logging and Rendering Performance sections in `AGENTS.md`.
+
+```bash
+# Watch the calendar's own log stream while driving the sample app
+log stream --predicate 'subsystem == "SwiftUICalendar"' --level debug
+
+# Record signpost intervals against the frame timeline
+xcrun xctrace record --template 'os_signpost' --attach <pid>
+```
+
+Intervals worth watching on a vertical scroll: `verticalScroll` brackets the gesture,
+`settleScrollPosition` the model update it triggers, and `resolveMonthGeometry` /
+`resolveMonthTitle` / `resolveMonthOffset` the work that only runs on a `CalendarRenderCache` miss.
+A `resolve*` interval firing on every frame means the cache is being defeated.
+
 ## Release Checklist
 - Confirm `README.md` installation examples point at the current release tag.
 - Run `bash ./scripts/lint.sh`, `swift build -c debug`, `swift test`, `MINIMUM_COVERAGE=80 bash ./scripts/check-coverage.sh`, and `bash ./scripts/build-docs.sh`.
