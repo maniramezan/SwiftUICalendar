@@ -1,5 +1,5 @@
 {
-  "originHash" : "59165ed68bd55f57e73b5d1cd89937feabd554332a4b7a6e06f283db519bfcf2",
+  "originHash" : "89d2691f3ae4d05f6df00b7cdd926385da430962c05541c7c2a1e895fcbdf59b",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -141,8 +141,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftCommons",
       "state" : {
-        "revision" : "e80c4d9affb554f1f24c61643f4a36d5e1f0d0a1",
-        "version" : "0.8.0"
+        "revision" : "b82afcf7c61995c1f13cc727fa1c9d91c85a0ba5",
+        "version" : "0.8.1"
       }
     },
     {
