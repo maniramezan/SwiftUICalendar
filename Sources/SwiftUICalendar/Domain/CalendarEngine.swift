@@ -66,10 +66,23 @@ struct CalendarEngine: Sendable {
     arithmetic.date(day: day, in: month)
   }
 
+  /// Clamps `preferredDay` to the day-of-month numbers actually present in `month`, then resolves
+  /// the corresponding date.
+  ///
+  /// A month whose era began mid-month (see `CalendarArithmetic`) covers only part of its
+  /// underlying Gregorian month — e.g. Heisei's January 1989 runs the 8th through the 31st, not
+  /// the 1st. `calendar.range(of: .day, in: .month, for:)` reports the full Gregorian month's day
+  /// range regardless, so clamping against it can still pass an out-of-range day (day 1, in that
+  /// example) through to `date(day:in:)`, which then legitimately returns nil. Reading the day
+  /// number at the interval's own start and last moment gives the range this specific month
+  /// identity actually spans.
   func navigationDate(in month: MonthIdentifier, preferredDay: Int) -> Date? {
     guard let interval = interval(of: month), intersectsSupportedDates(interval),
-      let days = calendar.range(of: .day, in: .month, for: interval.start),
-      let date = date(day: min(max(preferredDay, days.lowerBound), days.upperBound - 1), in: month)
+      let lastMoment = calendar.date(byAdding: .second, value: -1, to: interval.end)
+    else { return nil }
+    let lowerDay = calendar.component(.day, from: interval.start)
+    let upperDay = calendar.component(.day, from: lastMoment)
+    guard let date = date(day: min(max(preferredDay, lowerDay), upperDay), in: month)
     else { return nil }
     return min(
       max(date, supportedDates.lowerBound), supportedDates.upperBound.addingTimeInterval(-1))
