@@ -166,7 +166,9 @@ struct CalendarBodyHorizontalView: View {
         let marginToContent = max(0, (approxColumnWidth - approxCellSize) / 2)
         let desired = min(
             Self.maximumPeekWidth,
-            max(Self.minimumPeekWidth, marginToContent + (approxCellSize * Self.peekContentFraction))
+            max(
+                Self.minimumPeekWidth, marginToContent + (approxCellSize * Self.peekContentFraction)
+            )
         )
         return min(desired, max(0, (containerWidth - minCalendarWidth) / 2))
     }
@@ -268,7 +270,8 @@ struct CalendarBodyHorizontalView: View {
         )
     }
 
-    static func resetNavigationState() -> (offset: CGFloat, dragOffset: CGFloat, isNavigating: Bool) {
+    static func resetNavigationState() -> (offset: CGFloat, dragOffset: CGFloat, isNavigating: Bool)
+    {
         (0, 0, false)
     }
 
@@ -283,7 +286,9 @@ struct CalendarBodyHorizontalView: View {
         }
     }
 
-    static func nextOffset(currentOffset: CGFloat, width: CGFloat, layoutDirectionMultiplier: CGFloat)
+    static func nextOffset(
+        currentOffset: CGFloat, width: CGFloat, layoutDirectionMultiplier: CGFloat
+    )
         -> CGFloat
     {
         currentOffset + (-width * layoutDirectionMultiplier)
@@ -523,8 +528,9 @@ struct CalendarBodyHorizontalView: View {
         }
 
         isNavigating = true
-        withAnimation(reduceMotion ? nil : Self.pagingAnimation, completionCriteria: .logicallyComplete)
-        {
+        withAnimation(
+            reduceMotion ? nil : Self.pagingAnimation, completionCriteria: .logicallyComplete
+        ) {
             // Move until the parked next month reaches center.
             offset = Self.nextOffset(
                 currentOffset: offset,
@@ -544,8 +550,9 @@ struct CalendarBodyHorizontalView: View {
         }
 
         isNavigating = true
-        withAnimation(reduceMotion ? nil : Self.pagingAnimation, completionCriteria: .logicallyComplete)
-        {
+        withAnimation(
+            reduceMotion ? nil : Self.pagingAnimation, completionCriteria: .logicallyComplete
+        ) {
             // Move until the parked previous month reaches center.
             offset = Self.previousOffset(
                 currentOffset: offset,
@@ -581,8 +588,11 @@ struct CalendarBodyHorizontalView: View {
 
         private func installScrollMonitor() {
             guard scrollMonitor == nil else { return }
-            let monitor = HorizontalScrollWheelMonitor(threshold: Self.scrollPageThreshold) { delta in
-                guard Self.shouldHandleScrollPage(delta: delta, isNavigating: isNavigating) else { return }
+            let monitor = HorizontalScrollWheelMonitor(threshold: Self.scrollPageThreshold) {
+                delta in
+                guard Self.shouldHandleScrollPage(delta: delta, isNavigating: isNavigating) else {
+                    return
+                }
                 switch delta {
                 case 1: goToNext(width: pageWidth)
                 case -1: goToPrevious(width: pageWidth)
@@ -634,7 +644,8 @@ enum HorizontalPagerAction {
         /// Begins observing scroll-wheel events. Events are delivered on the main thread.
         func start() {
             guard monitor == nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) {
+                [weak self] event in
                 MainActor.assumeIsolated {
                     self?.fold(
                         deltaX: event.scrollingDeltaX,
@@ -658,7 +669,8 @@ enum HorizontalPagerAction {
 
         /// Folds one scroll sample into the running accumulator and emits a page delta
         /// (`1` next, `-1` previous) when the threshold is crossed.
-        func fold(deltaX: CGFloat, deltaY: CGFloat, isMomentum: Bool, didBegin: Bool, didEnd: Bool) {
+        func fold(deltaX: CGFloat, deltaY: CGFloat, isMomentum: Bool, didBegin: Bool, didEnd: Bool)
+        {
             let result = HorizontalScrollPagingResolver.resolve(
                 accumulated: accumulated,
                 deltaX: deltaX,
@@ -722,7 +734,8 @@ enum HorizontalMonthSwipeResolver {
         predictedEndTranslation: CGFloat,
         limit: CGFloat
     ) -> CGFloat {
-        let weighted = (translation * (1 - momentumWeight)) + (predictedEndTranslation * momentumWeight)
+        let weighted =
+            (translation * (1 - momentumWeight)) + (predictedEndTranslation * momentumWeight)
         return clampedTranslation(weighted, limit: limit)
     }
 

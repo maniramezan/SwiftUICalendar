@@ -106,7 +106,8 @@ final class CalendarRenderCache {
             let leading = calendar.component(.weekday, from: start) - 1
             let total = ((leading + count + 6) / 7) * 7
             let days = (0..<total).compactMap { index -> MonthGeometry.Day? in
-                guard let date = calendar.date(byAdding: .day, value: index - leading, to: start) else {
+                guard let date = calendar.date(byAdding: .day, value: index - leading, to: start)
+                else {
                     return nil
                 }
                 let day = calendar.component(.day, from: date)

@@ -124,7 +124,8 @@ private struct MaterialFallbackModifier: ViewModifier {
 
     private var material: Material {
         Self.material(
-            style: AdaptiveGlassModifier.fallbackMaterialStyle(reduceTransparency: reduceTransparency))
+            style: AdaptiveGlassModifier.fallbackMaterialStyle(
+                reduceTransparency: reduceTransparency))
     }
 
     func body(content: Content) -> some View {
@@ -138,7 +139,8 @@ private struct MaterialFallbackModifier: ViewModifier {
         case .roundedRectangle(let r):
             content.background(RoundedRectangle(cornerRadius: r).fill(material))
                 .overlay(
-                    RoundedRectangle(cornerRadius: r).stroke(Color.white.opacity(0.15), lineWidth: 0.5))
+                    RoundedRectangle(cornerRadius: r).stroke(
+                        Color.white.opacity(0.15), lineWidth: 0.5))
         }
     }
 }

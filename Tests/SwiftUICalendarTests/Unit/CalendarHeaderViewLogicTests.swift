@@ -51,9 +51,11 @@ struct CalendarHeaderViewLogicTests {
         #expect(items.first?.id == viewModel.minYear)
         #expect(items.last?.id == viewModel.maxYear)
         #expect(
-            items.first?.title == NumberFormatter.formatYear(viewModel.minYear, locale: viewModel.locale))
+            items.first?.title
+                == NumberFormatter.formatYear(viewModel.minYear, locale: viewModel.locale))
         #expect(
-            items.last?.title == NumberFormatter.formatYear(viewModel.maxYear, locale: viewModel.locale))
+            items.last?.title
+                == NumberFormatter.formatYear(viewModel.maxYear, locale: viewModel.locale))
     }
 
     @Test("Year header selection falls back to first item when current year is unavailable")

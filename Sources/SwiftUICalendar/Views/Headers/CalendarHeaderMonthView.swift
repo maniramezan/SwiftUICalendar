@@ -36,7 +36,8 @@ struct CalendarHeaderMonthView: View {
             selectedItem: Binding(
                 get: {
                     Self.selectedMonthItem(
-                        currentMonth: model.currentMonth + (model.visibleMonth.isLeapMonth ? 100 : 0),
+                        currentMonth: model.currentMonth
+                            + (model.visibleMonth.isLeapMonth ? 100 : 0),
                         itemsById: monthItemsById,
                         items: monthItems
                     )

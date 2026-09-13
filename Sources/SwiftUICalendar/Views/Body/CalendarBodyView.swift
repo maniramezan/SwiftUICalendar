@@ -174,7 +174,8 @@ struct CalendarBodyView: View {
     init(
         monthIdentifier: MonthIdentifier? = nil,
         displayMonth: Int? = nil, displayYear: Int? = nil, showWeekdayHeader: Bool = true,
-        hideOverflowDays: Bool = false, navigatesOnOverflowTap: Bool = true, layoutWidth: CGFloat? = nil
+        hideOverflowDays: Bool = false, navigatesOnOverflowTap: Bool = true,
+        layoutWidth: CGFloat? = nil
     ) {
         self.monthIdentifier = monthIdentifier
         self.displayMonth = displayMonth

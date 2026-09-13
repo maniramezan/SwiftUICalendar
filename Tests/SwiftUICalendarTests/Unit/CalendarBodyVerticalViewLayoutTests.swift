@@ -41,7 +41,9 @@ struct CalendarBodyVerticalViewLayoutTests {
                 gregorian.date(from: DateComponents(year: 2026, month: 3, day: 1)))
             try viewModel.navigate(to: target)
             hosted.hosting.layoutSubtreeIfNeeded()
-            if let bitmap = hosted.hosting.bitmapImageRepForCachingDisplay(in: hosted.hosting.bounds) {
+            if let bitmap = hosted.hosting.bitmapImageRepForCachingDisplay(
+                in: hosted.hosting.bounds)
+            {
                 hosted.hosting.cacheDisplay(in: hosted.hosting.bounds, to: bitmap)
             }
             hosted.window.contentView = nil

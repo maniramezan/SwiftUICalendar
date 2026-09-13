@@ -69,7 +69,8 @@ struct CalendarEngine: Sendable {
     func navigationDate(in month: MonthIdentifier, preferredDay: Int) -> Date? {
         guard let interval = interval(of: month), intersectsSupportedDates(interval),
             let days = calendar.range(of: .day, in: .month, for: interval.start),
-            let date = date(day: min(max(preferredDay, days.lowerBound), days.upperBound - 1), in: month)
+            let date = date(
+                day: min(max(preferredDay, days.lowerBound), days.upperBound - 1), in: month)
         else { return nil }
         return min(
             max(date, supportedDates.lowerBound), supportedDates.upperBound.addingTimeInterval(-1))

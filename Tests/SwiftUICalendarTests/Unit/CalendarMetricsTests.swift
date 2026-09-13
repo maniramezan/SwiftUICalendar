@@ -23,7 +23,8 @@ struct CalendarMetricsTests {
 
         #expect(layout.cellSize == metrics.maxCellSize)
         #expect(
-            abs(layout.gridWidth - ((metrics.maxCellSize * 7) + (metrics.itemSpacing * 6))) < 0.0001)
+            abs(layout.gridWidth - ((metrics.maxCellSize * 7) + (metrics.itemSpacing * 6))) < 0.0001
+        )
     }
 
     @Test("grid sizing selects compact or flexible width as configured")
@@ -32,15 +33,18 @@ struct CalendarMetricsTests {
 
         #expect(
             abs(
-                CalendarGridLayout(containerWidth: 844, metrics: metrics, sizing: .compact).gridWidth
+                CalendarGridLayout(containerWidth: 844, metrics: metrics, sizing: .compact)
+                    .gridWidth
                     - ((metrics.maxCellSize * 7) + (metrics.itemSpacing * 6))
             ) < 0.0001
         )
         #expect(
-            CalendarGridLayout(containerWidth: 844, metrics: metrics, sizing: .flexible).gridWidth == 844
+            CalendarGridLayout(containerWidth: 844, metrics: metrics, sizing: .flexible).gridWidth
+                == 844
         )
         #expect(
-            CalendarGridLayout(containerWidth: 390, metrics: metrics, sizing: .adaptive).gridWidth == 390
+            CalendarGridLayout(containerWidth: 390, metrics: metrics, sizing: .adaptive).gridWidth
+                == 390
         )
     }
 

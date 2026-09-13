@@ -38,8 +38,9 @@ import Testing
             "CalendarView mounts for every scroll mode and writing direction",
             arguments: [CalendarConfiguration.ScrollMode.none, .vertical, .horizontal],
             [Calendar.Identifier.gregorian, .persian])
-        func calendarViewMounts(mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier)
-        {
+        func calendarViewMounts(
+            mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
+        ) {
             let vm = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
             mount(
                 CalendarView(model: vm, configuration: CalendarConfiguration(scrollMode: mode)),
@@ -53,7 +54,8 @@ import Testing
             mount(
                 CalendarView(
                     model: vm,
-                    configuration: CalendarConfiguration(scrollMode: .horizontal, gridSizing: .flexible)),
+                    configuration: CalendarConfiguration(
+                        scrollMode: .horizontal, gridSizing: .flexible)),
                 size: CGSize(width: 844, height: 320))
         }
 
@@ -90,7 +92,8 @@ import Testing
                 bodyEnvironment(CalendarHeaderView(), vm: vm, theme: Theme()),
                 size: CGSize(width: 390, height: 80))
             mount(
-                bodyEnvironment(CalendarWeekHeaderView(weekDays: vm.headerTitles), vm: vm, theme: Theme()),
+                bodyEnvironment(
+                    CalendarWeekHeaderView(weekDays: vm.headerTitles), vm: vm, theme: Theme()),
                 size: CGSize(width: 390, height: 48))
         }
 
@@ -113,7 +116,8 @@ import Testing
             theme.day.emptyDayBorderColorWidth = 1
             let context = CalendarDayContext(
                 date: date, day: 15, dayLabel: "15",
-                isToday: state.isToday, isSelected: state.isSelected, isInCurrentMonth: state.inMonth,
+                isToday: state.isToday, isSelected: state.isSelected,
+                isInCurrentMonth: state.inMonth,
                 theme: theme.day, typography: Typography.default, onSelect: { _ in },
                 secondaryLabel: state.inMonth ? "25" : nil)
             mount(

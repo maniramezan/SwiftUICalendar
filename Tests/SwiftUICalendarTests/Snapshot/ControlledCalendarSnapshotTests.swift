@@ -28,7 +28,8 @@ struct ControlledCalendarSnapshotTests {
         let store = Store(initialState: CalendarFeature.State(calendar: initial)) {
             CalendarFeature()
         }
-        assertCalendarStructure(model: CalendarViewModel(state: store.calendar), named: "tca-persian")
+        assertCalendarStructure(
+            model: CalendarViewModel(state: store.calendar), named: "tca-persian")
 
         store.send(.view(.setCalendar(.gregorian)))
         store.send(.view(.offsetMonths(1)))

@@ -10,7 +10,8 @@ struct CalendarDayAccessibilityTests {
     @Test("Spoken dates use the supplied calendar even with an English locale")
     func spokenCalendar() throws {
         let date = try #require(
-            Calendar(identifier: .gregorian).date(from: DateComponents(year: 2025, month: 6, day: 15)))
+            Calendar(identifier: .gregorian).date(
+                from: DateComponents(year: 2025, month: 6, day: 15)))
         var calendar = Calendar(identifier: .persian)
         calendar.locale = Locale(identifier: "en_US")
         let context = CalendarDayContext(

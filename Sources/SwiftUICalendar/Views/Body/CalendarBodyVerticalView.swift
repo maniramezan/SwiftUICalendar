@@ -24,8 +24,11 @@ struct CalendarBodyVerticalView: View {
             ScrollView(.vertical, showsIndicators: true) {
                 LazyVStack(spacing: metrics.monthSpacing) {
                     if let anchor {
-                        ForEach(-Self.supportedMonthRadius...Self.supportedMonthRadius, id: \.self) { offset in
-                            if let identifier = viewModel.monthIdentifier(offset: offset, from: anchor) {
+                        ForEach(-Self.supportedMonthRadius...Self.supportedMonthRadius, id: \.self)
+                        { offset in
+                            if let identifier = viewModel.monthIdentifier(
+                                offset: offset, from: anchor)
+                            {
                                 VerticalMonthView(
                                     item: VerticalMonthItem(
                                         id: identifier,
@@ -56,7 +59,8 @@ struct CalendarBodyVerticalView: View {
             .onChange(of: anchor) { _, target in
                 guard let target else { return }
                 logger.debug(
-                    "Scrolling to anchor \(target.year, privacy: .public)-\(target.month, privacy: .public)")
+                    "Scrolling to anchor \(target.year, privacy: .public)-\(target.month, privacy: .public)"
+                )
                 withTransaction(Transaction(animation: nil)) {
                     proxy.scrollTo(target, anchor: .top)
                 }
@@ -131,7 +135,8 @@ struct CalendarBodyVerticalView: View {
             do {
                 try viewModel.navigate(to: date)
                 logger.debug(
-                    "Settled on \(position.year, privacy: .public)-\(position.month, privacy: .public)")
+                    "Settled on \(position.year, privacy: .public)-\(position.month, privacy: .public)"
+                )
             } catch {
                 logger.error(
                     "Failed to navigate to settled month", error: error,

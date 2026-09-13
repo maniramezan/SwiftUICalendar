@@ -8,7 +8,8 @@ import Testing
 struct CalendarViewModelNavigationTests {
 
     private func makeDate(year: Int, month: Int, day: Int) -> Date {
-        Calendar(identifier: .gregorian).date(from: DateComponents(year: year, month: month, day: day))!
+        Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: year, month: month, day: day))!
     }
 
     // MARK: - goToToday
@@ -350,7 +351,8 @@ struct CalendarViewModelNavigationTests {
         vm.currentDate = makeDate(year: 2025, month: 6, day: 1)
         let snapshot = try #require(vm.monthSnapshot(for: MonthIdentifier(month: 6, year: 2025)))
         #expect(
-            snapshot.days.first(where: { $0.day == 15 && $0.isInDisplayedMonth })?.isSelected == true)
+            snapshot.days.first(where: { $0.day == 15 && $0.isInDisplayedMonth })?.isSelected
+                == true)
     }
 
     @Test("monthIdentifier wraps the year without mutating state")
@@ -367,8 +369,10 @@ struct CalendarViewModelNavigationTests {
         vm.currentDate = makeDate(year: 2025, month: 6, day: 15)
 
         let source = MonthIdentifier(month: 1, year: 2024)
-        #expect(vm.monthIdentifier(offset: 2, from: source) == MonthIdentifier(month: 3, year: 2024))
-        #expect(vm.monthIdentifier(offset: -1, from: source) == MonthIdentifier(month: 12, year: 2023))
+        #expect(
+            vm.monthIdentifier(offset: 2, from: source) == MonthIdentifier(month: 3, year: 2024))
+        #expect(
+            vm.monthIdentifier(offset: -1, from: source) == MonthIdentifier(month: 12, year: 2023))
         #expect(vm.currentMonth == 6)
     }
 

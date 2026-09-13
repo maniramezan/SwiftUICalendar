@@ -40,7 +40,8 @@ struct CalendarFeatureTests {
             CalendarFeature()
         }
         store.exhaustivity = .on
-        let selected: CalendarSelection = [.single(july), .range(july, nil), .multiple([july])][mode]
+        let selected: CalendarSelection = [.single(july), .range(july, nil), .multiple([july])][
+            mode]
         let expected = try CalendarState(currentDate: july, selection: selected)
         await store.send(.view(.select(july, navigating: true))) { $0.calendar = expected }
         await store.receive(.delegate(.selectionChanged(expected.selection)))
@@ -88,7 +89,8 @@ struct CalendarFeatureTests {
 
         // And forward
         let forwardInitial = try CalendarState(currentDate: date(2025, 6, 1))
-        let forwardStore = TestStore(initialState: CalendarFeature.State(calendar: forwardInitial)) {
+        let forwardStore = TestStore(initialState: CalendarFeature.State(calendar: forwardInitial))
+        {
             CalendarFeature()
         }
         forwardStore.exhaustivity = .on

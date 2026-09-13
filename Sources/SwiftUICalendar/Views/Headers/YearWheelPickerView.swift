@@ -22,7 +22,9 @@ struct YearWheelPickerView: View {
                     .padding(.vertical, 4)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
+            .accessibilityLabel(
+                "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
+            )
             .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
             .sheet(isPresented: $isPresented) {
                 NavigationStack {

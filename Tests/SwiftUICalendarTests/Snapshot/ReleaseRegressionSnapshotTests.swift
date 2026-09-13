@@ -13,7 +13,8 @@ struct ReleaseRegressionSnapshotTests {
     func chineseLeapMonth(mode: CalendarConfiguration.ScrollMode) throws {
         let vm = CalendarViewModel.snapshot(identifier: .chinese)
         let date = try #require(
-            Calendar(identifier: .gregorian).date(from: DateComponents(year: 2025, month: 7, day: 25)))
+            Calendar(identifier: .gregorian).date(
+                from: DateComponents(year: 2025, month: 7, day: 25)))
         try vm.navigate(to: date)
         #expect(vm.visibleMonth.isLeapMonth)
         assertCalendarStructure(
@@ -25,7 +26,8 @@ struct ReleaseRegressionSnapshotTests {
     func japaneseHistoricalEra() throws {
         let vm = CalendarViewModel.snapshot(identifier: .japanese)
         let date = try #require(
-            Calendar(identifier: .gregorian).date(from: DateComponents(year: 1900, month: 1, day: 1)))
+            Calendar(identifier: .gregorian).date(
+                from: DateComponents(year: 1900, month: 1, day: 1)))
         try vm.navigate(to: date)
         assertCalendarStructure(model: vm, named: "meiji-33")
     }
@@ -62,7 +64,9 @@ struct ReleaseRegressionSnapshotTests {
             var frames: [Calendar.Identifier: Data] = [:]
             for identifier in [Calendar.Identifier.persian, .gregorian] {
                 vm.updateCalendar(identifier: identifier)
-                #expect(waitForStableRender(hosted.hosting), "render did not stabilize for \(identifier)")
+                #expect(
+                    waitForStableRender(hosted.hosting),
+                    "render did not stabilize for \(identifier)")
 
                 let expected = try #require(vm.monthIdentifier())
                 #expect(expected.calendarIdentifier == identifier)

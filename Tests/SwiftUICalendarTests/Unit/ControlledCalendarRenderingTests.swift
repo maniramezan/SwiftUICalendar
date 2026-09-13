@@ -86,7 +86,8 @@ struct ControlledCalendarRenderingTests {
             }
 
             mount(
-                TCACalendarView(store: store, configuration: CalendarConfiguration(scrollMode: mode)),
+                TCACalendarView(
+                    store: store, configuration: CalendarConfiguration(scrollMode: mode)),
                 size: CGSize(width: 390, height: 620))
         }
 

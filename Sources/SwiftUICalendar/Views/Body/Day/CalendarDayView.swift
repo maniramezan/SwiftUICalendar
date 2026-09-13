@@ -118,7 +118,8 @@ public struct CalendarDayContext {
         if let secondaryLabel {
             parts.append(
                 String(
-                    format: "Calendar.Day.Secondary".localized(locale: locale), locale: locale, secondaryLabel
+                    format: "Calendar.Day.Secondary".localized(locale: locale), locale: locale,
+                    secondaryLabel
                 ))
         }
         return parts.joined(separator: ", ")

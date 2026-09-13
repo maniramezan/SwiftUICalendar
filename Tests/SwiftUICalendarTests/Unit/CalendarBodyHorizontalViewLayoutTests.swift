@@ -10,28 +10,34 @@ struct CalendarBodyHorizontalViewLayoutTests {
     @Test("layoutWidth respects the minimum calendar width")
     func layoutWidthRespectsMinimumCalendarWidth() {
         #expect(
-            CalendarBodyHorizontalView.layoutWidth(containerWidth: 320, minCalendarWidth: 356) == 356)
+            CalendarBodyHorizontalView.layoutWidth(containerWidth: 320, minCalendarWidth: 356)
+                == 356)
         #expect(
-            CalendarBodyHorizontalView.layoutWidth(containerWidth: 390, minCalendarWidth: 356) == 390)
+            CalendarBodyHorizontalView.layoutWidth(containerWidth: 390, minCalendarWidth: 356)
+                == 390)
     }
 
     @Test("carousel peek reaches past the centered cell's margin into real content")
     func carouselReservesAvailableWidthForPeeks() {
         #expect(
             CalendarBodyHorizontalView.peekWidth(
-                containerWidth: 390, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44, maxCellSize: 64
+                containerWidth: 390, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44,
+                maxCellSize: 64
             ) == 17)
         #expect(
             CalendarBodyHorizontalView.pageWidth(
-                containerWidth: 390, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44, maxCellSize: 64
+                containerWidth: 390, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44,
+                maxCellSize: 64
             ) == 356)
         #expect(
             CalendarBodyHorizontalView.peekWidth(
-                containerWidth: 356, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44, maxCellSize: 64
+                containerWidth: 356, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44,
+                maxCellSize: 64
             ) == 0)
         #expect(
             CalendarBodyHorizontalView.pageWidth(
-                containerWidth: 356, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44, maxCellSize: 64
+                containerWidth: 356, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44,
+                maxCellSize: 64
             ) == 356)
     }
 

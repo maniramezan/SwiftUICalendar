@@ -41,7 +41,9 @@ struct CalendarViewModelMultiCalendarTests {
             let vm = CalendarViewModel.test(identifier: .persian)
             for month in 1...6 {
                 let metadata = vm.monthMetadata(month: month, year: 1404)
-                #expect(metadata?.numberOfDays == 31, "Persian month \(month) of 1404 should have 31 days")
+                #expect(
+                    metadata?.numberOfDays == 31,
+                    "Persian month \(month) of 1404 should have 31 days")
             }
         }
 
@@ -50,7 +52,9 @@ struct CalendarViewModelMultiCalendarTests {
             let vm = CalendarViewModel.test(identifier: .persian)
             for month in 7...11 {
                 let metadata = vm.monthMetadata(month: month, year: 1404)
-                #expect(metadata?.numberOfDays == 30, "Persian month \(month) of 1404 should have 30 days")
+                #expect(
+                    metadata?.numberOfDays == 30,
+                    "Persian month \(month) of 1404 should have 30 days")
             }
         }
 
@@ -234,7 +238,8 @@ struct CalendarViewModelMultiCalendarTests {
         @Test("navigating forward from Dhul Hijjah (month 12) wraps to Muharram of next year")
         func islamicNavigatingForwardFromDhulHijjahWrapsToMuharram() throws {
             let islamicCal = Calendar(identifier: .islamicUmmAlQura)
-            let dhulHijjahDate = islamicCal.date(from: DateComponents(year: 1446, month: 12, day: 1))!
+            let dhulHijjahDate = islamicCal.date(
+                from: DateComponents(year: 1446, month: 12, day: 1))!
             let vm = CalendarViewModel.test(identifier: .islamicUmmAlQura)
             vm.currentDate = dhulHijjahDate
             try vm.updateMonthToNextMonth()

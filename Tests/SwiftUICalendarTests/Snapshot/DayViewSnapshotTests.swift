@@ -61,7 +61,8 @@ struct DayViewSnapshotTests {
     func circleDaySelected() {
         let theme = circleTheme()
         assertDayContextStructure(
-            makeContext(isSelected: true, theme: theme.day), rendererFor: theme, named: "circle-selected")
+            makeContext(isSelected: true, theme: theme.day), rendererFor: theme,
+            named: "circle-selected")
     }
 
     @Test("Circle day: today and selected")
@@ -109,7 +110,8 @@ struct DayViewSnapshotTests {
     func squareDaySelected() {
         let theme = squareTheme()
         assertDayContextStructure(
-            makeContext(isSelected: true, theme: theme.day), rendererFor: theme, named: "square-selected")
+            makeContext(isSelected: true, theme: theme.day), rendererFor: theme,
+            named: "square-selected")
     }
 
     @Test("Square day: out-of-month border state")

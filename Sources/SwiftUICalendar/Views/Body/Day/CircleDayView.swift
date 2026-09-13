@@ -59,7 +59,8 @@ struct CircleDayView: CalendarDayView {
                 if context.isToday && !context.isSelected {
                     Circle()
                         .fill(Color.clear)
-                        .adaptiveGlass(shape: .circle, interactive: true, tint: dayTheme.todayBorderColor)
+                        .adaptiveGlass(
+                            shape: .circle, interactive: true, tint: dayTheme.todayBorderColor)
                 } else {
                     Circle()
                         .fill(backgroundColor)

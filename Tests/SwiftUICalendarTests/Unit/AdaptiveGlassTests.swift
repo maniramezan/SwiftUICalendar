@@ -10,7 +10,8 @@ struct AdaptiveGlassTests {
     @Test("renderingMode chooses the expected implementation")
     func renderingModeChoosesExpectedImplementation() {
         #expect(AdaptiveGlassModifier.renderingMode(supportsLiquidGlass: true) == .liquidGlass)
-        #expect(AdaptiveGlassModifier.renderingMode(supportsLiquidGlass: false) == .materialFallback)
+        #expect(
+            AdaptiveGlassModifier.renderingMode(supportsLiquidGlass: false) == .materialFallback)
     }
 
     @Test("Liquid glass tint is skipped when transparency is reduced")

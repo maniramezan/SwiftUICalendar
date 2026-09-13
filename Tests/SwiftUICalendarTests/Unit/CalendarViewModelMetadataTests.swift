@@ -8,7 +8,8 @@ import Testing
 struct CalendarViewModelMetadataTests {
 
     private func makeDate(year: Int, month: Int, day: Int) -> Date {
-        Calendar(identifier: .gregorian).date(from: DateComponents(year: year, month: month, day: day))!
+        Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: year, month: month, day: day))!
     }
 
     // MARK: - monthMetadata(month:year:) — day counts

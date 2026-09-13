@@ -20,7 +20,8 @@ struct CalendarStateTests {
         #expect(state.selection == .single(day))
         #expect(throws: (any Error).self) { try CalendarState(currentDate: date(1800, 1, 1)) }
         #expect(throws: (any Error).self) {
-            try CalendarState(calendar: Calendar(identifier: .persian), currentDate: date(2200, 1, 1))
+            try CalendarState(
+                calendar: Calendar(identifier: .persian), currentDate: date(2200, 1, 1))
         }
         let model = CalendarViewModel(state: state)
         #expect(model.state == state)

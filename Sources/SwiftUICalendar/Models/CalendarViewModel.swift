@@ -351,7 +351,8 @@ import SwiftUI
         monthSnapshot(for: componentMonth(month: month, year: year))?.rowCount ?? 1
     }
 
-    func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil) -> MonthIdentifier?
+    func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil)
+        -> MonthIdentifier?
     {
         let engine = engine
         return renderCache.month(
@@ -377,7 +378,8 @@ import SwiftUI
             let isSelected = selection.matcher(in: calendar)
             let days = geometry.days.map { day in
                 MonthSnapshot.Day(
-                    id: day.id, date: day.date, day: day.day, dayLabel: day.dayLabel, month: day.month,
+                    id: day.id, date: day.date, day: day.day, dayLabel: day.dayLabel,
+                    month: day.month,
                     year: day.year, isInDisplayedMonth: day.isInDisplayedMonth,
                     isToday: day.dayStart == today, isSelected: isSelected(day.dayStart))
             }
@@ -412,7 +414,9 @@ import SwiftUI
 
     func yearTitle(_ year: Int) -> String {
         let number = NumberFormatter.formatYear(year, locale: locale)
-        guard calendar.identifier == .japanese || calendar.identifier == .chinese else { return number }
+        guard calendar.identifier == .japanese || calendar.identifier == .chinese else {
+            return number
+        }
         let formatter = renderCache.formatter(format: "G", calendar: calendar)
         return "\(formatter.string(from: currentDate)) \(number)"
     }

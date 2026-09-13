@@ -34,7 +34,8 @@ struct CalendarBodyHorizontalViewSnapshotTests {
     @Test("Persian calendar, RTL layout")
     func persianRTL() {
         let vm = CalendarViewModel.snapshot(identifier: .persian, selection: .single(nil))
-        assertCalendarStructure(model: vm, configuration: sixRows, monthSpan: 1, named: "persian-rtl")
+        assertCalendarStructure(
+            model: vm, configuration: sixRows, monthSpan: 1, named: "persian-rtl")
     }
 
     @Test("Range selection crossing a month boundary")

@@ -8,7 +8,8 @@ import Testing
 struct CalendarViewModelDateResolutionTests {
 
     private func makeDate(year: Int, month: Int, day: Int) -> Date {
-        Calendar(identifier: .gregorian).date(from: DateComponents(year: year, month: month, day: day))!
+        Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: year, month: month, day: day))!
     }
 
     @Test("date(for:month:year:): resolves to the requested day components")

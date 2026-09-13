@@ -50,7 +50,8 @@ struct CalendarBodyVerticalViewSnapshotTests {
         let theme = Theme()
         theme.day.useSquareDualCalendarDayView(secondaryLabel: .persian)
         assertCalendarStructure(
-            model: vm, configuration: config, theme: theme, monthSpan: 1, named: "square-dual-variant")
+            model: vm, configuration: config, theme: theme, monthSpan: 1,
+            named: "square-dual-variant")
     }
 
     @Test("Gregorian scroll window spans several months")
