@@ -5,12 +5,12 @@ protocol CalendarHeaderItem: MenuPickerItem, Hashable, Identifiable where ID == 
 }
 
 struct MonthItem: CalendarHeaderItem {
-  let id: Int
-  let title: String
-  var month: MonthIdentifier? = nil
+    let id: Int
+    let title: String
+    var month: MonthIdentifier? = nil
 }
 
 struct YearItem: CalendarHeaderItem {
-  let id: Int
-  let title: String
+    let id: Int
+    let title: String
 }
