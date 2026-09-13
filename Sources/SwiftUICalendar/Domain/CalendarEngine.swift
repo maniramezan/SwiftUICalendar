@@ -1,8 +1,11 @@
 import Foundation
+import SwiftCommons
 
 /// Calendar arithmetic uses absolute month intervals so eras and leap months remain distinct.
 struct CalendarEngine: Sendable {
   let calendar: Calendar
+
+  private var arithmetic: CalendarArithmetic { CalendarArithmetic(calendar: calendar) }
 
   /// The navigable interval, January 1 1900 through December 31 2100 in the Gregorian calendar.
   ///
@@ -37,29 +40,15 @@ struct CalendarEngine: Sendable {
   }
 
   func month(containing date: Date) -> MonthIdentifier {
-    let start = calendar.dateInterval(of: .month, for: date)?.start ?? date
-    let components = calendar.dateComponents([.era, .year, .month], from: start)
-    return MonthIdentifier(
-      month: components.month ?? 1, year: components.year ?? 1,
-      calendarIdentifier: calendar.identifier, era: components.era ?? 1,
-      isLeapMonth: components.isLeapMonth ?? false
-    )
+    arithmetic.month(containing: date)
   }
 
   func start(of month: MonthIdentifier) -> Date? {
-    guard month.calendarIdentifier == calendar.identifier else { return nil }
-    var components = DateComponents(
-      era: month.era, year: month.year, month: month.month, day: 1)
-    components.isLeapMonth = month.isLeapMonth
-    guard let date = calendar.date(from: components), self.month(containing: date) == month else {
-      return nil
-    }
-    return calendar.dateInterval(of: .month, for: date)?.start
+    arithmetic.start(of: month)
   }
 
   func interval(of month: MonthIdentifier) -> DateInterval? {
-    guard let start = start(of: month) else { return nil }
-    return calendar.dateInterval(of: .month, for: start)
+    arithmetic.interval(of: month)
   }
 
   func intersectsSupportedDates(_ interval: DateInterval) -> Bool {
@@ -67,19 +56,14 @@ struct CalendarEngine: Sendable {
   }
 
   func month(offset: Int, from month: MonthIdentifier) -> MonthIdentifier? {
-    guard let start = start(of: month),
-      let date = calendar.date(byAdding: .month, value: offset, to: start),
-      let interval = calendar.dateInterval(of: .month, for: date),
-      intersectsSupportedDates(interval)
+    guard let resolved = arithmetic.month(offset: offset, from: month),
+      let interval = arithmetic.interval(of: resolved), intersectsSupportedDates(interval)
     else { return nil }
-    return self.month(containing: date)
+    return resolved
   }
 
   func date(day: Int, in month: MonthIdentifier) -> Date? {
-    guard let start = start(of: month),
-      let days = calendar.range(of: .day, in: .month, for: start), days.contains(day)
-    else { return nil }
-    return calendar.date(byAdding: .day, value: day - 1, to: start)
+    arithmetic.date(day: day, in: month)
   }
 
   func navigationDate(in month: MonthIdentifier, preferredDay: Int) -> Date? {
@@ -103,26 +87,9 @@ struct CalendarEngine: Sendable {
 
   func months(in year: Int, relativeTo reference: Date) -> [MonthIdentifier] {
     guard yearBounds(containing: reference).contains(year) else { return [] }
-    let era = calendar.component(.era, from: reference)
-    guard let seed = calendar.date(from: DateComponents(era: era, year: year, month: 1, day: 1)),
-      let yearInterval = calendar.dateInterval(of: .year, for: seed)
-    else { return [] }
-    let eraInterval = calendar.dateInterval(of: .era, for: reference)
-    let start = max(yearInterval.start, eraInterval?.start ?? yearInterval.start)
-    let end = min(yearInterval.end, eraInterval?.end ?? yearInterval.end)
-    guard start < end, calendar.component(.year, from: start) == year else { return [] }
-    var result: [MonthIdentifier] = []
-    var cursor = start
-    while cursor < end {
-      guard let interval = calendar.dateInterval(of: .month, for: cursor), interval.end > cursor
-      else {
-        break
-      }
-      if intersectsSupportedDates(interval) {
-        result.append(month(containing: cursor))
-      }
-      cursor = interval.end
+    return arithmetic.months(in: year, relativeTo: reference).filter { month in
+      guard let interval = arithmetic.interval(of: month) else { return false }
+      return intersectsSupportedDates(interval)
     }
-    return result
   }
 }
