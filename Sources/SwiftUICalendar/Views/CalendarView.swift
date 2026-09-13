@@ -20,11 +20,37 @@ import SwiftUI
 /// }
 /// ```
 public struct CalendarView: View {
-  private let viewModel: CalendarViewModel
+  private enum Source {
+    case owned(CalendarViewModel)
+    case external(state: CalendarState, onAction: (CalendarAction) -> Void)
+  }
+
+  private let source: Source
   private let theme: Theme
   private let typography: Typography
   private let configuration: CalendarConfiguration
   @State private var widthClass: Int = 0
+  // Persists the projection built for `.external` across re-renders (e.g. every TCA store
+  // mutation) instead of the `init(state:onAction:)` below constructing a fresh one each time.
+  // See `CalendarViewModel.sync(state:onAction:)` for why replacing the instance every render
+  // would defeat `@Observable`'s per-property diffing for every downstream view.
+  @State private var externalViewModel: CalendarViewModel?
+
+  private var viewModel: CalendarViewModel {
+    switch source {
+    case .owned(let model):
+      return model
+    case .external(let state, let onAction):
+      guard let externalViewModel else {
+        // Unreachable in practice: `init(state:onAction:)` always seeds `externalViewModel`
+        // via `State(initialValue:)` alongside `.external`. Falling back defensively rather
+        // than force-unwrapping.
+        return CalendarViewModel(state: state, onAction: onAction)
+      }
+      externalViewModel.sync(state: state, onAction: onAction)
+      return externalViewModel
+    }
+  }
 
   /// Creates a calendar view with the supplied model, theme, and typography.
   ///
@@ -55,7 +81,7 @@ public struct CalendarView: View {
     typography: Typography = .default,
     configuration: CalendarConfiguration = CalendarConfiguration()
   ) {
-    self.viewModel = model
+    self.source = .owned(model)
     self.theme = theme
     self.typography = typography
     self.configuration = configuration
@@ -70,9 +96,12 @@ public struct CalendarView: View {
     configuration: CalendarConfiguration = CalendarConfiguration(),
     onAction: @escaping (CalendarAction) -> Void
   ) {
-    self.init(
-      model: CalendarViewModel(state: state, onAction: onAction),
-      theme: theme, typography: typography, configuration: configuration)
+    self.source = .external(state: state, onAction: onAction)
+    self.theme = theme
+    self.typography = typography
+    self.configuration = configuration
+    self._externalViewModel = State(
+      initialValue: CalendarViewModel(state: state, onAction: onAction))
   }
 
   @ViewBuilder

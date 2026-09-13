@@ -64,9 +64,9 @@ import SwiftUI
   @ObservationIgnored internal private(set) var monthTitleCache: [String: String] = [:]
   @ObservationIgnored private var monthTitleCacheSignature = ""
   // Grids, month offsets, and date formatters live in a cache keyed by calendar signature rather
-  // than by model instance. `CalendarView`'s externally owned (TCA) initializer builds a fresh
-  // rendering projection on every store mutation, so an instance-scoped cache would start cold on
-  // every frame of a scroll. Injectable so tests get an isolated cache.
+  // than by model instance, so multiple calendar instances (and any that predate `sync`
+  // adopting a persistent projection) still share the memoized work. Injectable so tests get an
+  // isolated cache.
   @ObservationIgnored var renderCache: CalendarRenderCache = .shared
   private var calendar: Calendar { state.calendar }
 
@@ -76,6 +76,22 @@ import SwiftUI
   // A rendering projection forwards actions without mutating its snapshot.
   init(state: CalendarState, onAction: @escaping (CalendarAction) -> Void) {
     self.state = state
+    self.onAction = onAction
+  }
+
+  /// Updates an externally owned projection in place instead of replacing it.
+  ///
+  /// `CalendarView(state:onAction:)` (the TCA integration) keeps a single `CalendarViewModel`
+  /// alive across store mutations and calls this on every re-render instead of constructing a
+  /// fresh instance. `@Observable` only gives SwiftUI per-property diffing when the same instance
+  /// persists across updates — replacing it wholesale (the previous behavior) invalidated every
+  /// view reading `@Environment(CalendarViewModel.self)`, not just the ones whose data changed.
+  /// The equality check matters here: an unconditional write still notifies every previous reader
+  /// of `state` even when nothing changed, since `@Observable` does not skip redundant writes.
+  func sync(state: CalendarState, onAction: @escaping (CalendarAction) -> Void) {
+    if self.state != state {
+      self.state = state
+    }
     self.onAction = onAction
   }
 
