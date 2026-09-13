@@ -95,8 +95,10 @@ struct CalendarBodyVerticalView: View {
     logger.info(
       "Initializing vertical window at \(current.year, privacy: .public)-\(current.month, privacy: .public)"
     )
+    // `scrollPosition` is left for the `onChange(of: anchor)` -> `scrollTo` below to populate;
+    // writing it here too raced with the scroll view's own write to the same binding within one
+    // frame, tripping SwiftUI's "tried to update multiple times per frame" diagnostic.
     anchor = current
-    scrollPosition = current
   }
 
   /// Rebuilds the window when navigation arrives from outside the vertical scroll.
@@ -140,8 +142,8 @@ struct CalendarBodyVerticalView: View {
 
   private func resetWindow() {
     let target = currentMonthIdentifier
+    // See `initializeWindow` — `scrollPosition` follows from the anchor change, not a direct write.
     anchor = target
-    scrollPosition = target
   }
 }
 
