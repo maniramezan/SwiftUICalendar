@@ -1,4 +1,5 @@
 import Foundation
+import SwiftCommons
 import Testing
 
 @testable import SwiftUICalendar
@@ -10,8 +11,9 @@ struct CalendarViewSnapshotTests {
   private let snapshotWidth: CGFloat = 390
 
   @Test("Fixed calendar with header")
-  func fixedCalendarWithHeader() {
+  func fixedCalendarWithHeader() throws {
     let vm = CalendarViewModel.snapshot(selection: .single(nil))
+    try vm.navigate(toMonth: SwiftCommons.MonthIdentifier(month: 6, year: 2025))
     assertCalendarStructure(
       model: vm, configuration: CalendarConfiguration(showsHeader: true),
       width: snapshotWidth, named: "fixed-calendar-with-header")
