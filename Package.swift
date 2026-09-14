@@ -36,11 +36,11 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/maniramezan/SwiftUIComponents",
-            .upToNextMajor(from: "0.2.0")
+            .upToNextMajor(from: "0.11.0")
         ),
         .package(
             url: "https://github.com/pointfreeco/swift-snapshot-testing",
-            from: "1.19.3"
+            from: "1.19.4"
         ),
     ] + tcaDependencies,
     targets: [
