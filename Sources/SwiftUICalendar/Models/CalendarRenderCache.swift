@@ -108,7 +108,8 @@ final class CalendarRenderCache {
         for month: MonthIdentifier, calendar: Calendar, engine: CalendarEngine
     ) -> MonthGeometry? {
         monthGeometry(
-            for: month, calendar: calendar, signature: Self.signature(for: calendar), engine: engine)
+            for: month, calendar: calendar, signature: Self.signature(for: calendar), engine: engine
+        )
     }
 
     /// Same as ``monthGeometry(for:calendar:engine:)`` with a precomputed `signature`, which must
@@ -143,7 +144,8 @@ final class CalendarRenderCache {
     func month(
         offset: Int, from month: MonthIdentifier, calendar: Calendar, engine: CalendarEngine
     ) -> MonthIdentifier? {
-        self.month(offset: offset, from: month, signature: Self.signature(for: calendar), engine: engine)
+        self.month(
+            offset: offset, from: month, signature: Self.signature(for: calendar), engine: engine)
     }
 
     /// Same as ``month(offset:from:calendar:engine:)`` with a precomputed `signature`; see

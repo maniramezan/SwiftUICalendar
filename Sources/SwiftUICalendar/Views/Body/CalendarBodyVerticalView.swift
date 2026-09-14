@@ -206,7 +206,8 @@ struct CalendarBodyVerticalView: View {
         else { return }
         // Approximate in lunisolar calendars (leap months), which the recenter margin absorbs.
         let offset =
-            engine.calendar.dateComponents([.month], from: anchorStart, to: positionStart).month ?? 0
+            engine.calendar.dateComponents([.month], from: anchorStart, to: positionStart).month
+            ?? 0
         let edge = offset < 0 ? -(VerticalMonthWindow.radius + 1) : VerticalMonthWindow.radius + 1
         let hasMonthsBeyondEdge = viewModel.monthIdentifier(offset: edge, from: anchor) != nil
         guard
@@ -393,11 +394,24 @@ private final class MonthPrefetchCoordinator {
 /// and every observable `@Environment` declaration instantiates a generic key path on creation.
 private struct VerticalMonthView: View {
     @Environment(\.calendarMetrics) private var metrics
+    @Environment(\.calendarConfiguration) private var configuration
 
     let item: VerticalMonthItem
     let locale: Locale
     let typography: Typography
     let layoutWidth: CGFloat?
+
+    // Matches the width `CalendarBodyView` resolves for its own grid below, so the title lines up
+    // with the day columns instead of the full row width — the two diverge whenever the resolved
+    // cell size saturates `maxCellSize` (e.g. a wide landscape layout), which leaves the grid
+    // narrower than the row and centered within it.
+    private var gridWidth: CGFloat {
+        CalendarGridLayout(
+            containerWidth: layoutWidth ?? metrics.minCalendarWidth,
+            metrics: metrics,
+            sizing: configuration.gridSizing
+        ).gridWidth
+    }
 
     var body: some View {
         VStack(spacing: metrics.itemSpacing) {
@@ -406,8 +420,10 @@ private struct VerticalMonthView: View {
                     .font(typography.monthHeaderFont)
                 Text(NumberFormatter.formatYear(item.id.year, locale: locale))
                     .font(typography.monthHeaderFont)
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: gridWidth, alignment: .leading)
+            .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier(
                 "vertical-month-header-\(item.id.year)-\(item.id.month)"

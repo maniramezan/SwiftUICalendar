@@ -29,6 +29,28 @@ struct CalendarBodyVerticalViewLayoutTests {
         #expect(!coordinator.consumeSettledMonth(settled))
     }
 
+    @Test("month title width matches the grid's compact width in a wide (landscape) layout")
+    func monthTitleWidthMatchesGridWidthInLandscape() {
+        let metrics = CalendarMetrics.default
+
+        // A wide, landscape-style container saturates the cell size at `maxCellSize`, which makes
+        // `CalendarGridLayout` shrink the grid to its natural (compact) width and center it — the
+        // scenario that left the vertical list's per-month title, previously pinned to the full row
+        // width, misaligned with the narrower, centered grid beneath it.
+        let landscapeWidth: CGFloat = 900
+        let layout = CalendarGridLayout(
+            containerWidth: landscapeWidth, metrics: metrics, sizing: .adaptive)
+
+        #expect(layout.gridWidth < landscapeWidth)
+        #expect(layout.cellSize == metrics.maxCellSize)
+
+        // `VerticalMonthView` resolves its title width from the same `CalendarGridLayout` call as
+        // `CalendarBodyView` resolves its grid width, so the two stay in lockstep at any width.
+        let bodyLayout = CalendarGridLayout(
+            containerWidth: landscapeWidth, metrics: metrics, sizing: .adaptive)
+        #expect(layout.gridWidth == bodyLayout.gridWidth)
+    }
+
     @Test("vertical destination preserves a distant month across a year boundary")
     func followsDistantPositionAcrossYearBoundary() throws {
         let vm = CalendarViewModel.test(identifier: .gregorian, selection: .single(nil))

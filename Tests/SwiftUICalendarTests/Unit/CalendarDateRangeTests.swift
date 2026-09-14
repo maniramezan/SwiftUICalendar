@@ -73,7 +73,8 @@ struct CalendarDateRangeTests {
         let early = try date(2024, 6, 1, in: calendar)
         let current = try date(2025, 6, 1, in: calendar)
         let futureOnly = ClosedRange<Date>.onOrAfter(try date(2025, 1, 1, in: calendar))
-        let unsupported = (try date(1700, 1, 1, in: calendar))...(try date(1800, 1, 1, in: calendar))
+        let unsupported =
+            (try date(1700, 1, 1, in: calendar))...(try date(1800, 1, 1, in: calendar))
 
         #expect(throws: (any Error).self) {
             try CalendarState(calendar: calendar, currentDate: early, dateRange: futureOnly)
@@ -142,7 +143,8 @@ struct CalendarDateRangeTests {
         let calendar = try utcCalendar()
         let past = try date(2020, 1, 1, in: calendar)
         let pastOnly = CalendarViewModel(
-            state: try CalendarState(calendar: calendar, currentDate: past, dateRange: .onOrBefore(past)))
+            state: try CalendarState(
+                calendar: calendar, currentDate: past, dateRange: .onOrBefore(past)))
         let unrestricted = CalendarViewModel(
             state: try CalendarState(calendar: calendar, currentDate: past))
 
@@ -180,7 +182,8 @@ struct CalendarDateRangeTests {
 
     // MARK: - Vertical window
 
-    @Test("single-instant ranges retain their date through month and year navigation",
+    @Test(
+        "single-instant ranges retain their date through month and year navigation",
         arguments: [Calendar.Identifier.gregorian, .persian])
     func singleInstantNavigation(identifier: Calendar.Identifier) throws {
         let calendar = try utcCalendar(identifier)
@@ -193,8 +196,9 @@ struct CalendarDateRangeTests {
         try state.apply(.navigateYear(calendar.component(.year, from: instant)))
         try state.apply(.offsetYears(0))
         #expect(state.currentDate == instant)
-        #expect(state.engine.yearBounds(containing: instant) ==
-            calendar.component(.year, from: instant)...calendar.component(.year, from: instant))
+        #expect(
+            state.engine.yearBounds(containing: instant) == calendar.component(
+                .year, from: instant)...calendar.component(.year, from: instant))
     }
 
     @Test("navigation includes a closed upper bound at the start of a year")
@@ -209,7 +213,8 @@ struct CalendarDateRangeTests {
         #expect(state.maxYear == 2026)
     }
 
-    @Test("Today clamps within an available boundary day and rejects other days",
+    @Test(
+        "Today clamps within an available boundary day and rejects other days",
         arguments: [Calendar.Identifier.gregorian, .persian])
     func todayBoundaryDay(identifier: Calendar.Identifier) throws {
         let calendar = try utcCalendar(identifier)
@@ -238,8 +243,10 @@ struct CalendarDateRangeTests {
     @Test("the vertical window re-centers only far from its anchor with months beyond the edge")
     func verticalWindowRecenterPolicy() {
         #expect(VerticalMonthWindow.offsets.count == VerticalMonthWindow.radius * 2 + 1)
-        #expect(!VerticalMonthWindow.shouldRecenter(offsetFromAnchor: 59, hasMonthsBeyondEdge: true))
-        #expect(VerticalMonthWindow.shouldRecenter(offsetFromAnchor: -60, hasMonthsBeyondEdge: true))
+        #expect(
+            !VerticalMonthWindow.shouldRecenter(offsetFromAnchor: 59, hasMonthsBeyondEdge: true))
+        #expect(
+            VerticalMonthWindow.shouldRecenter(offsetFromAnchor: -60, hasMonthsBeyondEdge: true))
         #expect(
             !VerticalMonthWindow.shouldRecenter(offsetFromAnchor: 200, hasMonthsBeyondEdge: false))
     }

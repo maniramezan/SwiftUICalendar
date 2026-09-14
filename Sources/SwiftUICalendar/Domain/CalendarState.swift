@@ -31,7 +31,9 @@ public struct CalendarState: Equatable, Sendable {
         supportedDates.lowerBound...supportedDates.upperBound.previousInstant
     }
 
-    var engine: CalendarEngine { CalendarEngine(calendar: calendar, supportedDates: supportedDates) }
+    var engine: CalendarEngine {
+        CalendarEngine(calendar: calendar, supportedDates: supportedDates)
+    }
     public var visibleMonth: MonthIdentifier { engine.month(containing: currentDate) }
     var minYear: Int { engine.yearBounds(containing: currentDate).lowerBound }
     var maxYear: Int { engine.yearBounds(containing: currentDate).upperBound }
@@ -51,7 +53,8 @@ public struct CalendarState: Equatable, Sendable {
         var calendar = Calendar(identifier: calendarIdentifier)
         calendar.locale = Self.locale(for: calendarIdentifier)
         try self.init(
-            calendar: calendar, currentDate: currentDate, selection: selection, dateRange: dateRange)
+            calendar: calendar, currentDate: currentDate, selection: selection, dateRange: dateRange
+        )
     }
 
     /// Creates state with an explicit locale and time zone from the supplied calendar.
