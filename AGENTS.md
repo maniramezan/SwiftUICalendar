@@ -64,15 +64,75 @@ Resolving one month grid costs roughly six `Calendar` calls per day plus a `Numb
 lookup. A vertical scroll keeps six to eight months realized and every model mutation re-evaluates
 all of their bodies, so uncached grids put ~2,500 calendar operations inside a single frame.
 
-- `CalendarRenderCache` (`Models/CalendarRenderCache.swift`) memoizes month grid geometry, month
-  offset resolution, and `DateFormatter` instances, keyed by a **calendar/locale/time-zone
-  signature** — deliberately not by model instance. `CalendarView`'s externally owned (TCA)
-  initializer builds a fresh `CalendarViewModel` projection on every store mutation, so an
-  instance-scoped cache starts cold on exactly the frames that are busiest.
+- `CalendarRenderCache` (`Models/CalendarRenderCache.swift`) memoizes month grid geometry and
+  month offset resolution, keyed by a **calendar/locale/time-zone signature** — not by model
+  instance, so multiple calendar instances share the memoized work. `DateFormatter` construction
+  delegates to SwiftCommons' `DateFormatter.formatter(dateFormat:calendar:)` /
+  `formatter(template:calendar:)` (`FormatterCache`-backed) instead of a locally owned dictionary.
+- `CalendarView`'s externally owned (TCA) integration (`init(state:onAction:)`) keeps a single
+  `CalendarViewModel` alive across store mutations via `@State`, syncing it in place through
+  `CalendarViewModel.sync(state:onAction:)` on every re-render instead of constructing a fresh
+  instance — replacing the instance wholesale would defeat `@Observable`'s per-property diffing
+  and force a full re-render of every view reading `@Environment(CalendarViewModel.self)` on
+  every store mutation, not just the ones whose data changed.
 - Cached entries hold geometry only. `isToday` and `isSelected` are applied on read in
   `CalendarViewModel.monthSnapshot(for:)`, so a selection tap never invalidates a grid.
 - Inject a private `CalendarRenderCache()` via `viewModel.renderCache` in tests; the shared
   instance persists across tests and would make entry-count assertions order-dependent.
+- Month titles are also memoized in `CalendarRenderCache` (`monthTitle(for:calendar:)`), not on
+  `CalendarViewModel` — moved there so a title warmed by background prefetch is visible to every
+  model instance reading the same calendar signature, not just the one that prefetched it.
+- **Background prefetch**: reuse caching cannot remove the cost of realizing a month the vertical
+  scroll has never shown before — resolving its offset, building its grid, and formatting its
+  title. `CalendarBodyVerticalView`'s `MonthPrefetchCoordinator` races ahead of the scroll
+  direction (inferred from consecutive `scrollPosition` values) via
+  `CalendarRenderCache.prefetchMonth(offset:from:calendar:engine:)`, computing up to 30 months
+  ahead. The expensive part is exposed as `nonisolated static` `computeMonth*` functions — pure,
+  callable from a background thread since `Calendar`/`CalendarEngine` are value types and
+  `DateFormatter`/`NumberFormatter` construction goes through SwiftCommons' thread-local
+  `FormatterCache`. `prefetchMonth` itself is `nonisolated`; it checks which entries are already
+  cached, computes only the missing ones off the main actor, and stores them in a single
+  `MainActor.run` hop, so `CalendarRenderCache` stays a `@MainActor` class with synchronous reads
+  for `body` while the expensive work runs elsewhere. Overlapping sweeps (one per month boundary
+  crossed) therefore cost a lookup hop for already-warm months, not a recomputation.
+  `MonthPrefetchCoordinator.cancel()` (called on `.onDisappear` and window resets) stops an
+  in-flight sweep; previously warmed entries stay cached.
+- Every cache `store` inserts into its eviction order list only when the key is new. Prefetch and
+  the render path can finish the same entry concurrently; appending twice would grow the order list
+  without bound and make eviction drop freshly re-stored entries ahead of genuinely old ones.
+- **Never re-inject environment objects per row.** `CalendarView.body` injects the model, `Theme`,
+  and `Typography` once; everything below inherits them. Each observable `.environment(_:)` call and
+  each `@Environment(Type.self)` declaration instantiates a generic key path at runtime (with type
+  demangling), so doing it per realized `LazyVStack` row was the single largest cost in a fast-scroll
+  Animation Hitches profile (~1,150 of ~6,000 main-thread samples inside hitch windows). Views created
+  per row (`VerticalMonthView`) take plain `let` inputs instead. Exception: `CalendarBodyHorizontalView`
+  receives its model as a stored property (and is hosted that way in tests), so it must still inject
+  the model into its (at most three) pages.
+- **Vertical scroll settles only when idle.** `CalendarBodyVerticalView` writes the scrolled-to month
+  to the model once, on the `.idle` scroll phase — never per month crossed mid-gesture or
+  mid-momentum. A settlement's own model change must not be treated as external navigation
+  (`ScrollSettleCoordinator.consumeSettledMonth`): the list has usually moved on by the time it
+  arrives, and resetting the window then `scrollTo`s back and kills momentum (the "fling stops
+  dead" bug). The scroll uses `.viewAligned(limitBehavior: .never)`; the default limit caps a fling
+  to about one month in compact width.
+- The vertical list measures its content width once and passes it to each row's `CalendarBodyView`
+  as `layoutWidth`; rows must not measure themselves (a per-row `@State` write doubles the work of
+  realizing a month during a fast scroll).
+- **Vertical month window.** SwiftUI's lazy stack pays per-update bookkeeping (`ForEach` item walk,
+  placement estimates, `scrollTo` index search) proportional to the *total* row count, not the
+  visible rows. Profiling showed 3,001 rows (±1,500 months) produced ~94 interaction delays per
+  fast-scroll session versus 2 at 241 rows. `VerticalMonthWindow` therefore realizes ±240 months
+  around the anchor and re-centers (resets the anchor to the settled month) when the scroll rests
+  60+ months from it and more allowed months exist beyond the window edge. Never grow the window
+  by prepending rows mid-scroll — see the LazyVStack `.scrollPosition` note in project memory.
+- **Date range.** `CalendarState.dateRange` (a `ClosedRange<Date>`, clamped to 1900–2100) is the
+  single source of truth for navigable/selectable dates. It is carried into `CalendarEngine` as
+  `supportedDates`, so every navigation, offset, picker, and paging check obeys it. Month-offset
+  cache keys include those bounds (identical calendars with different ranges resolve offsets
+  differently); geometry and titles do not depend on them. Day availability (`isEnabled`) is
+  applied on read in `monthSnapshot(for:)`, per day via `CalendarEngine.availableDayStarts`.
+- Render-cache lookups on the hot path pass `CalendarState.renderSignature` (computed once per
+  calendar change) rather than a `Calendar`, so the signature string is not rebuilt per lookup.
 - Keep per-day loops free of `Calendar` work. `CalendarSelection.matcher(in:)` normalizes a
   selection once for a whole grid; `CalendarEngine.supportedDates` is resolved once per time zone.
 - In a `View`, mutating `@State` that only exists for bookkeeping invalidates the body. The vertical

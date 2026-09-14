@@ -11,6 +11,8 @@ struct MonthSnapshot: Identifiable, Equatable, Sendable {
         let isInDisplayedMonth: Bool
         let isToday: Bool
         let isSelected: Bool
+        /// Whether the day overlaps ``CalendarState/dateRange``. Out-of-range days render disabled.
+        let isEnabled: Bool
     }
 
     let id: MonthIdentifier

@@ -112,6 +112,28 @@ CalendarView(model: calendar, configuration: configuration)
 Use `.compact` when the calendar should look identical regardless of window size, and `.flexible`
 when it should track the full width of a resizable pane.
 
+## Date Range
+
+Limit the dates people can scroll to, navigate to, and select with `dateRange`. Days outside the
+range stay visible but are disabled. Any `ClosedRange<Date>` works, and helpers cover the common
+cases:
+
+```swift
+// Only today and future dates (for example, booking).
+let upcoming = CalendarViewModel(calendarIdentifier: .gregorian, dateRange: .onOrAfter(.now))
+
+// Only today and past dates (for example, a history log).
+let history = CalendarViewModel(calendarIdentifier: .gregorian, dateRange: .onOrBefore(.now))
+
+// Whole years in a specific calendar system.
+let persian = Calendar(identifier: .persian)
+let years = try CalendarState(
+    calendar: persian, currentDate: .now, dateRange: .years(1400...1410, in: persian))
+```
+
+Ranges are clamped to the supported interval (January 1, 1900 through December 31, 2100) and are
+judged per day, so a range that starts mid-day still allows that day.
+
 ## Alternate Calendar Labels
 
 Use the square dual-calendar day view to show a secondary day number from another calendar system:

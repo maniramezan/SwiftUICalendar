@@ -7,6 +7,28 @@ import Testing
 @MainActor
 @Suite("CalendarBodyVerticalView Layout Tests")
 struct CalendarBodyVerticalViewLayoutTests {
+    @Test("settlement notifications are consumed once even when already aligned")
+    func consumesAlignedSettlement() {
+        let coordinator = ScrollSettleCoordinator()
+        let month = MonthIdentifier(month: 6, year: 2025)
+        coordinator.recordSettled(month)
+        #expect(coordinator.consumeSettledMonth(month))
+        #expect(!coordinator.consumeSettledMonth(month))
+    }
+
+    @Test("external navigation invalidates an outstanding settlement marker")
+    func externalNavigationClearsSettlement() {
+        let coordinator = ScrollSettleCoordinator()
+        let settled = MonthIdentifier(month: 6, year: 2025)
+        let external = MonthIdentifier(month: 9, year: 2025)
+        coordinator.recordSettled(settled)
+        #expect(!coordinator.consumeSettledMonth(external))
+        #expect(!coordinator.consumeSettledMonth(settled))
+        coordinator.recordSettled(settled)
+        coordinator.cancel()
+        #expect(!coordinator.consumeSettledMonth(settled))
+    }
+
     @Test("month title width matches the grid's compact width in a wide (landscape) layout")
     func monthTitleWidthMatchesGridWidthInLandscape() {
         let metrics = CalendarMetrics.default

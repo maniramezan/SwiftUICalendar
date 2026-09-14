@@ -24,8 +24,11 @@ can cross era boundaries. A month spanning an era transition is identified by th
 at its absolute start; its individual cells retain their actual dates.
 
 Navigation supports Gregorian January 1, 1900 through December 31, 2100 in the model's time
-zone. A partially supported month remains reachable; month/year navigation clamps to supported
-dates. Invalid month components fail instead of silently rolling into another month.
+zone. Pass a `dateRange` to `CalendarState` or `CalendarViewModel` to narrow that further; the
+state stores the intersection. A partially allowed month remains reachable; month/year navigation
+clamps to allowed dates, and days outside the range render disabled and reject selection.
+Availability is judged per day, so a range starting mid-day still allows that day. Invalid month
+components fail instead of silently rolling into another month.
 
 ## Shared State and Controlled Rendering
 

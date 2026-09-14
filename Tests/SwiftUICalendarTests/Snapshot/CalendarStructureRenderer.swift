@@ -155,6 +155,9 @@ enum CalendarStructure {
 
         var flags = ""
         if !day.isInDisplayedMonth { flags += "·" }
+        // `x` marks a day outside `dateRange` (rendered disabled). Absent for unrestricted calendars,
+        // so existing baselines are unaffected.
+        if !day.isEnabled { flags += "x" }
         if day.isToday { flags += "T" }
         // `*` always reflects `MonthSnapshot.Day.isSelected` — the resolved flag the day views render —
         // for every selection mode. Range roles (`[` start, `]` end, `=` interior) are layered on top so
