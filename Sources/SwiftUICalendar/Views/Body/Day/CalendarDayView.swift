@@ -47,6 +47,12 @@ public struct CalendarDayContext {
     public let isSelected: Bool
     /// Indicates whether the date belongs to the currently displayed month.
     public let isInCurrentMonth: Bool
+    /// Indicates whether the date falls inside the calendar's ``CalendarState/dateRange``.
+    ///
+    /// Built-in cells dim and disable days outside the range. The calendar also applies
+    /// `.disabled(true)` around every cell for such days, so buttons in custom day views are
+    /// disabled automatically; read this to style them differently.
+    public let isEnabled: Bool
     /// Day-level theme configuration.
     public let theme: Theme.Day
     /// Typography configuration for day rendering.
@@ -73,6 +79,7 @@ public struct CalendarDayContext {
     ///   - isToday: Whether the date is today.
     ///   - isSelected: Whether the date is selected.
     ///   - isInCurrentMonth: Whether the date belongs to the current month.
+    ///   - isEnabled: Whether the date falls inside the calendar's allowed date range.
     ///   - theme: Day-level theme configuration.
     ///   - typography: Typography configuration for day rendering.
     ///   - onSelect: Callback invoked when the date is selected.
@@ -85,6 +92,7 @@ public struct CalendarDayContext {
         isToday: Bool,
         isSelected: Bool,
         isInCurrentMonth: Bool,
+        isEnabled: Bool = true,
         theme: Theme.Day,
         typography: Typography,
         onSelect: @escaping (Date) -> Void,
@@ -97,6 +105,7 @@ public struct CalendarDayContext {
         self.isToday = isToday
         self.isSelected = isSelected
         self.isInCurrentMonth = isInCurrentMonth
+        self.isEnabled = isEnabled
         self.theme = theme
         self.typography = typography
         self.onSelect = onSelect

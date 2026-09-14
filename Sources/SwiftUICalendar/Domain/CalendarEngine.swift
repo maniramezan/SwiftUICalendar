@@ -5,21 +5,53 @@ import SwiftCommons
 struct CalendarEngine: Sendable {
     let calendar: Calendar
 
+    /// The navigable interval: the state's ``CalendarState/dateRange`` intersected with the
+    /// supported interval (January 1 1900 through December 31 2100 in the Gregorian calendar).
+    ///
+    /// Stored rather than resolved per access. Every offset, containment, and navigation check reads
+    /// this, so the vertical scroll hits it several times per realized month — building a Gregorian
+    /// `Calendar` and two dates each time showed up as scroll jank.
+    let supportedDates: Range<Date>
+
     private var arithmetic: CalendarArithmetic { CalendarArithmetic(calendar: calendar) }
 
-    /// The navigable interval, January 1 1900 through December 31 2100 in the Gregorian calendar.
+    /// An engine limited only by the supported interval.
+    init(calendar: Calendar) {
+        self.init(
+            calendar: calendar, supportedDates: Self.defaultSupportedDates(in: calendar.timeZone))
+    }
+
+    init(calendar: Calendar, supportedDates: Range<Date>) {
+        self.calendar = calendar
+        self.supportedDates = supportedDates
+    }
+
+    // MARK: - Supported interval
+
+    /// Resolves a caller-supplied date range against the supported interval.
     ///
-    /// Resolved once per time zone rather than per access. Every offset, containment, and navigation
-    /// check reads this, so the vertical scroll hits it several times per realized month — building a
-    /// Gregorian `Calendar` and two dates each time showed up as scroll jank.
-    var supportedDates: Range<Date> {
-        Self.supportedDates(in: calendar.timeZone)
+    /// - Parameters:
+    ///   - range: The allowed dates, or `nil` for no restriction beyond the supported interval.
+    ///   - timeZone: The time zone the supported interval's day boundaries are expressed in.
+    /// - Returns: The half-open intersection, or `nil` when `range` lies entirely outside the
+    ///   supported interval.
+    static func supportedDates(limitedTo range: ClosedRange<Date>?, in timeZone: TimeZone)
+        -> Range<Date>?
+    {
+        let full = defaultSupportedDates(in: timeZone)
+        guard let range else { return full }
+        let lower = max(range.lowerBound, full.lowerBound)
+        // A closed range includes its upper bound; the next representable instant makes it half-open.
+        let upper = min(range.upperBound.nextInstant, full.upperBound)
+        guard lower < upper else { return nil }
+        return lower..<upper
     }
 
     private static let supportedDatesLock = NSLock()
     nonisolated(unsafe) private static var supportedDatesByTimeZone: [TimeZone: Range<Date>] = [:]
 
-    private static func supportedDates(in timeZone: TimeZone) -> Range<Date> {
+    /// January 1 1900 through December 31 2100 in the Gregorian calendar, resolved once per time zone.
+    static func defaultSupportedDates(in timeZone: TimeZone) -> Range<Date> {
         supportedDatesLock.lock()
         defer { supportedDatesLock.unlock() }
         if let cached = supportedDatesByTimeZone[timeZone] { return cached }
@@ -38,6 +70,29 @@ struct CalendarEngine: Sendable {
     func contains(_ date: Date) -> Bool {
         supportedDates.contains(date)
     }
+
+    /// Start-of-day dates of the first and last days that overlap ``supportedDates``.
+    ///
+    /// Availability is judged per day rather than per instant, like `DatePicker(in:)`: a range that
+    /// starts at 2:30 PM still makes that whole day available. Month grids resolve this once and
+    /// compare each cell's precomputed start of day against it.
+    var availableDayStarts: ClosedRange<Date> {
+        let first = calendar.startOfDay(for: supportedDates.lowerBound)
+        let last = calendar.startOfDay(for: supportedDates.upperBound.previousInstant)
+        return first...max(first, last)
+    }
+
+    /// Whether the day containing `date` overlaps ``supportedDates``.
+    func containsDay(_ date: Date) -> Bool {
+        availableDayStarts.contains(calendar.startOfDay(for: date))
+    }
+
+    /// Clamps `date` into ``supportedDates``.
+    func clamped(_ date: Date) -> Date {
+        max(min(date, supportedDates.upperBound.previousInstant), supportedDates.lowerBound)
+    }
+
+    // MARK: - Months
 
     func month(containing date: Date) -> MonthIdentifier {
         arithmetic.month(containing: date)
@@ -104,5 +159,17 @@ struct CalendarEngine: Sendable {
             guard let interval = arithmetic.interval(of: month) else { return false }
             return intersectsSupportedDates(interval)
         }
+    }
+}
+
+extension Date {
+    /// The smallest representable instant after this one.
+    var nextInstant: Date {
+        Date(timeIntervalSinceReferenceDate: timeIntervalSinceReferenceDate.nextUp)
+    }
+
+    /// The largest representable instant before this one.
+    var previousInstant: Date {
+        Date(timeIntervalSinceReferenceDate: timeIntervalSinceReferenceDate.nextDown)
     }
 }

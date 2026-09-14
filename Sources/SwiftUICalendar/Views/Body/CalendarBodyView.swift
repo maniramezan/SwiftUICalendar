@@ -133,6 +133,7 @@ struct CalendarBodyView: View {
                             isToday: item.isToday,
                             isSelected: item.isSelected,
                             isInCurrentMonth: item.isInDisplayedMonth,
+                            isEnabled: item.isEnabled,
                             theme: theme.day,
                             typography: typography,
                             onSelect: { selectedDate in
@@ -148,7 +149,14 @@ struct CalendarBodyView: View {
                             // square day views stay square when the grid fills a wide window.
                             .frame(width: cellSize, height: cellSize)
                             .frame(maxWidth: .infinity)
-                            .foregroundStyle(item.isInDisplayedMonth ? Color.primary : Color.gray)
+                            // Days outside `dateRange` share the overflow-day styling and are
+                            // disabled, which also disables buttons inside custom day views and
+                            // makes VoiceOver announce them as dimmed.
+                            .foregroundStyle(
+                                item.isInDisplayedMonth && item.isEnabled
+                                    ? Color.primary : Color.gray
+                            )
+                            .disabled(!item.isEnabled)
                             .contentShape(Rectangle())
                     } else {
                         // Hidden overflow day, or a date that could not be resolved.
@@ -222,6 +230,9 @@ extension CalendarBodyView {
     }
 
     fileprivate func handleSelection(for item: MonthSnapshot.Day, selectedDate: Date) {
+        // `.disabled` already blocks built-in cells; a custom view can still invoke `onSelect`
+        // directly, and the state would reject it anyway.
+        guard item.isEnabled else { return }
         // Tapping a day from an adjacent month navigates the calendar to that month — but only when
         // navigation is allowed. In a vertical scroll the target month is already on screen, so
         // mutating `currentDate` here would trigger an unwanted scroll jump.

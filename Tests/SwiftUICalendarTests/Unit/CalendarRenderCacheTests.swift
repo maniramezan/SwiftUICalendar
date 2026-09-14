@@ -187,4 +187,212 @@ struct CalendarRenderCacheTests {
 
         #expect(cached == fresh)
     }
+
+    // MARK: - Background prefetch
+
+    @Test("prefetching a month warms its offset, geometry, and title entries")
+    func prefetchWarmsAllThreeCaches() async throws {
+        let (model, cache) = makeModel()
+        let anchor = model.visibleMonth
+        let engine = model.engine
+        let calendar = engine.calendar
+
+        await cache.prefetchMonth(offset: 3, from: anchor, calendar: calendar, engine: engine)
+
+        #expect(cache.monthOffsetCount == 1)
+        #expect(cache.monthGeometryCount == 1)
+        #expect(cache.monthTitleCount == 1)
+
+        // The hot path should now hit every one of those entries rather than computing anything.
+        let resolved = try #require(model.monthIdentifier(offset: 3, from: anchor))
+        _ = model.monthSnapshot(for: resolved)
+        _ = model.monthSymbol(for: resolved)
+
+        #expect(cache.monthOffsetCount == 1)
+        #expect(cache.monthGeometryCount == 1)
+        #expect(cache.monthTitleCount == 1)
+    }
+
+    @Test("a prefetched grid matches synchronous computation exactly")
+    func prefetchedGridMatchesSynchronousComputation() async throws {
+        let (model, cache) = makeModel(identifier: .persian)
+        let anchor = model.visibleMonth
+        let engine = model.engine
+        let calendar = engine.calendar
+
+        await cache.prefetchMonth(offset: 5, from: anchor, calendar: calendar, engine: engine)
+        let resolved = try #require(model.monthIdentifier(offset: 5, from: anchor))
+        let prefetched = try #require(
+            cache.monthGeometry(for: resolved, calendar: calendar, engine: engine))
+
+        let freshCache = CalendarRenderCache()
+        let fresh = try #require(
+            freshCache.monthGeometry(for: resolved, calendar: calendar, engine: engine))
+
+        #expect(prefetched == fresh)
+    }
+
+    @Test("a prefetched title matches synchronous computation exactly")
+    func prefetchedTitleMatchesSynchronousComputation() async throws {
+        let (model, cache) = makeModel(identifier: .persian)
+        let anchor = model.visibleMonth
+        let engine = model.engine
+        let calendar = engine.calendar
+
+        await cache.prefetchMonth(offset: 2, from: anchor, calendar: calendar, engine: engine)
+        let resolved = try #require(model.monthIdentifier(offset: 2, from: anchor))
+        let prefetched = try #require(cache.monthTitle(for: resolved, calendar: calendar))
+
+        let freshCache = CalendarRenderCache()
+        let fresh = try #require(freshCache.monthTitle(for: resolved, calendar: calendar))
+
+        #expect(prefetched == fresh)
+    }
+
+    @Test("prefetching an unresolvable offset stores the miss without crashing")
+    func prefetchingUnresolvableOffsetStoresMiss() async throws {
+        let (model, cache) = makeModel()
+        let anchor = model.visibleMonth
+        let engine = model.engine
+        let calendar = engine.calendar
+
+        // Far outside the supported 1900-2100 interval, so the engine resolves nothing.
+        await cache.prefetchMonth(offset: 100_000, from: anchor, calendar: calendar, engine: engine)
+
+        #expect(cache.monthOffsetCount == 1)
+        #expect(cache.monthGeometryCount == 0)
+        #expect(cache.monthTitleCount == 0)
+    }
+
+    @Test("cancelling an in-flight prefetch sweep stops it partway")
+    func cancellingPrefetchSweepStops() async throws {
+        let (model, cache) = makeModel()
+        let anchor = model.visibleMonth
+        let engine = model.engine
+        let calendar = engine.calendar
+        let sweepLength = 600
+
+        // Detached so the sweep genuinely runs off the main actor; every store hops back here, so
+        // yielding lets it make progress one month at a time.
+        let sweep = Task.detached {
+            for offset in 1...sweepLength {
+                if Task.isCancelled { return }
+                await cache.prefetchMonth(
+                    offset: offset, from: anchor, calendar: calendar, engine: engine)
+            }
+        }
+        while cache.monthOffsetCount == 0 {
+            await Task.yield()
+        }
+        sweep.cancel()
+        await sweep.value
+
+        let stoppedAt = cache.monthOffsetCount
+        #expect(stoppedAt > 0)
+        #expect(stoppedAt < sweepLength)
+    }
+
+    @Test("re-prefetching warmed months adds no eviction bookkeeping")
+    func rePrefetchingWarmedMonthsKeepsOrderConsistent() async throws {
+        let (model, cache) = makeModel()
+        let anchor = model.visibleMonth
+        let engine = model.engine
+        let calendar = engine.calendar
+
+        // Overlapping sweeps, as a sustained scroll schedules them.
+        for start in 0..<10 {
+            for offset in start..<(start + 30) {
+                await cache.prefetchMonth(
+                    offset: offset, from: anchor, calendar: calendar, engine: engine)
+            }
+        }
+        // The render path reading the same months must not add bookkeeping either.
+        for offset in 0..<39 {
+            let month = try #require(model.monthIdentifier(offset: offset, from: anchor))
+            _ = model.monthSnapshot(for: month)
+            _ = model.monthSymbol(for: month)
+        }
+
+        #expect(cache.monthOffsetCount == 39)
+        #expect(cache.monthGeometryCount == 39)
+        #expect(cache.monthTitleCount == 39)
+        #expect(cache.evictionOrderCount == 39 * 3)
+    }
+
+    @Test("eviction stays bounded and consistent when prefetch overlaps many months")
+    func evictionStaysConsistentAcrossOverlappingPrefetch() async throws {
+        let (model, cache) = makeModel()
+        let anchor = model.visibleMonth
+        let engine = model.engine
+        let calendar = engine.calendar
+
+        for start in stride(from: 0, to: 200, by: 5) {
+            for offset in start..<(start + 30) {
+                await cache.prefetchMonth(
+                    offset: offset, from: anchor, calendar: calendar, engine: engine)
+            }
+        }
+
+        // Offsets 0...224 were warmed: 225 months, of which the newest 144 keep their grids.
+        #expect(cache.monthOffsetCount == 225)
+        #expect(cache.monthTitleCount == 225)
+        #expect(cache.monthGeometryCount == 144)
+        #expect(
+            cache.evictionOrderCount
+                == cache.monthOffsetCount + cache.monthGeometryCount + cache.monthTitleCount)
+
+        // Insertion-order eviction kept the most recently warmed grids, not the oldest ones.
+        let newest = try #require(model.monthIdentifier(offset: 224, from: anchor))
+        let oldest = try #require(model.monthIdentifier(offset: 0, from: anchor))
+        await cache.prefetchMonth(offset: 224, from: anchor, calendar: calendar, engine: engine)
+        _ = cache.monthGeometry(for: newest, calendar: calendar, engine: engine)
+        #expect(cache.evictionOrderCount == 225 + 144 + 225)
+
+        // Re-warming an evicted grid stores it once and evicts exactly one older grid.
+        await cache.prefetchMonth(offset: 0, from: anchor, calendar: calendar, engine: engine)
+        _ = cache.monthGeometry(for: oldest, calendar: calendar, engine: engine)
+        #expect(cache.monthGeometryCount == 144)
+        #expect(cache.evictionOrderCount == 225 + 144 + 225)
+    }
+
+    @Test("reversing scroll direction mid-sweep leaves the cache internally consistent")
+    func reversingDirectionMidSweepStaysConsistent() async throws {
+        let (model, cache) = makeModel()
+        let anchor = model.visibleMonth
+        let engine = model.engine
+        let calendar = engine.calendar
+
+        async let forward: Void = {
+            for offset in 1...40 {
+                await cache.prefetchMonth(
+                    offset: offset, from: anchor, calendar: calendar, engine: engine)
+            }
+        }()
+        async let backward: Void = {
+            for offset in 1...40 {
+                await cache.prefetchMonth(
+                    offset: -offset, from: anchor, calendar: calendar, engine: engine)
+            }
+        }()
+        _ = await (forward, backward)
+
+        // Two sweeps computing in parallel off the main actor, interleaving their (main-actor
+        // serialized) stores, must still leave every entry equal to a fresh computation.
+        for offset in [10, -10, 25, -25] {
+            let resolved = try #require(model.monthIdentifier(offset: offset, from: anchor))
+            let cached = try #require(
+                cache.monthGeometry(for: resolved, calendar: calendar, engine: engine))
+            let fresh = try #require(
+                CalendarRenderCache().monthGeometry(
+                    for: resolved, calendar: calendar, engine: engine))
+            #expect(cached == fresh)
+
+            let cachedTitle = try #require(cache.monthTitle(for: resolved, calendar: calendar))
+            let freshTitle = try #require(
+                CalendarRenderCache().monthTitle(for: resolved, calendar: calendar))
+            #expect(cachedTitle == freshTitle)
+        }
+        #expect(cache.monthOffsetCount == 80)
+        #expect(cache.monthTitleCount == 80)
+    }
 }

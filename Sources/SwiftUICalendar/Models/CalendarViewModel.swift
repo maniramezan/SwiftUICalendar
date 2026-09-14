@@ -53,17 +53,17 @@ import SwiftUI
 
     private let logger = Logger.swiftUICalendar(for: CalendarViewModel.self)
 
-    var engine: CalendarEngine { CalendarEngine(calendar: calendar) }
+    /// Carries the state's `dateRange`, so every navigation and offset check made through the model
+    /// obeys it.
+    var engine: CalendarEngine { state.engine }
+
+    /// The dates the calendar allows; see ``CalendarState/dateRange``.
+    public var dateRange: ClosedRange<Date> { state.dateRange }
 
     /// The authoritative value state for a locally owned model.
     public private(set) var state: CalendarState
     @ObservationIgnored private var onAction: ((CalendarAction) -> Void)?
-    // Month titles are resolved on the scroll rendering hot path (once per visible month per
-    // frame), where constructing a `DateFormatter` per call shows up as jank. Titles are cached per
-    // calendar/locale signature and only invalidated when that signature changes.
-    @ObservationIgnored internal private(set) var monthTitleCache: [String: String] = [:]
-    @ObservationIgnored private var monthTitleCacheSignature = ""
-    // Grids, month offsets, and date formatters live in a cache keyed by calendar signature rather
+    // Grids, month offsets, month titles, and date formatters live in a cache keyed by calendar signature rather
     // than by model instance, so multiple calendar instances (and any that predate `sync`
     // adopting a persistent projection) still share the memoized work. Injectable so tests get an
     // isolated cache.
@@ -116,7 +116,7 @@ import SwiftUI
     }
 
     var calendarSignature: String {
-        "\(calendar.identifier)-\(locale.identifier)"
+        state.renderSignature
     }
 
     var startOfMonthDay: Int {
@@ -240,21 +240,32 @@ import SwiftUI
     ///     selection: .range(nil, nil)
     /// )
     /// ```
+    ///   - dateRange: The dates people can scroll to, navigate to, and select; days outside it
+    ///     render disabled. `nil` allows the whole supported interval. Today is clamped into the
+    ///     range, so a past-only calendar opens on its last allowed month. See
+    ///     ``CalendarState/dateRange``.
     public convenience init(
-        calendarIdentifier: Calendar.Identifier, selection: Selection = .single(nil)
+        calendarIdentifier: Calendar.Identifier, selection: Selection = .single(nil),
+        dateRange: ClosedRange<Date>? = nil
     ) {
         let locale = Self.locale(for: calendarIdentifier)
         var calendar = Calendar(identifier: calendarIdentifier)
         calendar.locale = locale
 
-        self.init(calendar: calendar, currentDate: Date(), selection: selection, locale: locale)
+        self.init(
+            calendar: calendar, currentDate: Date(), selection: selection, locale: locale,
+            dateRange: dateRange)
     }
 
-    private init(calendar: Calendar, currentDate: Date, selection: Selection, locale: Locale) {
+    private init(
+        calendar: Calendar, currentDate: Date, selection: Selection, locale: Locale,
+        dateRange: ClosedRange<Date>?
+    ) {
         var calendar = calendar
         calendar.locale = locale
-        // The convenience initializer supplies today's supported date.
-        self.state = CalendarState(calendar: calendar, clamping: currentDate, selection: selection)
+        // The convenience initializer supplies today, clamped into the allowed dates.
+        self.state = CalendarState(
+            calendar: calendar, clamping: currentDate, selection: selection, dateRange: dateRange)
     }
 
     func convertGregorianYearToCurrentCalendar(_ year: Int) throws -> Int {
@@ -370,9 +381,9 @@ import SwiftUI
     func monthIdentifier(offset: Int = 0, from identifier: MonthIdentifier? = nil)
         -> MonthIdentifier?
     {
-        let engine = engine
-        return renderCache.month(
-            offset: offset, from: identifier ?? visibleMonth, calendar: calendar, engine: engine)
+        renderCache.month(
+            offset: offset, from: identifier ?? visibleMonth, signature: state.renderSignature,
+            engine: engine)
     }
 
     /// Builds the grid for `identifier`, reusing cached calendar geometry.
@@ -384,7 +395,8 @@ import SwiftUI
         let calendar = calendar
         guard
             let geometry = renderCache.monthGeometry(
-                for: identifier, calendar: calendar, engine: engine)
+                for: identifier, calendar: calendar, signature: state.renderSignature,
+                engine: engine)
         else { return nil }
 
         return CalendarSignpost.rendering.measure("buildMonthSnapshot") {
@@ -392,12 +404,15 @@ import SwiftUI
             // normalization are the same for every cell in the grid.
             let today = calendar.startOfDay(for: Date())
             let isSelected = selection.matcher(in: calendar)
+            // Resolved once per grid, like `today`: availability is a plain `Date` comparison per day.
+            let availableDays = engine.availableDayStarts
             let days = geometry.days.map { day in
                 MonthSnapshot.Day(
                     id: day.id, date: day.date, day: day.day, dayLabel: day.dayLabel,
                     month: day.month,
                     year: day.year, isInDisplayedMonth: day.isInDisplayedMonth,
-                    isToday: day.dayStart == today, isSelected: isSelected(day.dayStart))
+                    isToday: day.dayStart == today, isSelected: isSelected(day.dayStart),
+                    isEnabled: availableDays.contains(day.dayStart))
             }
             return MonthSnapshot(id: identifier, title: monthSymbol(for: identifier), days: days)
         }
@@ -412,20 +427,8 @@ import SwiftUI
     }
 
     func monthSymbol(for identifier: MonthIdentifier) -> String {
-        let signature = calendarSignature
-        if monthTitleCacheSignature != signature {
-            monthTitleCache.removeAll(keepingCapacity: true)
-            monthTitleCacheSignature = signature
-        }
-        // Key includes leap-month flag: Chinese leap months have distinct names ("Sixth Monthbis").
-        let key = "\(identifier.year)-\(identifier.month)-\(identifier.isLeapMonth ? 1 : 0)"
-        if let cached = monthTitleCache[key] { return cached }
-        guard let date = engine.start(of: identifier) else { return "" }
-        let title = CalendarSignpost.rendering.measure("resolveMonthTitle") {
-            renderCache.formatter(format: "LLLL", calendar: calendar).string(from: date)
-        }
-        monthTitleCache[key] = title
-        return title
+        renderCache.monthTitle(
+            for: identifier, calendar: calendar, signature: state.renderSignature) ?? ""
     }
 
     func yearTitle(_ year: Int) -> String {
@@ -466,6 +469,11 @@ import SwiftUI
 
     func goToToday() {
         try? perform(.today)
+    }
+
+    /// Whether today falls inside ``dateRange``, so the Today control can navigate.
+    var canGoToToday: Bool {
+        engine.containsDay(Date())
     }
 
     private static func locale(for identifier: Calendar.Identifier) -> Locale {

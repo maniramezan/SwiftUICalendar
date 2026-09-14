@@ -191,6 +191,8 @@ private struct CalendarHeaderControl: View {
                     Button("Calendar.Today".localized) {
                         viewModel.goToToday()
                     }
+                    // Today can fall outside `dateRange` (for example, a past-only calendar).
+                    .disabled(!viewModel.canGoToToday)
                 }
                 .frame(
                     width: CalendarGridLayout(

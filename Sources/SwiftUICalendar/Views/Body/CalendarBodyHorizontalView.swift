@@ -342,9 +342,10 @@ struct CalendarBodyHorizontalView: View {
                     hideOverflowDays: true,
                     layoutWidth: pageWidth
                 )
+                // The model is required: this view receives it as a stored property, not from the
+                // environment, so its pages would otherwise find none. Theme and typography are
+                // already inherited.
                 .environment(viewModel)
-                .environment(theme)
-                .environment(typography)
                 .environment(\.layoutDirection, layoutDirection)
                 .frame(width: pageWidth, alignment: .top)
                 .background(heightReporter(for: .previous))
@@ -358,9 +359,10 @@ struct CalendarBodyHorizontalView: View {
                     hideOverflowDays: true,
                     layoutWidth: pageWidth
                 )
+                // The model is required: this view receives it as a stored property, not from the
+                // environment, so its pages would otherwise find none. Theme and typography are
+                // already inherited.
                 .environment(viewModel)
-                .environment(theme)
-                .environment(typography)
                 .environment(\.layoutDirection, layoutDirection)
                 .frame(width: pageWidth, alignment: .top)
                 .background(heightReporter(for: .current))
@@ -374,9 +376,10 @@ struct CalendarBodyHorizontalView: View {
                     hideOverflowDays: true,
                     layoutWidth: pageWidth
                 )
+                // The model is required: this view receives it as a stored property, not from the
+                // environment, so its pages would otherwise find none. Theme and typography are
+                // already inherited.
                 .environment(viewModel)
-                .environment(theme)
-                .environment(typography)
                 .environment(\.layoutDirection, layoutDirection)
                 .frame(width: pageWidth, alignment: .top)
                 .background(heightReporter(for: .next))
