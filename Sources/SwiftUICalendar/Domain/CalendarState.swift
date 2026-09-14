@@ -96,7 +96,7 @@ public struct CalendarState: Equatable, Sendable {
         self.calendar = calendar
         self.renderSignature = CalendarRenderCache.signature(for: calendar)
         self.currentDate = max(
-            min(date, supported.upperBound.addingTimeInterval(-1)), supported.lowerBound)
+            min(date, supported.upperBound.previousInstant), supported.lowerBound)
         self.selection = selection.normalized(in: calendar)
         self.supportedDates = supported
     }
@@ -138,7 +138,10 @@ public struct CalendarState: Equatable, Sendable {
             updated.locale = Self.locale(for: identifier)
             calendar = updated
         case .today:
-            try navigate(to: now)
+            guard engine.containsDay(now) else {
+                throw Calendar.CalendarError.cannotCalculateDate
+            }
+            try navigate(to: engine.clamped(now))
             if case .single = selection { selection = .single(calendar.startOfDay(for: now)) }
         }
     }
@@ -195,7 +198,7 @@ public struct CalendarState: Equatable, Sendable {
         let start = max(monthInterval.start, era?.start ?? monthInterval.start)
         let end = min(monthInterval.end, era?.end ?? monthInterval.end)
         guard start < end else { throw Calendar.CalendarError.cannotCalculateDate }
-        try navigate(to: min(max(date, start), end.addingTimeInterval(-1)))
+        try navigate(to: min(max(date, start), end.previousInstant))
     }
 
     private mutating func updateMonth(byAdding months: Int) throws {
@@ -211,9 +214,7 @@ public struct CalendarState: Equatable, Sendable {
             let interval = calendar.dateInterval(of: .year, for: date),
             engine.intersectsSupportedDates(interval)
         else { return nil }
-        return min(
-            max(date, engine.supportedDates.lowerBound),
-            engine.supportedDates.upperBound.addingTimeInterval(-1))
+        return engine.clamped(date)
     }
 
     static func locale(for identifier: Calendar.Identifier) -> Locale {

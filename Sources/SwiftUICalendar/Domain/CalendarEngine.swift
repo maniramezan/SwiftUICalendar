@@ -139,8 +139,7 @@ struct CalendarEngine: Sendable {
         let upperDay = calendar.component(.day, from: lastMoment)
         guard let date = date(day: min(max(preferredDay, lowerDay), upperDay), in: month)
         else { return nil }
-        return min(
-            max(date, supportedDates.lowerBound), supportedDates.upperBound.addingTimeInterval(-1))
+        return clamped(date)
     }
 
     /// Numeric year pickers address the visible era; relative navigation can cross eras.
@@ -149,7 +148,7 @@ struct CalendarEngine: Sendable {
         let start = max(era?.start ?? supportedDates.lowerBound, supportedDates.lowerBound)
         let end = min(era?.end ?? supportedDates.upperBound, supportedDates.upperBound)
         let lower = calendar.component(.year, from: start)
-        let upper = calendar.component(.year, from: end.addingTimeInterval(-1))
+        let upper = calendar.component(.year, from: end.previousInstant)
         return min(lower, upper)...max(lower, upper)
     }
 

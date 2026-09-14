@@ -143,7 +143,6 @@ struct CalendarBodyVerticalView: View {
     /// Rebuilds the window when navigation arrives from outside the vertical scroll.
     private func synchronizeExternalNavigation() {
         let target = currentMonthIdentifier
-        guard target != scrollPosition else { return }
         // A model change this view's own settlement produced is not external navigation. By the
         // time it arrives the list may have moved on, and treating it as external reset the window
         // and `scrollTo`'d back to the settled month — killing the scroll's momentum mid-fling.
@@ -153,10 +152,12 @@ struct CalendarBodyVerticalView: View {
             )
             return
         }
+        guard target != scrollPosition else { return }
         logger.info(
             "External navigation to \(target.year, privacy: .public)-\(target.month, privacy: .public); regenerating window"
         )
         // Regenerate around the target so external navigation starts from a clean, centered window.
+        settle.cancel()
         resetWindow()
     }
 
@@ -215,16 +216,17 @@ struct CalendarBodyVerticalView: View {
         logger.info(
             "Re-centering vertical window on \(position.year, privacy: .public)-\(position.month, privacy: .public) (\(offset, privacy: .public) months from anchor)"
         )
-        resetWindow()
+        // Controlled models receive the navigation through a later render. Use the settled
+        // position directly rather than reading their still-stale current month.
+        resetWindow(to: position)
     }
 
-    private func resetWindow() {
-        let target = currentMonthIdentifier
+    private func resetWindow(to target: MonthIdentifier? = nil) {
         // A new anchor invalidates the current sweep: prefetch offsets are relative to `anchor`, so
         // a stale sweep would warm entries keyed to an anchor the window no longer uses.
         prefetch.cancel()
         // See `initializeWindow` — `scrollPosition` follows from the anchor change, not a direct write.
-        anchor = target
+        anchor = target ?? currentMonthIdentifier
     }
 }
 
@@ -235,7 +237,7 @@ struct CalendarBodyVerticalView: View {
 /// generation counter collapses a burst into a single update, and keeping that counter in a
 /// reference type means the bookkeeping itself never invalidates the enclosing view.
 @MainActor
-private final class ScrollSettleCoordinator {
+final class ScrollSettleCoordinator {
     private let logger = Logger.swiftUICalendar(for: ScrollSettleCoordinator.self)
     private var generation = 0
     private var scrollInterval: OSSignpostIntervalState?
@@ -252,8 +254,8 @@ private final class ScrollSettleCoordinator {
 
     /// Returns `true` (once) when `month` is the change the last settlement produced.
     func consumeSettledMonth(_ month: MonthIdentifier) -> Bool {
+        defer { settledMonth = nil }
         guard let settledMonth, settledMonth == month else { return false }
-        self.settledMonth = nil
         return true
     }
 

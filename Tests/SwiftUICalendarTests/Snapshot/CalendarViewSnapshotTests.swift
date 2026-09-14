@@ -28,8 +28,14 @@ struct CalendarViewSnapshotTests {
     }
 
     @Test("Vertical scroll mode")
-    func verticalCalendar() {
+    func verticalCalendar() throws {
         let vm = CalendarViewModel.snapshot(selection: .single(nil))
+        // Exercise a distant settlement and return to the pinned month before asserting
+        // that navigation preserves the vertical rendering structure.
+        let original = vm.visibleMonth
+        let distant = try #require(vm.monthIdentifier(offset: 60))
+        try vm.navigate(toMonth: distant)
+        try vm.navigate(toMonth: original)
         assertCalendarStructure(
             model: vm, configuration: CalendarConfiguration(scrollMode: .vertical),
             width: snapshotWidth, monthSpan: 1, named: "vertical-calendar")

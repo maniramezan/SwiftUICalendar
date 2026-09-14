@@ -180,6 +180,61 @@ struct CalendarDateRangeTests {
 
     // MARK: - Vertical window
 
+    @Test("single-instant ranges retain their date through month and year navigation",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func singleInstantNavigation(identifier: Calendar.Identifier) throws {
+        let calendar = try utcCalendar(identifier)
+        let instant = Date(timeIntervalSinceReferenceDate: 771_724_800)
+        var state = try CalendarState(
+            calendar: calendar, currentDate: instant, dateRange: instant...instant)
+
+        #expect(state.engine.navigationDate(in: state.visibleMonth, preferredDay: 31) == instant)
+        try state.apply(.navigateMonth(state.visibleMonth))
+        try state.apply(.navigateYear(calendar.component(.year, from: instant)))
+        try state.apply(.offsetYears(0))
+        #expect(state.currentDate == instant)
+        #expect(state.engine.yearBounds(containing: instant) ==
+            calendar.component(.year, from: instant)...calendar.component(.year, from: instant))
+    }
+
+    @Test("navigation includes a closed upper bound at the start of a year")
+    func midnightUpperBound() throws {
+        let calendar = try utcCalendar()
+        let upper = try date(2026, 1, 1, in: calendar)
+        var state = try CalendarState(
+            calendar: calendar, currentDate: try date(2025, 12, 31, in: calendar),
+            dateRange: (try date(2025, 1, 1, in: calendar))...upper)
+        try state.apply(.offsetMonths(1))
+        #expect(state.currentDate == upper)
+        #expect(state.maxYear == 2026)
+    }
+
+    @Test("Today clamps within an available boundary day and rejects other days",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func todayBoundaryDay(identifier: Calendar.Identifier) throws {
+        let calendar = try utcCalendar(identifier)
+        let instant = Date(timeIntervalSinceReferenceDate: 771_768_000)
+        for selection in [CalendarSelection.single(nil), .range(nil, nil), .multiple([])] {
+            var state = try CalendarState(
+                calendar: calendar, currentDate: instant, selection: selection,
+                dateRange: instant...instant)
+            for now in [instant.addingTimeInterval(-60), instant.addingTimeInterval(60)] {
+                try state.apply(.today, now: now)
+                #expect(state.currentDate == instant)
+                if case .single = selection {
+                    #expect(state.selection == .single(calendar.startOfDay(for: instant)))
+                } else {
+                    #expect(state.selection == selection)
+                }
+            }
+            let before = state
+            #expect(throws: (any Error).self) {
+                try state.apply(.today, now: instant.addingTimeInterval(86_400))
+            }
+            #expect(state == before)
+        }
+    }
+
     @Test("the vertical window re-centers only far from its anchor with months beyond the edge")
     func verticalWindowRecenterPolicy() {
         #expect(VerticalMonthWindow.offsets.count == VerticalMonthWindow.radius * 2 + 1)
