@@ -36,7 +36,7 @@ struct AdaptiveGlassModifier: ViewModifier {
     }
 
     static var supportsLiquidGlass: Bool {
-        if #available(iOS 26, macOS 26, *) {
+        if #available(anyAppleOS 26, *) {
             return true
         }
         return false
@@ -61,7 +61,7 @@ struct AdaptiveGlassModifier: ViewModifier {
     func body(content: Content) -> some View {
         switch Self.renderingMode(supportsLiquidGlass: effectiveSupportsLiquidGlass) {
         case .liquidGlass:
-            if #available(iOS 26, macOS 26, *) {
+            if #available(anyAppleOS 26, *) {
                 content.modifier(
                     LiquidGlassModifier(
                         shape: shape, interactive: interactive,
@@ -77,7 +77,7 @@ struct AdaptiveGlassModifier: ViewModifier {
     }
 }
 
-@available(iOS 26, macOS 26, *)
+@available(anyAppleOS 26, *)
 private struct LiquidGlassModifier: ViewModifier {
     let shape: AdaptiveGlassShape
     let interactive: Bool
