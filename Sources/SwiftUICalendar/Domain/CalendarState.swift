@@ -41,8 +41,12 @@ public struct CalendarState: Equatable, Sendable {
 
     /// Creates state. An unsupported visible date throws instead of silently clamping.
     ///
-    /// - Parameter dateRange: The dates the calendar allows (see ``dateRange``). `nil` allows the
-    ///   whole supported interval. `currentDate` must fall inside it.
+    /// - Parameters:
+    ///   - calendarIdentifier: The calendar system to use.
+    ///   - currentDate: The initially visible date.
+    ///   - selection: Initial selection state.
+    ///   - dateRange: The dates the calendar allows (see ``dateRange``). `nil` allows the
+    ///     whole supported interval. `currentDate` must fall inside it.
     /// - Throws: `Calendar.CalendarError.cannotCalculateDate` when `dateRange` lies entirely outside
     ///   the supported interval or `currentDate` falls outside the resulting range.
     public init(
@@ -59,8 +63,12 @@ public struct CalendarState: Equatable, Sendable {
 
     /// Creates state with an explicit locale and time zone from the supplied calendar.
     ///
-    /// - Parameter dateRange: The dates the calendar allows (see ``dateRange``). `nil` allows the
-    ///   whole supported interval. `currentDate` must fall inside it.
+    /// - Parameters:
+    ///   - calendar: The calendar, locale, and time zone to use.
+    ///   - currentDate: The initially visible date.
+    ///   - selection: Initial selection state.
+    ///   - dateRange: The dates the calendar allows (see ``dateRange``). `nil` allows the
+    ///     whole supported interval. `currentDate` must fall inside it.
     /// - Throws: `Calendar.CalendarError.cannotCalculateDate` when `dateRange` lies entirely outside
     ///   the supported interval or `currentDate` falls outside the resulting range.
     public init(

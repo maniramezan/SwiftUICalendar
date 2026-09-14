@@ -232,6 +232,10 @@ import SwiftUI
     /// - Parameters:
     ///   - calendarIdentifier: The calendar system to use.
     ///   - selection: Initial selection state.
+    ///   - dateRange: The dates people can scroll to, navigate to, and select; days outside it
+    ///     render disabled. `nil` allows the whole supported interval. Today is clamped into the
+    ///     range, so a past-only calendar opens on its last allowed month. See
+    ///     ``CalendarState/dateRange``.
     ///
     /// ```swift
     /// let gregorian = CalendarViewModel(calendarIdentifier: .gregorian)
@@ -240,10 +244,6 @@ import SwiftUI
     ///     selection: .range(nil, nil)
     /// )
     /// ```
-    ///   - dateRange: The dates people can scroll to, navigate to, and select; days outside it
-    ///     render disabled. `nil` allows the whole supported interval. Today is clamped into the
-    ///     range, so a past-only calendar opens on its last allowed month. See
-    ///     ``CalendarState/dateRange``.
     public convenience init(
         calendarIdentifier: Calendar.Identifier, selection: Selection = .single(nil),
         dateRange: ClosedRange<Date>? = nil
