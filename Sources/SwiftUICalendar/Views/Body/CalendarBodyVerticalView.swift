@@ -200,9 +200,24 @@ private struct VerticalMonthView: View {
     @Environment(CalendarViewModel.self) private var viewModel
     @Environment(Theme.self) private var theme
     @Environment(Typography.self) private var typography
+    @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
 
     let item: VerticalMonthItem
+
+    // Measured from the same available width `CalendarBodyView` below measures for itself, so the
+    // title tracks the grid's resolved width instead of the full row width — the two diverge
+    // whenever the resolved cell size saturates `maxCellSize` (e.g. a wide landscape layout), which
+    // leaves the grid narrower than the row and centered within it.
+    @State private var containerWidth: CGFloat = 0
+
+    private var gridWidth: CGFloat {
+        CalendarGridLayout(
+            containerWidth: containerWidth,
+            metrics: metrics,
+            sizing: configuration.gridSizing
+        ).gridWidth
+    }
 
     var body: some View {
         VStack(spacing: metrics.itemSpacing) {
@@ -211,8 +226,10 @@ private struct VerticalMonthView: View {
                     .font(typography.monthHeaderFont)
                 Text(NumberFormatter.formatYear(item.id.year, locale: viewModel.locale))
                     .font(typography.monthHeaderFont)
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: gridWidth, alignment: .leading)
+            .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier(
                 "vertical-month-header-\(item.id.year)-\(item.id.month)"
@@ -225,6 +242,12 @@ private struct VerticalMonthView: View {
             )
             .environment(theme)
             .environment(typography)
+        }
+        .onGeometryChange(for: CGFloat.self) { geometry in
+            geometry.size.width
+        } action: { width in
+            guard containerWidth != width else { return }
+            containerWidth = width
         }
     }
 }
