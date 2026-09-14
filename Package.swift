@@ -13,9 +13,7 @@ let tcaDependencies: [Package.Dependency] = [
     .package(url: "https://github.com/pointfreeco/swift-perception", from: "2.0.12"),
     .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.7.3"),
 
-    .package(
-        url: "https://github.com/pointfreeco/swift-composable-architecture", "1.26.2"..<"1.27.0",
-        traits: []),
+    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.26.2"),
 ]
 
 let package = Package(
@@ -34,7 +32,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/maniramezan/SwiftCommons",
-            .upToNextMajor(from: "0.8.1")
+            .upToNextMajor(from: "0.8.2")
         ),
         .package(
             url: "https://github.com/maniramezan/SwiftUIComponents",

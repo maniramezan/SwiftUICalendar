@@ -132,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftCommons",
       "state" : {
-        "revision" : "e80c4d9affb554f1f24c61643f4a36d5e1f0d0a1",
-        "version" : "0.8.0"
+        "revision" : "0077f1d8406021123e5b7055738b0285cd0d2290",
+        "version" : "0.8.2"
       }
     },
     {
