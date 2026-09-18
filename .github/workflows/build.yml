@@ -33,13 +33,17 @@ jobs:
       - name: Select Swift toolchain
         run: bash ./scripts/select-swift-toolchain.sh
 
+      - name: Record toolchain fingerprint
+        id: toolchain-fingerprint
+        run: echo "value=$(swift --version | tr '\n' ' ')|$(xcodebuild -version | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+
       - name: Cache SwiftPM dependencies and build artifacts
         uses: actions/cache@v6.1.0
         with:
           path: |
             SwiftUICalendar/.build
             SwiftUICalendar/.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('SwiftUICalendar/Package.swift', 'SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: ${{ runner.os }}-spm-${{ hashFiles('SwiftUICalendar/Package.swift', 'SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-${{ steps.toolchain-fingerprint.outputs.value }}
 
       - name: Resolve package dependencies
         run: swift package resolve
@@ -89,13 +93,17 @@ jobs:
       - name: Select Swift toolchain
         run: bash ./scripts/select-swift-toolchain.sh
 
+      - name: Record toolchain fingerprint
+        id: toolchain-fingerprint
+        run: echo "value=$(swift --version | tr '\n' ' ')|$(xcodebuild -version | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+
       - name: Cache SwiftPM dependencies and build artifacts
         uses: actions/cache@v6.1.0
         with:
           path: |
             SwiftUICalendar/.build
             SwiftUICalendar/.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('SwiftUICalendar/Package.swift', 'SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: ${{ runner.os }}-spm-${{ hashFiles('SwiftUICalendar/Package.swift', 'SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-${{ steps.toolchain-fingerprint.outputs.value }}
 
       - name: Resolve package dependencies
         run: swift package resolve

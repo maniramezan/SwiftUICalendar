@@ -27,7 +27,7 @@ These images are generated from the package snapshot references for the actual `
 Add SwiftUICalendar with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "0.1.0")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "1.0.0")
 ```
 
 Then add the product to your target:
@@ -170,7 +170,7 @@ The generated static documentation is written to `.build/docs`. CI validates Doc
 
 ## Versioning
 
-SwiftUICalendar follows semantic versioning for tagged releases, starting at `0.1.0`. During 0.x, source-breaking changes may ship in minor releases; patch releases preserve source compatibility.
+SwiftUICalendar follows semantic versioning for tagged releases. `1.0.0` is the first stable release; going forward, source-breaking changes ship only in major releases.
 
 ## Development
 
@@ -198,7 +198,7 @@ Both MVVM and TCA are available without package traits. Link `SwiftUICalendar` f
 or `SwiftUICalendarTCA` for reducer-owned state:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "0.1.0")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "1.0.0")
 ```
 
 ```swift
