@@ -3,6 +3,7 @@ import SwiftCommons
 import SwiftUI
 
 struct CalendarBodyVerticalView: View {
+    var keyboard: CalendarKeyboardCursor? = nil
     @Environment(CalendarViewModel.self) private var viewModel
     @Environment(Typography.self) private var typography
     @Environment(\.calendarMetrics) private var metrics
@@ -49,7 +50,8 @@ struct CalendarBodyVerticalView: View {
                                     typography: typography,
                                     // `nil` until the first measurement: rows then measure
                                     // themselves, exactly as before.
-                                    layoutWidth: contentWidth > 0 ? contentWidth : nil
+                                    layoutWidth: contentWidth > 0 ? contentWidth : nil,
+                                    keyboard: keyboard
                                 )
                                 .id(identifier)
                             }
@@ -96,6 +98,10 @@ struct CalendarBodyVerticalView: View {
                 if newPhase == .idle {
                     scheduleScrollSettlement()
                 }
+            }
+            .onChange(of: keyboard?.date) { _, date in
+                guard keyboard?.isActive == true, let date else { return }
+                proxy.scrollTo("day-\(date.timeIntervalSinceReferenceDate)")
             }
             .onChange(of: viewModel.currentDate) { _, _ in
                 synchronizeExternalNavigation()
@@ -400,6 +406,7 @@ private struct VerticalMonthView: View {
     let locale: Locale
     let typography: Typography
     let layoutWidth: CGFloat?
+    let keyboard: CalendarKeyboardCursor?
 
     // Matches the width `CalendarBodyView` resolves for its own grid below, so the title lines up
     // with the day columns instead of the full row width — the two diverge whenever the resolved
@@ -433,7 +440,7 @@ private struct VerticalMonthView: View {
                 monthIdentifier: item.id,
                 hideOverflowDays: true,
                 navigatesOnOverflowTap: false,
-                layoutWidth: layoutWidth
+                layoutWidth: layoutWidth, keyboard: keyboard
             )
         }
     }

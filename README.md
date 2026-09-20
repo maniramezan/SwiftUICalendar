@@ -112,6 +112,15 @@ CalendarView(model: calendar, configuration: configuration)
 Use `.compact` when the calendar should look identical regardless of window size, and `.flexible`
 when it should track the full width of a resizable pane.
 
+## Keyboard Navigation
+
+With keyboard focus on the calendar, use Left/Right to move by one day and Up/Down to move
+by one week. The outline marks keyboard focus independently of selection. Press Return or
+Space to select the focused date using the current single, range, or multiple selection mode.
+Command-Left/Right changes months, and Command-T returns to today when it is within the date
+range. Horizontal keys follow the calendar's layout direction. Shortcuts apply only while the
+calendar itself has focus; surrounding controls keep their normal keyboard behavior.
+
 ## Date Range
 
 Limit the dates people can scroll to, navigate to, and select with `dateRange`. Days outside the

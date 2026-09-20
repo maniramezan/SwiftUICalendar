@@ -1,3 +1,4 @@
+import OSLog
 import SwiftCommons
 import SwiftUI
 
@@ -34,6 +35,9 @@ public struct CalendarView: View {
     // See `CalendarViewModel.sync(state:onAction:)` for why replacing the instance every render
     // would defeat `@Observable`'s per-property diffing for every downstream view.
     @State private var externalViewModel: CalendarViewModel?
+    @State private var keyboard = CalendarKeyboardCursor()
+    @FocusState private var isKeyboardFocused: Bool
+    private let logger = Logger.swiftUICalendar(for: CalendarView.self)
 
     private var viewModel: CalendarViewModel {
         switch source {
@@ -107,11 +111,12 @@ public struct CalendarView: View {
     private func calendarBodyContent(allowsPaging: Bool) -> some View {
         switch configuration.scrollMode {
         case .none:
-            CalendarBodyView()
+            CalendarBodyView(keyboard: keyboard)
         case .vertical:
-            CalendarBodyVerticalContainer()
+            CalendarBodyVerticalContainer(keyboard: keyboard)
         case .horizontal:
-            CalendarBodyHorizontalContainer(viewModel: viewModel, allowsPaging: allowsPaging)
+            CalendarBodyHorizontalContainer(
+                viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
         }
     }
 
@@ -120,7 +125,7 @@ public struct CalendarView: View {
     /// You normally do not call this property directly. SwiftUI evaluates it as part of the
     /// standard `View` lifecycle.
     public var body: some View {
-        CalendarViewport { allowsPaging in
+        CalendarViewport(keyboard: keyboard) { allowsPaging in
             VStack {
                 #if os(iOS)
                     CalendarTodayControl(viewModel: viewModel)
@@ -136,6 +141,20 @@ public struct CalendarView: View {
 
             }
         }
+        .focusable(interactions: .edit)
+        .focused($isKeyboardFocused)
+        .onChange(of: isKeyboardFocused) { _, focused in
+            keyboard.isActive = focused
+            if focused {
+                keyboard.date = viewModel.engine.calendar.startOfDay(for: viewModel.currentDate)
+            }
+        }
+        .onChange(of: viewModel.currentDate) { _, date in
+            if keyboard.isActive { keyboard.date = viewModel.engine.calendar.startOfDay(for: date) }
+        }
+        .onKeyPress(phases: [.down, .repeat]) { press in
+            handleKeyPress(press)
+        }
         .environment(viewModel)
         .environment(theme)
         .environment(typography)
@@ -145,6 +164,49 @@ public struct CalendarView: View {
         .resolveCalendarMetrics()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
+
+    // MARK: - Keyboard Input
+
+    private func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
+        guard isKeyboardFocused else { return .ignored }
+        do {
+            if press.modifiers.isEmpty,
+                let days = CalendarKeyboardCursor.dayOffset(
+                    for: press.key, direction: viewModel.layoutDirection)
+            {
+                try keyboard.move(days: days, model: viewModel)
+                return .handled
+            }
+            if press.modifiers.isEmpty, press.key == .return || press.key == .space {
+                if press.phase == .down { keyboard.select(model: viewModel) }
+                return .handled
+            }
+            if press.modifiers == .command, press.key == "t" {
+                if viewModel.canGoToToday {
+                    viewModel.goToToday()
+                    keyboard.date = viewModel.engine.calendar.startOfDay(for: viewModel.currentDate)
+                }
+                return .handled
+            }
+            if press.modifiers == .command,
+                press.key == .leftArrow || press.key == .rightArrow,
+                let months = CalendarKeyboardCursor.dayOffset(
+                    for: press.key, direction: viewModel.layoutDirection)
+            {
+                if let month = viewModel.monthIdentifier(offset: months) {
+                    try viewModel.navigate(toMonth: month)
+                    keyboard.date = viewModel.engine.calendar.startOfDay(for: viewModel.currentDate)
+                }
+                return .handled
+            }
+        } catch {
+            logger.error(
+                "Keyboard navigation failed", error: error, context: "calendar keyboard navigation")
+            return .handled
+        }
+        return .ignored
+    }
+
 }
 
 private struct CalendarHeaderControl: View {
@@ -202,23 +264,34 @@ private struct CalendarHeaderControl: View {
 }
 
 private struct CalendarBodyVerticalContainer: View {
+    let keyboard: CalendarKeyboardCursor
+
     var body: some View {
-        CalendarBodyVerticalView()
+        CalendarBodyVerticalView(keyboard: keyboard)
     }
 }
 
 private struct CalendarBodyHorizontalContainer: View {
     let viewModel: CalendarViewModel
     let allowsPaging: Bool
+    let keyboard: CalendarKeyboardCursor
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
     var body: some View {
         // A six-row month can exceed a short landscape viewport. Keep the pager horizontally
         // interactive while allowing its rows to overflow vertically instead of compressing.
-        ScrollView(.vertical) {
-            CalendarBodyHorizontalView(viewModel: viewModel, allowsPaging: allowsPaging)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                CalendarBodyHorizontalView(
+                    viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard
+                )
                 .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .scrollPosition($scrollPosition)
+            .onChange(of: keyboard.date) { _, date in
+                guard keyboard.isActive, let date else { return }
+                proxy.scrollTo("day-\(date.timeIntervalSinceReferenceDate)")
+            }
         }
-        .scrollPosition($scrollPosition)
     }
 }

@@ -1,0 +1,27 @@
+import SnapshotTesting
+import SwiftUI
+import Testing
+
+@testable import SwiftUICalendar
+
+@MainActor
+@Suite("Calendar keyboard snapshots", .enabled(if: snapshotsEnabled))
+struct CalendarKeyboardSnapshotTests {
+    @Test("Focus is distinct from selection", arguments: [Calendar.Identifier.gregorian, .persian])
+    func focus(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.snapshot(identifier: identifier)
+        let cursor = CalendarKeyboardCursor()
+        cursor.isActive = true
+        try cursor.move(days: 1, model: model)
+        let date = try #require(cursor.date)
+        let before =
+            "focused=\(cursor.isFocused(date)) selected=\(model.isSelected(date: date))"
+        cursor.select(model: model)
+        let after =
+            "focused=\(cursor.isFocused(date)) selected=\(model.isSelected(date: date))"
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(of: before + "\n" + after, as: .lines, named: "focus-\(identifier)")
+        }
+        assertCalendarStructure(model: model, named: "keyboard-selection-\(identifier)")
+    }
+}
