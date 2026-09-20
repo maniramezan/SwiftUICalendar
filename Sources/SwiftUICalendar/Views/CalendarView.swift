@@ -104,14 +104,14 @@ public struct CalendarView: View {
     }
 
     @ViewBuilder
-    private var calendarBodyContent: some View {
+    private func calendarBodyContent(allowsPaging: Bool) -> some View {
         switch configuration.scrollMode {
         case .none:
             CalendarBodyView()
         case .vertical:
             CalendarBodyVerticalContainer()
         case .horizontal:
-            CalendarBodyHorizontalContainer(viewModel: viewModel)
+            CalendarBodyHorizontalContainer(viewModel: viewModel, allowsPaging: allowsPaging)
         }
     }
 
@@ -120,19 +120,21 @@ public struct CalendarView: View {
     /// You normally do not call this property directly. SwiftUI evaluates it as part of the
     /// standard `View` lifecycle.
     public var body: some View {
-        VStack {
-            #if os(iOS)
-                CalendarTodayControl(viewModel: viewModel)
-                    .frame(height: 28)
-            #endif
-            if configuration.showsHeader {
-                CalendarHeaderControl()
-                    .frame(height: 44)
-            }
-            calendarBodyContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .layoutPriority(1)
+        CalendarViewport { allowsPaging in
+            VStack {
+                #if os(iOS)
+                    CalendarTodayControl(viewModel: viewModel)
+                        .frame(height: 28)
+                #endif
+                if configuration.showsHeader {
+                    CalendarHeaderControl()
+                        .frame(height: 44)
+                }
+                calendarBodyContent(allowsPaging: allowsPaging)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .layoutPriority(1)
 
+            }
         }
         .safeAreaPadding(10)
         .environment(viewModel)
@@ -208,13 +210,14 @@ private struct CalendarBodyVerticalContainer: View {
 
 private struct CalendarBodyHorizontalContainer: View {
     let viewModel: CalendarViewModel
+    let allowsPaging: Bool
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
     var body: some View {
         // A six-row month can exceed a short landscape viewport. Keep the pager horizontally
         // interactive while allowing its rows to overflow vertically instead of compressing.
         ScrollView(.vertical) {
-            CalendarBodyHorizontalView(viewModel: viewModel)
+            CalendarBodyHorizontalView(viewModel: viewModel, allowsPaging: allowsPaging)
                 .frame(maxWidth: .infinity, alignment: .top)
         }
         .scrollPosition($scrollPosition)
