@@ -18,6 +18,13 @@ final class RotationUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Horizontal"].waitForExistence(timeout: 5))
         app.buttons["Horizontal"].tap()
         app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
+        app.buttons["Settings"].tap()
+        let horizontalOption = app.buttons["Horizontal"]
+        XCTAssertTrue(horizontalOption.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            horizontalOption.isSelected, "Inspector reopening must preserve configuration")
+        app.buttons["Done"].tap()
 
         XCUIDevice.shared.orientation = .portrait
         Thread.sleep(forTimeInterval: 1.5)

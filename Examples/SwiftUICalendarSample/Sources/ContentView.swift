@@ -39,15 +39,17 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: $isSettingsPresented) {
+        .inspector(isPresented: $isSettingsPresented) {
             ConfigurationView(
                 architecture: $architecture,
                 calendarIdentifier: $calendarIdentifier,
                 selectionMode: $selectionMode,
                 scrollMode: $scrollMode,
                 horizontalHeightMode: $horizontalHeightMode,
-                dayViewMode: $dayViewMode
+                dayViewMode: $dayViewMode,
+                isPresented: $isSettingsPresented
             )
+            .inspectorColumnWidth(min: 320, ideal: 360, max: 420)
         }
         .onChange(of: architecture) { _, _ in
             resettleArchitecture()
@@ -203,14 +205,13 @@ private struct SampleCalendarPath: View {
 }
 
 private struct ConfigurationView: View {
-    @Environment(\.dismiss) private var dismiss
-
     @Binding var architecture: SampleArchitecture
     @Binding var calendarIdentifier: Calendar.Identifier
     @Binding var selectionMode: SelectionMode
     @Binding var scrollMode: CalendarConfiguration.ScrollMode
     @Binding var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode
     @Binding var dayViewMode: DayViewMode
+    @Binding var isPresented: Bool
 
     var body: some View {
         NavigationStack {
@@ -270,7 +271,7 @@ private struct ConfigurationView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        dismiss()
+                        isPresented = false
                     }
                 }
             }
