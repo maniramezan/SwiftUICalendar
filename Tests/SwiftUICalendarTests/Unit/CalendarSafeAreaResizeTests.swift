@@ -21,10 +21,11 @@
             let originalMonth = model.visibleMonth
             let originalSelection = model.selection
             let insets = ResizeInsets()
-            let frames = DayFrames(month: originalMonth, calendar: model.engine.calendar)
+            let month = try #require(model.monthIdentifier())
+            let frames = MeasuredDayFrames(month: month, calendar: model.engine.calendar)
             let theme = Theme()
             theme.day.setDayContent { context in
-                FrameDay(context: context, frames: frames)
+                MeasuringDayView(context: context, frames: frames)
             }
             let hosted = hostView(
                 InsetCalendar(model: model, theme: theme, mode: mode, insets: insets),
@@ -33,13 +34,19 @@
             for (width, leading, trailing) in [
                 (1000.0, 120.0, 16.0), (700.0, 16.0, 120.0), (600.0, 24.0, 64.0),
             ] {
+                let size = CGSize(width: width, height: 900)
                 insets.value = EdgeInsets(top: 0, leading: leading, bottom: 0, trailing: trailing)
-                hosted.window.setContentSize(CGSize(width: width, height: 900))
+                hosted.window.setContentSize(size)
                 #expect(waitForStableRender(hosted.hosting))
+                // A calendar that laid out no cells stabilizes as a blank frame, which would
+                // otherwise surface only as the day count below.
+                expectNonBlankRender(
+                    hosted.hosting, size: size,
+                    "\(mode)/\(identifier) at \(width) with insets \(leading)/\(trailing)")
                 #expect(model.visibleMonth == originalMonth)
                 #expect(model.selection == originalSelection)
-                #expect(frames.values.count >= 28)
-                for frame in frames.values.values {
+                #expect(frames.inMonth.count >= 28)
+                for frame in frames.inMonth.values {
                     #expect(frame.minX >= leading)
                     #expect(frame.maxX <= width - trailing)
                     #expect(frame.width >= CalendarMetrics.default.minCellSize)
@@ -63,47 +70,6 @@
         var body: some View {
             CalendarView(model: model, theme: theme, configuration: .init(scrollMode: mode))
                 .safeAreaPadding(insets.value)
-        }
-    }
-
-    @MainActor
-    private final class DayFrames {
-        let month: MonthIdentifier
-        let calendar: Calendar
-        var values: [Date: CGRect] = [:]
-
-        init(month: MonthIdentifier, calendar: Calendar) {
-            self.month = month
-            self.calendar = calendar
-        }
-    }
-
-    private struct FrameDay: CalendarDayView {
-        let context: CalendarDayContext
-        var frames: DayFrames?
-
-        init(context: CalendarDayContext) {
-            self.context = context
-        }
-
-        init(context: CalendarDayContext, frames: DayFrames) {
-            self.context = context
-            self.frames = frames
-        }
-
-        var body: some View {
-            Text(context.dayLabel)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onGeometryChange(for: CGRect.self) { geometry in
-                    geometry.frame(in: .global)
-                } action: { frame in
-                    if context.isInCurrentMonth, let frames,
-                        CalendarEngine(calendar: frames.calendar).month(containing: context.date)
-                            == frames.month
-                    {
-                        frames.values[context.date] = frame
-                    }
-                }
         }
     }
 #endif
