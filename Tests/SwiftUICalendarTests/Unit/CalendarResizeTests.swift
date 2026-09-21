@@ -64,7 +64,10 @@
             mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
         ) throws {
             // Mounted narrow, then widened: the live rotation/resize path.
-            let resizedFrames = MeasuredDayFrames()
+            let reference = CalendarViewModel.snapshot(identifier: identifier)
+            let month = try #require(reference.monthIdentifier())
+            let calendar = reference.engine.calendar
+            let resizedFrames = MeasuredDayFrames(month: month, calendar: calendar)
             let resized = mountMeasuredCalendar(
                 mode: mode, identifier: identifier, frames: resizedFrames,
                 size: CGSize(width: 430, height: Self.height))
@@ -81,7 +84,7 @@
                 resized.hosting, size: target, "resized \(mode)/\(identifier)")
 
             // Mounted at the target width from the start: the reference geometry.
-            let freshFrames = MeasuredDayFrames()
+            let freshFrames = MeasuredDayFrames(month: month, calendar: calendar)
             let fresh = mountMeasuredCalendar(
                 mode: mode, identifier: identifier, frames: freshFrames, size: target)
             defer { fresh.window.contentView = nil }

@@ -126,6 +126,12 @@
     /// Shared by the resize and safe-area suites so both measure day geometry the same way.
     @MainActor
     final class MeasuredDayFrames {
+        /// Restricts measurement to a single month. The vertically scrolling body keeps several
+        /// months realized at once, and a row realized before the width settled keeps its old frame,
+        /// so mixing months would compare geometry from two different layout passes.
+        let month: MonthIdentifier?
+        let calendar: Calendar
+
         /// Frames of days belonging to the month they are displayed in, keyed by date.
         var inMonth: [Date: CGRect] = [:]
 
@@ -146,7 +152,22 @@
             inMonth.removeAll()
         }
 
-        init() {}
+        /// Records every displayed day of every realized month.
+        init() {
+            month = nil
+            calendar = Calendar(identifier: .gregorian)
+        }
+
+        /// Records only the displayed days of `month`.
+        init(month: MonthIdentifier, calendar: Calendar) {
+            self.month = month
+            self.calendar = calendar
+        }
+
+        func shouldRecord(_ date: Date) -> Bool {
+            guard let month else { return true }
+            return CalendarEngine(calendar: calendar).month(containing: date) == month
+        }
     }
 
     /// A day cell that reports its own frame into a ``MeasuredDayFrames`` box.
@@ -171,7 +192,9 @@
                 .onGeometryChange(for: CGRect.self) { geometry in
                     geometry.frame(in: .global)
                 } action: { frame in
-                    guard context.isInCurrentMonth, let frames else { return }
+                    guard context.isInCurrentMonth, let frames,
+                        frames.shouldRecord(context.date)
+                    else { return }
                     frames.inMonth[context.date] = frame
                 }
         }
