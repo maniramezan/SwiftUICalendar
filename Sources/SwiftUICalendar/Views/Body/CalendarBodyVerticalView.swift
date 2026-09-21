@@ -67,7 +67,7 @@ struct CalendarBodyVerticalView: View {
                     contentWidth = width
                 }
                 .padding(.vertical, metrics.itemSpacing)
-                .padding(.horizontal, CalendarViewportLayout.monthInset)
+                .padding(.horizontal, metrics.monthInset)
             }
             // `.never`: the default limit caps a fling to about one view in compact width, so a fast
             // scroll stopped abruptly after a single month instead of decelerating naturally.

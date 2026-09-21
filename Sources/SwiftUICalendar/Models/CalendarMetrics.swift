@@ -24,6 +24,8 @@ struct CalendarMetrics: Equatable, Sendable {
     let maxCellSize: CGFloat
     /// Vertical gap between months in the vertically scrolling calendar.
     let monthSpacing: CGFloat
+    /// Horizontal inset applied to each month in the vertically scrolling calendar.
+    let monthInset: CGFloat
 
     /// Narrowest the seven-column grid can be.
     var minCalendarWidth: CGFloat { (7 * minCellSize) + (6 * itemSpacing) }
@@ -39,6 +41,7 @@ struct CalendarMetrics: Equatable, Sendable {
         // this is computed here instead of being a global design token.
         maxCellSize = motion.minimumHitTarget + spacing.twoAndHalfUnits
         monthSpacing = spacing.threeUnits
+        monthInset = spacing.twoUnits
     }
 
     /// Metrics resolved from the default design theme.
