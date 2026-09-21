@@ -20,7 +20,12 @@ final class RotationUITests: XCTestCase {
         app.buttons["Done"].tap()
         XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
         app.buttons["Settings"].tap()
-        let horizontalOption = app.buttons["Horizontal"]
+        // Scoped to the picker's own identifier: "Horizontal" also reads as a prefix of the
+        // "Horizontal Height" row that appears once horizontal mode is active, so an app-wide
+        // query can resolve to the wrong element here.
+        let scrollModePicker = app.descendants(matching: .any)["scroll-mode-picker"]
+        XCTAssertTrue(scrollModePicker.waitForExistence(timeout: 5))
+        let horizontalOption = scrollModePicker.buttons["Horizontal"]
         XCTAssertTrue(horizontalOption.waitForExistence(timeout: 5))
         XCTAssertTrue(
             horizontalOption.isSelected, "Inspector reopening must preserve configuration")

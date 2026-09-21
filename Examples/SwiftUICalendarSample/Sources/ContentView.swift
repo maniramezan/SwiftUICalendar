@@ -276,8 +276,6 @@ private struct ConfigurationView: View {
                 }
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.hidden)
     }
 }
 
