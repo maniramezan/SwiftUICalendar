@@ -150,11 +150,17 @@ struct CalendarBodyView: View {
                             // square day views stay square when the grid fills a wide window.
                             .frame(width: cellSize, height: cellSize)
                             .overlay {
-                                if keyboard?.isFocused(date)
-                                    == true
+                                // `item.dayStart`, never `item.date`: the cursor stores a
+                                // start-of-day date, and `date` keeps whatever time-of-day the month
+                                // arithmetic produced, so comparing the two could never match.
+                                if let dayStart = item.dayStart,
+                                    keyboard?.isFocused(dayStart) == true
                                 {
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .strokeBorder(Color.accentColor, lineWidth: 3)
+                                    RoundedRectangle(cornerRadius: metrics.focusRingRadius)
+                                        .strokeBorder(
+                                            theme.day.focusBorderColor,
+                                            lineWidth: theme.day.focusBorderWidth
+                                        )
                                         .allowsHitTesting(false)
                                         .accessibilityHidden(true)
                                 }

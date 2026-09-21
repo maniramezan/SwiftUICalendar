@@ -121,6 +121,22 @@ Command-Left/Right changes months, and Command-T returns to today when it is wit
 range. Horizontal keys follow the calendar's layout direction. Shortcuts apply only while the
 calendar itself has focus; surrounding controls keep their normal keyboard behavior.
 
+Your app may already own some of these keys, so `keyboardNavigation` decides which ones the
+calendar consumes. A shortcut the calendar declines is reported as unhandled and still reaches
+your app.
+
+```swift
+// Arrow-key browsing and month paging, but leave Command-T to the app.
+let configuration = CalendarConfiguration(
+    keyboardNavigation: [.arrows, .monthShortcuts]
+)
+
+// Opt out entirely; the calendar stops being a keyboard focus target.
+let noKeyboard = CalendarConfiguration(keyboardNavigation: [])
+```
+
+Style the focus ring with `theme.day.focusBorderColor` and `theme.day.focusBorderWidth`.
+
 ## Date Range
 
 Limit the dates people can scroll to, navigate to, and select with `dateRange`. Days outside the

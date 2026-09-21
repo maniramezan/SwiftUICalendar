@@ -79,4 +79,25 @@ struct ThemeTests {
             #expect(hosted.hosting.fittingSize.width >= 0)
         }
     #endif
+
+    // MARK: - Keyboard focus ring
+
+    @Test("focus ring tokens default to an accent-colored outline")
+    func focusRingDefaults() {
+        let theme = Theme()
+        #expect(theme.day.focusBorderColor == .accentColor)
+        #expect(theme.day.focusBorderWidth == 3)
+    }
+
+    @Test("focus ring tokens are customizable per theme")
+    func focusRingIsCustomizable() {
+        let theme = Theme()
+        theme.day.focusBorderColor = .orange
+        theme.day.focusBorderWidth = 1
+
+        #expect(theme.day.focusBorderColor == .orange)
+        #expect(theme.day.focusBorderWidth == 1)
+        // `Theme.default` hands back a fresh instance, so the override must not leak.
+        #expect(Theme.default.day.focusBorderColor == .accentColor)
+    }
 }

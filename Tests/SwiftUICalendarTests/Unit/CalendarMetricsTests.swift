@@ -83,6 +83,7 @@ struct CalendarMetricsTests {
         #expect(metrics.maxCellSize == 64)
         #expect(metrics.monthSpacing == 24)
         #expect(metrics.monthInset == 16)
+        #expect(metrics.focusRingRadius == 8)
         // 7 * 44 + 6 * 8
         #expect(metrics.minCalendarWidth == 356)
     }

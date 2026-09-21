@@ -97,4 +97,134 @@ struct CalendarKeyboardTests {
         cursor.select(model: model)
         #expect(model.selection == .single(nil))
     }
+
+    // MARK: - Scroll requests
+
+    /// The vertically scrolling body navigates the model when a scroll settles, and the cursor
+    /// follows that navigation. If following also asked the scroll containers to move, the list would
+    /// scroll itself in response to the user's own fling.
+    @Test("Following a navigation moves the cursor without requesting a scroll")
+    func followDoesNotRequestScroll() throws {
+        let model = CalendarViewModel.test()
+        let calendar = model.engine.calendar
+        let cursor = CalendarKeyboardCursor()
+        cursor.isActive = true
+        #expect(try cursor.move(days: 1, model: model))
+        let keyboardRequest = try #require(cursor.scrollRequest)
+
+        // Exactly what a settled scroll does: navigate, then let the cursor catch up.
+        let elsewhere = try #require(
+            calendar.date(byAdding: .day, value: 9, to: model.currentDate))
+        try model.navigate(to: elsewhere)
+        cursor.follow(model.currentDate, calendar: calendar)
+
+        #expect(cursor.date == calendar.startOfDay(for: model.currentDate))
+        #expect(
+            cursor.scrollRequest == keyboardRequest,
+            "following a navigation must not ask the scroll containers to move")
+    }
+
+    @Test("Keyboard movement always produces a distinct scroll request")
+    func scrollRequestsAreDistinct() throws {
+        let model = CalendarViewModel.test()
+        let cursor = CalendarKeyboardCursor()
+        cursor.isActive = true
+        #expect(try cursor.move(days: 1, model: model))
+        let first = try #require(cursor.scrollRequest)
+        #expect(try cursor.move(days: -1, model: model))
+        #expect(try cursor.move(days: 1, model: model))
+        let third = try #require(cursor.scrollRequest)
+        // Same destination as `first`, so only the generation distinguishes them - without it
+        // `onChange` would not fire and the cell would never scroll back into view.
+        #expect(third.dayStart == first.dayStart)
+        #expect(third != first)
+    }
+
+    /// `ScrollViewProxy.scrollTo(_:)` only reaches a cell through the exact id the grid tagged it
+    /// with, so a cursor holding a start-of-day date has to resolve that same id.
+    @Test(
+        "A day cell's scroll identity matches its normalized date",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func scrollIdentityMatchesCell(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.test(identifier: identifier)
+        let month = try #require(model.monthIdentifier())
+        let snapshot = try #require(model.monthSnapshot(for: month))
+        let days = snapshot.days.filter(\.isInDisplayedMonth)
+        #expect(!days.isEmpty)
+        for day in days {
+            let dayStart = try #require(day.dayStart)
+            #expect(MonthSnapshot.Day.identity(for: dayStart) == day.id)
+        }
+    }
+
+    // MARK: - Focus matching
+
+    /// The grid compares the cursor against each day's `dayStart`. Comparing against `date` - which
+    /// keeps whatever time-of-day the month arithmetic produced - can silently never match.
+    @Test(
+        "The focus ring matches the grid's normalized day",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func focusMatchesSnapshotDay(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.test(identifier: identifier)
+        let cursor = CalendarKeyboardCursor()
+        cursor.isActive = true
+        #expect(try cursor.move(days: 1, model: model))
+        let focused = try #require(cursor.date)
+
+        let month = try #require(model.monthIdentifier())
+        let snapshot = try #require(model.monthSnapshot(for: month))
+        let matches = snapshot.days.filter { day in
+            guard let dayStart = day.dayStart else { return false }
+            return cursor.isFocused(dayStart)
+        }
+        #expect(matches.count == 1, "exactly one cell should carry the focus ring")
+        #expect(try #require(matches.first?.dayStart) == focused)
+    }
+
+    // MARK: - Refused shortcuts
+
+    /// A refused shortcut has to report failure so the view can return `.ignored` and let the host
+    /// app see a key the calendar did nothing with.
+    @Test("Movement past the date range reports failure")
+    func refusedMovementReportsFailure() throws {
+        let model = CalendarViewModel.test()
+        let cursor = CalendarKeyboardCursor()
+        try model.navigate(to: model.dateRange.upperBound)
+        cursor.follow(model.currentDate, calendar: model.engine.calendar)
+        #expect(try !cursor.move(days: 1, model: model))
+        #expect(cursor.scrollRequest == nil, "a refused move must not request a scroll")
+    }
+
+    @Test("Selecting without a cursor reports failure")
+    func refusedSelectionReportsFailure() {
+        let model = CalendarViewModel.test()
+        let cursor = CalendarKeyboardCursor()
+        #expect(!cursor.select(model: model))
+        cursor.date = .distantPast
+        #expect(!cursor.select(model: model))
+        #expect(model.selection == .single(nil))
+    }
+
+    @Test("Month movement and Today report success inside the range")
+    func monthAndTodaySucceed() throws {
+        let model = CalendarViewModel.test()
+        let cursor = CalendarKeyboardCursor()
+        cursor.isActive = true
+        #expect(try cursor.moveMonths(1, model: model))
+        #expect(cursor.scrollRequest != nil)
+        #expect(cursor.goToToday(model: model))
+        #expect(
+            cursor.date == model.engine.calendar.startOfDay(for: model.currentDate))
+    }
+
+    @Test("Command arrows follow layout direction by month")
+    func monthOffsetDirection() {
+        #expect(CalendarKeyboardCursor.monthOffset(for: .leftArrow, direction: .leftToRight) == -1)
+        #expect(CalendarKeyboardCursor.monthOffset(for: .rightArrow, direction: .leftToRight) == 1)
+        // In a right-to-left calendar the next month lies to the left.
+        #expect(CalendarKeyboardCursor.monthOffset(for: .leftArrow, direction: .rightToLeft) == 1)
+        #expect(CalendarKeyboardCursor.monthOffset(for: .rightArrow, direction: .rightToLeft) == -1)
+        #expect(CalendarKeyboardCursor.monthOffset(for: .upArrow, direction: .leftToRight) == nil)
+        #expect(CalendarKeyboardCursor.monthOffset(for: .space, direction: .leftToRight) == nil)
+    }
 }

@@ -76,9 +76,10 @@ struct CalendarViewport<Content: View>: View {
             } action: { newWidth in
                 width = newWidth
             }
-            .onChange(of: keyboard?.date) { _, date in
-                guard layout.overflows, let date, keyboard?.isActive == true else { return }
-                proxy.scrollTo("day-\(date.timeIntervalSinceReferenceDate)", anchor: .center)
+            // Only keyboard-initiated movement asks to scroll; see `CalendarKeyboardCursor`.
+            .onChange(of: keyboard?.scrollRequest) { _, request in
+                guard layout.overflows, let request, keyboard?.isActive == true else { return }
+                proxy.scrollTo(request.identity, anchor: .center)
             }
         }
         // Vertical margins stay safe-area padding, exactly as before this viewport existed, so the

@@ -99,9 +99,12 @@ struct CalendarBodyVerticalView: View {
                     scheduleScrollSettlement()
                 }
             }
-            .onChange(of: keyboard?.date) { _, date in
-                guard keyboard?.isActive == true, let date else { return }
-                proxy.scrollTo("day-\(date.timeIntervalSinceReferenceDate)")
+            // `scrollRequest`, not `date`: a settled scroll here navigates the model, which moves
+            // the cursor to follow, so keying off the cursor's date would make this list scroll
+            // itself in response to the user's own fling.
+            .onChange(of: keyboard?.scrollRequest) { _, request in
+                guard keyboard?.isActive == true, let request else { return }
+                proxy.scrollTo(request.identity)
             }
             .onChange(of: viewModel.currentDate) { _, _ in
                 synchronizeExternalNavigation()

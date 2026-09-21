@@ -141,16 +141,21 @@ public struct CalendarView: View {
 
             }
         }
-        .focusable(interactions: .edit)
+        // Not focusable at all when the host declined every shortcut, so the calendar stops
+        // being a tab stop it would do nothing with.
+        .focusable(!configuration.keyboardNavigation.isEmpty, interactions: .edit)
         .focused($isKeyboardFocused)
         .onChange(of: isKeyboardFocused) { _, focused in
             keyboard.isActive = focused
             if focused {
-                keyboard.date = viewModel.engine.calendar.startOfDay(for: viewModel.currentDate)
+                keyboard.follow(viewModel.currentDate, calendar: viewModel.engine.calendar)
             }
         }
         .onChange(of: viewModel.currentDate) { _, date in
-            if keyboard.isActive { keyboard.date = viewModel.engine.calendar.startOfDay(for: date) }
+            // `follow`, not a scroll request: this also fires when a settled scroll navigates the
+            // model, and asking the scroll container to move would fight the user's own gesture.
+            guard keyboard.isActive else { return }
+            keyboard.follow(date, calendar: viewModel.engine.calendar)
         }
         .onKeyPress(phases: [.down, .repeat]) { press in
             handleKeyPress(press)
@@ -167,46 +172,44 @@ public struct CalendarView: View {
 
     // MARK: - Keyboard Input
 
+    /// Routes a key press to the cursor, consuming it only when the calendar acted on it.
+    ///
+    /// A refused shortcut returns `.ignored` rather than `.handled`: swallowing `⌘T` at the edge of
+    /// the date range, or an arrow key at the first available day, would stop the host app and the
+    /// system from seeing a key the calendar did nothing with.
     private func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
-        guard isKeyboardFocused else { return .ignored }
+        let shortcuts = configuration.keyboardNavigation
+        guard isKeyboardFocused, !shortcuts.isEmpty else { return .ignored }
         do {
-            if press.modifiers.isEmpty,
+            if shortcuts.contains(.arrows), press.modifiers.isEmpty,
                 let days = CalendarKeyboardCursor.dayOffset(
                     for: press.key, direction: viewModel.layoutDirection)
             {
-                try keyboard.move(days: days, model: viewModel)
-                return .handled
+                return try keyboard.move(days: days, model: viewModel) ? .handled : .ignored
             }
-            if press.modifiers.isEmpty, press.key == .return || press.key == .space {
-                if press.phase == .down { keyboard.select(model: viewModel) }
-                return .handled
+            if shortcuts.contains(.arrows), press.modifiers.isEmpty,
+                press.key == .return || press.key == .space
+            {
+                // Selection fires once per physical press; a held key must not re-select.
+                guard press.phase == .down else { return .handled }
+                return keyboard.select(model: viewModel) ? .handled : .ignored
             }
-            if press.modifiers == .command, press.key == "t" {
-                if viewModel.canGoToToday {
-                    viewModel.goToToday()
-                    keyboard.date = viewModel.engine.calendar.startOfDay(for: viewModel.currentDate)
-                }
-                return .handled
+            if shortcuts.contains(.today), press.modifiers == .command, press.key == "t" {
+                return keyboard.goToToday(model: viewModel) ? .handled : .ignored
             }
-            if press.modifiers == .command,
-                press.key == .leftArrow || press.key == .rightArrow,
-                let months = CalendarKeyboardCursor.dayOffset(
+            if shortcuts.contains(.monthShortcuts), press.modifiers == .command,
+                let months = CalendarKeyboardCursor.monthOffset(
                     for: press.key, direction: viewModel.layoutDirection)
             {
-                if let month = viewModel.monthIdentifier(offset: months) {
-                    try viewModel.navigate(toMonth: month)
-                    keyboard.date = viewModel.engine.calendar.startOfDay(for: viewModel.currentDate)
-                }
-                return .handled
+                return try keyboard.moveMonths(months, model: viewModel) ? .handled : .ignored
             }
         } catch {
             logger.error(
                 "Keyboard navigation failed", error: error, context: "calendar keyboard navigation")
-            return .handled
+            return .ignored
         }
         return .ignored
     }
-
 }
 
 private struct CalendarHeaderControl: View {
