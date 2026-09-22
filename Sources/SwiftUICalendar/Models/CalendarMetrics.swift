@@ -30,6 +30,26 @@ struct CalendarMetrics: Equatable, Sendable {
     let calendarMargin: CGFloat
     /// Corner radius of the keyboard focus ring drawn around a day cell.
     let focusRingRadius: CGFloat
+    /// Height of the navigation header row.
+    let headerRowHeight: CGFloat
+    /// Height of the compact "Today" control row above the header.
+    let todayRowHeight: CGFloat
+    /// Side length of a compact square control, such as a header chevron or a decade-grid cell.
+    let compactControlSize: CGFloat
+    /// Horizontal padding inside a header control's label.
+    let controlPadding: CGFloat
+    /// Vertical padding inside a header control's label, and around the weekday header.
+    let tightPadding: CGFloat
+    /// Vertical gap between rows of the year picker.
+    let controlSpacing: CGFloat
+    /// Padding between a dual-calendar day cell's border and its labels.
+    let dayContentPadding: CGFloat
+    /// Corner radius for a selected year option's fill.
+    let optionCornerRadius: CGFloat
+    /// Minimum height of a year option in the decade grid.
+    let yearOptionMinHeight: CGFloat
+    /// Width of the decade-grid year picker's popover.
+    let yearPickerPopoverWidth: CGFloat
 
     /// Narrowest the seven-column grid can be.
     var minCalendarWidth: CGFloat { (7 * minCellSize) + (6 * itemSpacing) }
@@ -51,6 +71,27 @@ struct CalendarMetrics: Equatable, Sendable {
         // where 10pt (355) and `oneAndHalfUnits` (351) both come up short.
         calendarMargin = spacing.oneUnit
         focusRingRadius = theme.radius.oneUnit
+        // A row of tappable chevrons and pickers, so it takes the touch floor directly.
+        headerRowHeight = motion.minimumHitTarget
+        // Derived: there is no 28pt spacing step, and this component already used one compact square
+        // size in three places (the Today row, header chevrons, decade-grid cells). Naming it once
+        // keeps those in agreement. See the type doc for why derivation happens here.
+        //
+        // NOTE: this is deliberately smaller than `motion.minimumHitTarget`, which is the platform
+        // touch floor. Raising these controls to 44pt is a visual change, so it is left as its own
+        // decision rather than folded into a value-preserving refactor.
+        compactControlSize = spacing.threeUnits + spacing.halfUnit
+        todayRowHeight = compactControlSize
+        controlPadding = spacing.oneUnit
+        tightPadding = spacing.halfUnit
+        controlSpacing = spacing.oneAndHalfUnits
+        dayContentPadding = spacing.oneUnit
+        optionCornerRadius = theme.radius.oneUnit
+        // Derived: one spacing step of breathing room above the compact control size.
+        yearOptionMinHeight = spacing.fourUnits + spacing.halfUnit
+        // A component-level popover width with no matching global token, centralized here so the
+        // picker view holds no raw number. Wide enough for a four-column decade grid of year labels.
+        yearPickerPopoverWidth = 220
     }
 
     /// Metrics resolved from the default design theme.

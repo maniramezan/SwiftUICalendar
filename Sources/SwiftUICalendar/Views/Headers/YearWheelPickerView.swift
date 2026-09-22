@@ -6,6 +6,7 @@ import SwiftUI
 /// offered, so `CalendarConfiguration.YearSelection.Style.wheel` behaves consistently even when a developer
 /// restricts the selectable range to a small number of years.
 struct YearWheelPickerView: View {
+    @Environment(\.calendarMetrics) private var metrics
     let items: [YearItem]
     @Binding var currentValue: YearItem
 
@@ -18,8 +19,8 @@ struct YearWheelPickerView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .allowsTightening(true)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, metrics.controlPadding)
+                    .padding(.vertical, metrics.tightPadding)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(

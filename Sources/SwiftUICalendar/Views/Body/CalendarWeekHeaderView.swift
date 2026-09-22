@@ -2,6 +2,7 @@ import SwiftCommons
 import SwiftUI
 
 struct CalendarWeekHeaderView: View {
+    @Environment(\.calendarMetrics) private var metrics
 
     @State var weekDays: [String]
 
@@ -18,7 +19,7 @@ struct CalendarWeekHeaderView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, metrics.tightPadding)
         .adaptiveGlass(shape: .roundedRectangle(cornerRadius: 8))
     }
 }
