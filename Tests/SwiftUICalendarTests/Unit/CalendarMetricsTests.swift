@@ -84,6 +84,18 @@ struct CalendarMetricsTests {
         #expect(metrics.monthSpacing == 24)
         #expect(metrics.monthInset == 16)
         #expect(metrics.focusRingRadius == 8)
+        #expect(metrics.headerRowHeight == 44)
+        // threeUnits (24) + halfUnit (4)
+        #expect(metrics.compactControlSize == 28)
+        #expect(metrics.todayRowHeight == 28)
+        #expect(metrics.controlPadding == 8)
+        #expect(metrics.tightPadding == 4)
+        #expect(metrics.controlSpacing == 12)
+        #expect(metrics.dayContentPadding == 8)
+        #expect(metrics.optionCornerRadius == 8)
+        // fourUnits (32) + halfUnit (4)
+        #expect(metrics.yearOptionMinHeight == 36)
+        #expect(metrics.yearPickerPopoverWidth == 220)
         // 7 * 44 + 6 * 8
         #expect(metrics.minCalendarWidth == 356)
     }
@@ -104,6 +116,23 @@ struct CalendarMetricsTests {
         #expect(metrics.maxCellSize == 80)
         #expect(metrics.monthSpacing == 36)
         #expect(metrics.monthInset == 22)
+        // The control metrics track the same custom spacing scale.
+        #expect(metrics.headerRowHeight == 50)
+        // threeUnits (36, overridden) + halfUnit (4, still the default)
+        #expect(metrics.compactControlSize == 40)
+        #expect(metrics.todayRowHeight == metrics.compactControlSize)
+        #expect(metrics.controlPadding == 10)
+    }
+
+    // MARK: - Hit target
+
+    /// The compact control size is deliberately below the platform touch floor. Pin that so raising
+    /// it becomes a conscious change rather than an accident.
+    @Test("Compact controls are smaller than the minimum hit target")
+    func compactControlsAreBelowHitTarget() {
+        let metrics = CalendarMetrics.default
+        #expect(metrics.compactControlSize < metrics.minCellSize)
+        #expect(metrics.headerRowHeight == metrics.minCellSize)
     }
 
     // MARK: - Cap relationship

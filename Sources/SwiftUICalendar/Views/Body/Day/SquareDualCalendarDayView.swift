@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SquareDualCalendarDayView: CalendarDayView {
+    @Environment(\.calendarMetrics) private var metrics
     private let context: CalendarDayContext
     private let cornerRadius: CGFloat = 8
     private let outerPadding: CGFloat = 4
@@ -75,7 +76,7 @@ struct SquareDualCalendarDayView: CalendarDayView {
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
-                .padding(8)
+                .padding(metrics.dayContentPadding)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
