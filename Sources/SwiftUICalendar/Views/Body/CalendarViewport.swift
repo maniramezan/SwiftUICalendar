@@ -42,9 +42,9 @@ private struct CalendarViewportGeometry: Equatable {
 struct CalendarViewport<Content: View>: View {
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarConfiguration) private var configuration
-    // Only hard insets and gesture arbitration derive from this. The content width itself comes from
-    // `containerRelativeFrame` during layout, and an unmeasured safe area is zero, so the first pass
-    // is the full container — never a placeholder width that a `LazyVStack` could settle empty on.
+    // The viewport's own width and safe area. Content is not laid out until this is measured, so
+    // its first layout pass already has the final width — never a placeholder width that a vertical
+    // `LazyVStack` could settle empty on.
     @State private var geometry = CalendarViewportGeometry()
     @ViewBuilder let content: (Bool) -> Content
 
@@ -56,43 +56,33 @@ struct CalendarViewport<Content: View>: View {
 
     private var hardInsets: EdgeInsets { geometry.safeArea }
 
-    /// Paging is handed back to the viewport only while the grid genuinely overflows, so a
-    /// horizontal swipe scrolls to the clipped columns instead of flipping the month. An unmeasured
-    /// viewport is treated as fitting, matching what the first layout pass renders.
-    private var allowsPaging: Bool {
-        guard geometry.width > 0 else { return true }
-        return !CalendarViewportLayout(
+    private var layout: CalendarViewportLayout {
+        CalendarViewportLayout(
             width: geometry.width - hardInsets.leading - hardInsets.trailing,
-            minimumWidth: metrics.minCalendarWidth
-        ).overflows
+            minimumWidth: metrics.minCalendarWidth,
+            margins: softMargins
+        )
     }
 
     var body: some View {
-        // Bound here rather than read inside the closure below, which runs outside the main actor.
-        let minimumWidth = metrics.minCalendarWidth
-        let margins = softMargins
         let hard = hardInsets
         ScrollView(.horizontal) {
-            content(allowsPaging)
-                .padding(.horizontal, metrics.calendarMargin)
-                // Resolved against the scroll viewport during layout, so the first pass already has
-                // the final width. Reading the width into `@State` instead lays the whole body out
-                // once at a placeholder width and again after the geometry callback lands — and the
-                // vertical body's `LazyVStack` can settle as empty on that first pass, leaving a
-                // blank calendar until something else invalidates it.
-                .containerRelativeFrame(.horizontal) { length, _ in
-                    CalendarViewportLayout(
-                        width: length - hard.leading - hard.trailing,
-                        minimumWidth: minimumWidth,
-                        margins: margins
-                    ).contentWidth
-                }
-                .padding(.leading, hard.leading)
-                .padding(.trailing, hard.trailing)
+            if geometry.width > 0 {
+                // Paging is handed back to the viewport only while the grid genuinely overflows, so
+                // a horizontal swipe scrolls to the clipped columns instead of flipping the month.
+                content(!layout.overflows)
+                    .padding(.horizontal, metrics.calendarMargin)
+                    // Sized from the measured width rather than `containerRelativeFrame`, which never
+                    // finished laying out in a right-to-left calendar once this scroll view ignored a
+                    // horizontal safe area: Persian or Hebrew on a notched iPhone in landscape hung.
+                    .frame(width: layout.contentWidth)
+                    .padding(.leading, hard.leading)
+                    .padding(.trailing, hard.trailing)
+            }
         }
         // The horizontal safe area is applied above, explicitly, so it is subtracted exactly once.
-        // Left to the scroll view it becomes content margins that `containerRelativeFrame` does not
-        // know about, and the grid ends up sized for a width it does not actually have.
+        // Left to the scroll view it becomes content margins on top of the measured width, and the
+        // grid ends up sized for space it does not actually have.
         .ignoresSafeArea(.container, edges: .horizontal)
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .defaultScrollAnchor(.leading)

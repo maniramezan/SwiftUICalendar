@@ -46,10 +46,7 @@ final class RotationUITests: XCTestCase {
         app.launch()
         Thread.sleep(forTimeInterval: 1.5)
 
-        app.buttons["Settings"].tap()
-        XCTAssertTrue(app.buttons["Horizontal"].waitForExistence(timeout: 5))
-        app.buttons["Horizontal"].tap()
-        app.buttons["Done"].tap()
+        app.chooseScrollMode("Horizontal")
         Thread.sleep(forTimeInterval: 1.5)
 
         XCUIDevice.shared.orientation = .portrait

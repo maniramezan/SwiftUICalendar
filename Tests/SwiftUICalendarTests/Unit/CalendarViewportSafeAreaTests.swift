@@ -14,11 +14,16 @@
             size: CGSize,
             safeArea: UIEdgeInsets,
             mode: CalendarConfiguration.ScrollMode,
-            sizing: CalendarConfiguration.GridSizing = .adaptive
+            sizing: CalendarConfiguration.GridSizing = .adaptive,
+            identifier: Calendar.Identifier = .gregorian,
+            anyMonth: Bool = false
         ) throws -> [CGRect] {
-            let model = CalendarViewModel.snapshot(selection: .single(nil))
+            let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
             let month = try #require(model.monthIdentifier())
-            let frames = MeasuredDayFrames(month: month, calendar: model.engine.calendar)
+            let frames =
+                anyMonth
+                ? MeasuredDayFrames()
+                : MeasuredDayFrames(month: month, calendar: model.engine.calendar)
             let theme = Theme()
             theme.day.setDayContent { context in
                 MeasuringDayView(context: context, frames: frames)
@@ -35,33 +40,49 @@
 
         /// A flexible grid fills whatever width it is given, so it is the configuration that would
         /// actually reach under a notch if the horizontal safe area were dropped or double-counted.
+        /// Persian lays out right to left. The notch is physical, so its inset has to land on the
+        /// notch's side even though the calendar pads by leading and trailing edges — and this
+        /// configuration once hung layout outright.
         @Test(
             "Landscape grids stay clear of the notch",
             arguments: [
-                CalendarConfiguration.ScrollMode.none, .vertical, .horizontal,
+                (CalendarConfiguration.ScrollMode.none, Calendar.Identifier.gregorian),
+                (.vertical, .gregorian), (.horizontal, .gregorian),
+                (.none, .persian), (.vertical, .persian), (.horizontal, .persian),
             ],
             [
                 UIEdgeInsets(top: 0, left: 59, bottom: 21, right: 59),
                 UIEdgeInsets(top: 0, left: 59, bottom: 21, right: 0),
             ])
         func landscapeAvoidsNotch(
-            mode: CalendarConfiguration.ScrollMode, safeArea: UIEdgeInsets
+            configuration: (
+                mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
+            ),
+            safeArea: UIEdgeInsets
         ) throws {
+            let (mode, identifier) = configuration
             let size = CGSize(width: 852, height: 393)
             // Only cells actually on screen. A 393pt-tall landscape window scrolls most rows out of
-            // view, and a scrolled-out cell's last geometry report can predate the safe-area pass —
-            // it can never sit under the notch, because it is not on screen at all.
-            let frames = try measure(size: size, safeArea: safeArea, mode: mode, sizing: .flexible)
-                .filter { $0.minY >= 0 && $0.maxY <= size.height }
-            #expect(frames.count >= 7, "\(mode): fewer than a week of cells on screen")
+            // view, and a scrolled-out cell's last geometry report can be stale. For the vertical list
+            // any month counts, because which one it rests on here is an artifact of this
+            // harness — it pumps the run loop from inside a main-actor test, so SwiftUI's follow-up
+            // scroll never runs. `VerticalLandscapeUITests` checks the month in the real app.
+            let frames = try measure(
+                size: size, safeArea: safeArea, mode: mode, sizing: .flexible,
+                identifier: identifier, anyMonth: mode == .vertical
+            )
+            .filter { $0.minY >= 0 && $0.maxY <= size.height }
+            #expect(
+                frames.count >= 7, "\(mode)/\(identifier): fewer than a week of cells on screen")
             let margin = CalendarMetrics.default.calendarMargin
             for frame in frames {
                 #expect(
                     frame.minX >= safeArea.left + margin - 0.5,
-                    "\(mode): a day cell at \(frame) reaches into the leading safe area")
+                    "\(mode)/\(identifier): a day cell at \(frame) reaches into the left safe area")
                 #expect(
                     frame.maxX <= size.width - safeArea.right - margin + 0.5,
-                    "\(mode): a day cell at \(frame) reaches into the trailing safe area")
+                    "\(mode)/\(identifier): a day cell at \(frame) reaches into the right safe area"
+                )
             }
         }
 

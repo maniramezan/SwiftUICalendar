@@ -60,6 +60,8 @@
     { "path": "UITests/RotationScrollUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/FixedCalendarRotationUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/VerticalScrollDateUpdateReproUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
+    { "path": "UITests/VerticalLandscapeUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
+    { "path": "UITests/UITestSupport.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
   ],
   "targets": [
     {
