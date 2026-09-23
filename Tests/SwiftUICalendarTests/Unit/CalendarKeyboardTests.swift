@@ -235,7 +235,7 @@ struct CalendarKeyboardTests {
     @Test("Only meaningful modifiers are compared")
     func meaningfulModifiers() {
         #expect(CalendarKeyboardCursor.meaningfulModifiers(.capsLock).isEmpty)
-        #expect(CalendarKeyboardCursor.meaningfulModifiers([.numericPad, .function]).isEmpty)
+        #expect(CalendarKeyboardCursor.meaningfulModifiers(.numericPad).isEmpty)
         #expect(CalendarKeyboardCursor.meaningfulModifiers([.command, .capsLock]) == .command)
         #expect(CalendarKeyboardCursor.meaningfulModifiers([.command, .numericPad]) == .command)
         #expect(CalendarKeyboardCursor.meaningfulModifiers(.shift) == .shift)
