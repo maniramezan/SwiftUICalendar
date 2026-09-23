@@ -88,6 +88,39 @@ struct CalendarFoldSpanTests {
         #expect(CalendarFoldSpan.resolve(containerWidth: 400, blocked: [0...400]) == .none)
     }
 
+    // MARK: - Layout direction
+
+    @Test("Left-to-right fold ranges are already leading-origin")
+    func leftToRightRangesUnchanged() {
+        let ranges: [ClosedRange<CGFloat>] = [520...580]
+        #expect(
+            CalendarFoldSpan.leadingOrigin(
+                ranges, containerWidth: 900, layoutDirection: .leftToRight)
+                == ranges)
+    }
+
+    @Test("Right-to-left fold ranges are measured from the right edge")
+    func rightToLeftRangesMirror() {
+        let mirrored = CalendarFoldSpan.leadingOrigin(
+            [520...580, 0...10], containerWidth: 900, layoutDirection: .rightToLeft)
+        #expect(mirrored == [320...380, 890...900])
+    }
+
+    /// Same physical fold, same physical outcome: the grid lands in the wider band to the fold's left
+    /// whichever way the calendar reads.
+    @Test("A right-to-left calendar picks the same physical band")
+    func rightToLeftPicksSamePhysicalBand() {
+        let physical: [ClosedRange<CGFloat>] = [520...580]
+        let span = CalendarFoldSpan.resolve(
+            containerWidth: 900,
+            blocked: CalendarFoldSpan.leadingOrigin(
+                physical, containerWidth: 900, layoutDirection: .rightToLeft))
+        // Right-to-left, the leading edge is the physical right. The widest free band starts 380pt
+        // from it and runs to the far edge: physically 0..520.
+        #expect(span.leading == 380)
+        #expect(span.trailing == 0)
+    }
+
     /// The viewport subtracts `total` before deciding whether the grid overflows, so a fold that
     /// squeezes the band below the minimum width has to trip overflow scrolling.
     @Test("A narrow band below the minimum width overflows the viewport")
@@ -121,15 +154,19 @@ struct CalendarFoldSpanTests {
     struct CalendarFoldDisplacementTests {
         private static let size = CGSize(width: 900, height: 800)
 
+        /// Right-to-left calendars flip leading and trailing padding, which once put the Persian
+        /// grid at 382–878 — straight across a fold at 520–580 that the Gregorian grid cleared.
         @Test(
             "Day cells keep clear of a blocked band",
             arguments: [
                 CalendarConfiguration.ScrollMode.none, .vertical, .horizontal,
-            ])
-        func daysAvoidTheBand(mode: CalendarConfiguration.ScrollMode) throws {
-            // Hinge past the middle, so the grid belongs in the wider leading band.
+            ], [Calendar.Identifier.gregorian, .persian, .hebrew])
+        func daysAvoidTheBand(
+            mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
+        ) throws {
+            // Hinge past the middle, so the grid belongs in the wider band to its left.
             let blocked: ClosedRange<CGFloat> = 520...580
-            let model = CalendarViewModel.snapshot(selection: .single(nil))
+            let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
             let month = try #require(model.monthIdentifier())
             let frames = MeasuredDayFrames(month: month, calendar: model.engine.calendar)
             let theme = Theme()
@@ -160,10 +197,12 @@ struct CalendarFoldSpanTests {
         /// Proves the displacement actually moved something: at this container width the grid is
         /// already at its capped natural width, so an unfolded calendar centers it straight across
         /// the band the hinge would occupy. Folded, the same grid has to clear that band entirely.
-        @Test("Displacement moves a grid that would otherwise cross the fold")
-        func displacementMovesTheGrid() throws {
+        @Test(
+            "Displacement moves a grid that would otherwise cross the fold",
+            arguments: [Calendar.Identifier.gregorian, .persian])
+        func displacementMovesTheGrid(identifier: Calendar.Identifier) throws {
             let blocked: ClosedRange<CGFloat> = 520...580
-            let model = CalendarViewModel.snapshot(selection: .single(nil))
+            let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
             let month = try #require(model.monthIdentifier())
 
             func bounds(foldRanges: [ClosedRange<CGFloat>]) throws -> (
@@ -188,11 +227,15 @@ struct CalendarFoldSpanTests {
             let unfolded = try bounds(foldRanges: [])
             #expect(
                 unfolded.maxX > blocked.lowerBound && unfolded.minX < blocked.upperBound,
-                "the unfolded grid must cross the band, or this proves nothing")
+                "\(identifier): the unfolded grid must cross the band, or this proves nothing")
 
             let folded = try bounds(foldRanges: [blocked])
-            #expect(folded.maxX <= blocked.lowerBound, "the folded grid must clear the band")
-            #expect(folded.minX < unfolded.minX, "the folded grid must have moved leading-ward")
+            #expect(
+                folded.maxX <= blocked.lowerBound,
+                "\(identifier): the folded grid must clear the band")
+            #expect(
+                folded.minX < unfolded.minX,
+                "\(identifier): the folded grid must have moved into the wider band")
             // Same grid, just relocated: displacement must not resize it.
             #expect(abs((folded.maxX - folded.minX) - (unfolded.maxX - unfolded.minX)) < 0.5)
         }

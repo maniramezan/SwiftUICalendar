@@ -39,6 +39,7 @@ struct CalendarViewport<Content: View>: View {
     @State private var width: CGFloat = 0
     var keyboard: CalendarKeyboardCursor? = nil
     @Environment(\.calendarFoldRanges) private var foldRanges
+    @Environment(\.layoutDirection) private var layoutDirection
     @ViewBuilder let content: (Bool) -> Content
 
     /// Total soft margin around the grid. The vertically scrolling body insets each month as well.
@@ -50,7 +51,11 @@ struct CalendarViewport<Content: View>: View {
     /// Width surrendered to an iPhone Duo fold, measured in this viewport's own coordinate space —
     /// already inside the safe area, so a fold is weighed against the space actually available.
     private var fold: CalendarFoldSpan {
-        CalendarFoldSpan.resolve(containerWidth: width, blocked: foldRanges)
+        // The fold is physical; the insets below are applied as leading and trailing padding.
+        CalendarFoldSpan.resolve(
+            containerWidth: width,
+            blocked: CalendarFoldSpan.leadingOrigin(
+                foldRanges, containerWidth: width, layoutDirection: layoutDirection))
     }
 
     private var layout: CalendarViewportLayout {

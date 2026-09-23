@@ -74,11 +74,27 @@ struct CalendarFoldSpan: Equatable, Sendable {
     }
 }
 
+extension CalendarFoldSpan {
+    /// `ranges`, measured from the container's physical left edge, re-expressed from its leading edge.
+    ///
+    /// A fold is physical — the hinge is where it is whatever the language — but the viewport applies
+    /// its insets as leading and trailing padding, which SwiftUI flips in a right-to-left layout.
+    /// Resolved in physical space, a Persian, Hebrew, or Islamic calendar chose the right band and was
+    /// then padded onto the wrong side of it, straight across the fold. Resolving in leading-origin
+    /// space keeps the selection, including its tie-break toward the leading band, right both ways.
+    static func leadingOrigin(
+        _ ranges: [ClosedRange<CGFloat>], containerWidth: CGFloat, layoutDirection: LayoutDirection
+    ) -> [ClosedRange<CGFloat>] {
+        guard layoutDirection == .rightToLeft else { return ranges }
+        return ranges.map { (containerWidth - $0.upperBound)...(containerWidth - $0.lowerBound) }
+    }
+}
+
 // MARK: - Fold Source
 
 extension EnvironmentValues {
-    /// Horizontal bands of the calendar's container that the grid must not occupy, in the container's
-    /// own coordinate space.
+    /// Horizontal bands of the calendar's viewport that the grid must not occupy, measured from the
+    /// viewport's physical left edge regardless of layout direction — where the hinge actually is.
     ///
     /// This is the seam where an iPhone Duo fold enters the layout. Reading the hinge from the system
     /// needs `GeometryProxy.reservedRegions(kind: .division)`, which exists only in the iOS 27.1 SDK

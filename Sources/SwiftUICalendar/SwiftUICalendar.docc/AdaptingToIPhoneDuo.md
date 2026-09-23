@@ -26,6 +26,10 @@ spacing — the calendar falls back to the same behavior it uses in any narrow w
 horizontally so every date stays reachable, instead of shrinking cells below the minimum hit target.
 See <doc:GettingStarted> for the sizing rules this builds on.
 
+Right-to-left calendars — Persian, Hebrew, Islamic — land on the correct side of the fold too:
+the fold is measured where the hinge physically is, and the calendar converts it to its own
+layout direction before choosing a band.
+
 Equally wide bands resolve to the leading one, so a symmetrically folded device does not flip the
 calendar from side to side as the hinge angle wobbles.
 
@@ -47,7 +51,8 @@ and connecting it to the system is one availability-gated line once the toolchai
 // Added when the project builds against the iOS 27.1 SDK.
 .onGeometryChange(for: [ClosedRange<CGFloat>].self) { proxy in
     guard #available(iOS 27.1, *) else { return [] }
-    return proxy.reservedRegions(kind: .division)
+    // `.fixed`: the calendar expects physical coordinates and handles right-to-left itself.
+    return proxy.reservedRegions(kind: .division, layoutDirectionBehavior: .fixed)
         .filter(\.isActive)
         .map { $0.frame.minX...$0.frame.maxX }
 } action: { ranges in
