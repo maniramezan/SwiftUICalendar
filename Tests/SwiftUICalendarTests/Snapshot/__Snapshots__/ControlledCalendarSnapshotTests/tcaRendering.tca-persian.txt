@@ -9,11 +9,12 @@ dayRenderer: circle
 secondaryLabel: none
 selection: single(none)
 layout(width=390): cell=48.86 gridWidth=390 compactWidth=false
-weekdayHeader: ی د س چ پ ج ش
+weekdayHeader: ش ی د س چ پ ج
 
-month: خرداد [persian y1404 m3 era0] rows=5
-  ۲۸(·)        ۲۹(·)        ۳۰(·)        ۳۱(·)        ۱            ۲            ۳
-  ۴            ۵            ۶            ۷            ۸            ۹            ۱۰
-  ۱۱           ۱۲           ۱۳           ۱۴           ۱۵           ۱۶           ۱۷
-  ۱۸           ۱۹           ۲۰           ۲۱           ۲۲           ۲۳           ۲۴
-  ۲۵           ۲۶           ۲۷           ۲۸           ۲۹           ۳۰           ۳۱
+month: خرداد [persian y1404 m3 era0] rows=6
+  ۲۷(·)        ۲۸(·)        ۲۹(·)        ۳۰(·)        ۳۱(·)        ۱            ۲
+  ۳            ۴            ۵            ۶            ۷            ۸            ۹
+  ۱۰           ۱۱           ۱۲           ۱۳           ۱۴           ۱۵           ۱۶
+  ۱۷           ۱۸           ۱۹           ۲۰           ۲۱           ۲۲           ۲۳
+  ۲۴           ۲۵           ۲۶           ۲۷           ۲۸           ۲۹           ۳۰
+  ۳۱           ۱(·)         ۲(·)         ۳(·)         ۴(·)         ۵(·)         ۶(·)

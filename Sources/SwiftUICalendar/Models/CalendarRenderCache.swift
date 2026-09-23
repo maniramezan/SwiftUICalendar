@@ -96,7 +96,9 @@ final class CalendarRenderCache {
     /// the locale is because it selects the numbering system used for day labels.
     nonisolated static func signature(for calendar: Calendar) -> String {
         let locale = calendar.locale ?? Locale(calendarIdentifier: calendar.identifier)
-        return "\(calendar.identifier)|\(locale.identifier)|\(calendar.timeZone.identifier)"
+        // `firstWeekday` shapes every grid and can be set independently of the locale.
+        return
+            "\(calendar.identifier)|\(locale.identifier)|\(calendar.timeZone.identifier)|\(calendar.firstWeekday)"
     }
 
     // MARK: - Month geometry
@@ -211,7 +213,10 @@ final class CalendarRenderCache {
             }
 
             let locale = calendar.locale ?? Locale(calendarIdentifier: calendar.identifier)
-            let leading = calendar.component(.weekday, from: start) - 1
+            // Columns start on the locale's first weekday — Saturday for Persian, Monday across
+            // most of Europe — not always Sunday.
+            let leading =
+                (calendar.component(.weekday, from: start) - calendar.firstWeekday + 7) % 7
             let total = ((leading + count + 6) / 7) * 7
             let days = (0..<total).compactMap { index -> MonthGeometry.Day? in
                 guard let date = calendar.date(byAdding: .day, value: index - leading, to: start)
