@@ -12,6 +12,7 @@ struct CalendarViewport<Content: View>: View {
     // `LazyVStack` could settle empty on.
     @State private var width: CGFloat = 0
     var keyboard: CalendarKeyboardCursor? = nil
+    @Environment(\.calendarFoldRanges) private var foldRanges
     @ViewBuilder let content: (Bool) -> Content
 
     /// Total soft margin around the grid. The vertically scrolling body insets each month as well.
@@ -20,9 +21,15 @@ struct CalendarViewport<Content: View>: View {
             + (configuration.scrollMode == .vertical ? 2 * metrics.monthInset : 0)
     }
 
+    /// Width surrendered to an iPhone Duo fold, measured in this viewport's own coordinate space —
+    /// already inside the safe area, so a fold is weighed against the space actually available.
+    private var fold: CalendarFoldSpan {
+        CalendarFoldSpan.resolve(containerWidth: width, blocked: foldRanges)
+    }
+
     private var layout: CalendarViewportLayout {
         CalendarViewportLayout(
-            width: width, minimumWidth: metrics.minCalendarWidth, margins: softMargins)
+            width: width - fold.total, minimumWidth: metrics.minCalendarWidth, margins: softMargins)
     }
 
     var body: some View {
@@ -41,6 +48,10 @@ struct CalendarViewport<Content: View>: View {
                     content(!layout.overflows)
                         .padding(.horizontal, metrics.calendarMargin)
                         .frame(width: layout.contentWidth)
+                        // Displaces the calendar into the band beside the fold. The insets plus the
+                        // band add back up to the viewport, so nothing overflows that would not anyway.
+                        .padding(.leading, fold.leading)
+                        .padding(.trailing, fold.trailing)
                 }
             }
             .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
