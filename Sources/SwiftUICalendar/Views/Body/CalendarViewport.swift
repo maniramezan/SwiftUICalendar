@@ -38,8 +38,14 @@ struct CalendarViewport<Content: View>: View {
     // `LazyVStack` could settle empty on.
     @State private var width: CGFloat = 0
     var keyboard: CalendarKeyboardCursor? = nil
-    @Environment(\.calendarFoldRanges) private var foldRanges
+    @Environment(\.calendarFoldRanges) private var injectedFoldRanges
+    // The hinge the system reports; empty unless built with the iOS 27.1 SDK on a folding device.
+    @State private var systemFoldRanges: [ClosedRange<CGFloat>] = []
     @Environment(\.layoutDirection) private var layoutDirection
+
+    private var foldRanges: [ClosedRange<CGFloat>] {
+        injectedFoldRanges + systemFoldRanges
+    }
     @ViewBuilder let content: (Bool) -> Content
 
     /// Total soft margin around the grid. The vertically scrolling body insets each month as well.
@@ -92,6 +98,8 @@ struct CalendarViewport<Content: View>: View {
             } action: { newWidth in
                 width = newWidth
             }
+            // Measured on the same view as `width`, so the bands share its coordinate space.
+            .modifier(SystemFoldReader(ranges: $systemFoldRanges))
             // Only keyboard-initiated movement asks to scroll; see `CalendarKeyboardCursor`.
             .onChange(of: keyboard?.scrollRequest) { _, request in
                 guard layout.overflows, let request, keyboard?.isActive == true else { return }
