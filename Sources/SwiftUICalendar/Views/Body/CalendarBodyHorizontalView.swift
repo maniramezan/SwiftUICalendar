@@ -26,6 +26,7 @@ struct CalendarBodyHorizontalView: View {
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     private let reduceMotionOverride: Bool?
+    private let allowsPaging: Bool
     private var reduceMotion: Bool { reduceMotionOverride ?? systemReduceMotion }
     @Environment(Theme.self) var theme
     @Environment(Typography.self) var typography
@@ -134,9 +135,10 @@ struct CalendarBodyHorizontalView: View {
         viewModel.monthIdentifier(offset: 1) ?? currentMonth
     }
 
-    init(viewModel: CalendarViewModel, reduceMotion: Bool? = nil) {
+    init(viewModel: CalendarViewModel, reduceMotion: Bool? = nil, allowsPaging: Bool = true) {
         self.viewModel = viewModel
         self.reduceMotionOverride = reduceMotion
+        self.allowsPaging = allowsPaging
     }
 
     static func layoutWidth(containerWidth: CGFloat, minCalendarWidth: CGFloat) -> CGFloat {
@@ -437,7 +439,8 @@ struct CalendarBodyHorizontalView: View {
                                 dragOffset = 0
                             }
                         }
-                    }
+                    },
+                including: allowsPaging ? .all : .subviews
             )
             .onGeometryChange(for: CGFloat.self) { geometry in
                 geometry.size.width
