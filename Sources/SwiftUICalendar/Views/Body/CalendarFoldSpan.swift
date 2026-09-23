@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 // MARK: - Fold Avoidance
@@ -96,11 +97,39 @@ extension EnvironmentValues {
     /// Horizontal bands of the calendar's viewport that the grid must not occupy, measured from the
     /// viewport's physical left edge regardless of layout direction — where the hinge actually is.
     ///
-    /// This is the seam where an iPhone Duo fold enters the layout. Reading the hinge from the system
-    /// needs `GeometryProxy.reservedRegions(kind: .division)`, which exists only in the iOS 27.1 SDK
-    /// and therefore cannot be referenced while the project still builds against 27.0. Keeping the
-    /// source injected rather than called inline means the displacement behavior is complete, live and
-    /// testable on every platform today, and switching it on later adds one availability-gated line
-    /// that populates this value.
+    /// Tests inject folds here; on a device the system's hinge arrives through `SystemFoldReader`
+    /// and is added to whatever this holds. Keeping band selection over plain ranges is what makes
+    /// the displacement testable at all: `ReservedRegion` has no public initializer.
     @Entry var calendarFoldRanges: [ClosedRange<CGFloat>] = []
+}
+
+/// Reports the system's fold bands for the view it modifies, in that view's own physical
+/// coordinates — the same space `calendarFoldRanges` uses.
+///
+/// `GeometryProxy.reservedRegions` exists only in the iOS 27.1 SDK. Swift has no SDK-version
+/// conditional and 27.0 and 27.1 ship the same compiler, but they ship different SwiftUICore module
+/// versions (8.0.84 and 8.0.85), and `canImport(_:_version:)` compares exactly that. So a build with
+/// the 27.1 SDK or newer reads the hinge, while a 27.0 build — the CI runner's — compiles this to a
+/// no-op instead of failing. The runtime `#available` check still guards older devices.
+struct SystemFoldReader: ViewModifier {
+    @Binding var ranges: [ClosedRange<CGFloat>]
+
+    func body(content: Content) -> some View {
+        #if os(iOS) && canImport(SwiftUICore, _version: 8.0.85)
+            content.onGeometryChange(for: [ClosedRange<CGFloat>].self) { proxy in
+                guard #available(iOS 27.1, *) else { return [] }
+                // `.fixed`: the calendar handles right-to-left itself and expects physical coordinates.
+                return proxy.reservedRegions(kind: .division, layoutDirectionBehavior: .fixed)
+                    .filter(\.isActive)
+                    .map { $0.frame.minX...$0.frame.maxX }
+            } action: { newRanges in
+                Logger.calendarUI.info(
+                    "System fold bands changed: \(newRanges.count) active, \(String(describing: newRanges))"
+                )
+                ranges = newRanges
+            }
+        #else
+            content
+        #endif
+    }
 }
