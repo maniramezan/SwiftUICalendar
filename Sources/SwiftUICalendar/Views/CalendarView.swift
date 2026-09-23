@@ -136,7 +136,6 @@ public struct CalendarView: View {
 
             }
         }
-        .safeAreaPadding(10)
         .environment(viewModel)
         .environment(theme)
         .environment(typography)
