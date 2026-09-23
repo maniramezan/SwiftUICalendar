@@ -99,8 +99,12 @@ import SwiftUI
         if let onAction { onAction(action) } else { try state.apply(action) }
     }
 
+    /// Weekday titles in column order, starting from the locale's first weekday so they line up
+    /// with the day grid. Symbols are always Sunday-first; `firstWeekday` is 1-based.
     var headerTitles: [String] {
-        calendar.veryShortWeekdaySymbols
+        let symbols = calendar.veryShortWeekdaySymbols
+        let first = (calendar.firstWeekday - 1) % symbols.count
+        return Array(symbols[first...] + symbols[..<first])
     }
 
     var locale: Locale {

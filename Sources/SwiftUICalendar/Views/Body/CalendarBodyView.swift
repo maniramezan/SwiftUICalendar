@@ -9,7 +9,6 @@ struct CalendarBodyView: View {
     @Environment(Typography.self) var typography
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
-    @Environment(\.layoutDirection) private var layoutDirection
     @State private var containerWidth: CGFloat = 0
     private let layoutWidth: CGFloat?
     private let keyboard: CalendarKeyboardCursor?
@@ -59,36 +58,6 @@ struct CalendarBodyView: View {
         snapshot.rowCount
     }
 
-    private var isRightToLeft: Bool {
-        layoutDirection == .rightToLeft
-    }
-
-    private var orderedHeaderTitles: [String] {
-        if isRightToLeft {
-            return Array(viewModel.headerTitles.reversed())
-        }
-        return viewModel.headerTitles
-    }
-
-    private var orderedDayItems: [MonthSnapshot.Day] {
-        if !isRightToLeft {
-            return snapshot.days
-        }
-
-        let rowWidth = 7
-        var reordered: [MonthSnapshot.Day] = []
-        reordered.reserveCapacity(snapshot.days.count)
-        var index = 0
-
-        while index < snapshot.days.count {
-            let endIndex = min(index + rowWidth, snapshot.days.count)
-            reordered.append(contentsOf: snapshot.days[index..<endIndex].reversed())
-            index += rowWidth
-        }
-
-        return reordered
-    }
-
     private var calendarHeight: CGFloat {
         if showWeekdayHeader {
             // Row spacings: 1 between header and days + (rowCount - 1) between day rows
@@ -105,7 +74,7 @@ struct CalendarBodyView: View {
             // Weekday headers
             if showWeekdayHeader {
                 LazyVGrid(columns: columns, alignment: .center, spacing: 0) {
-                    ForEach(Array(orderedHeaderTitles.enumerated()), id: \.offset) { _, day in
+                    ForEach(Array(viewModel.headerTitles.enumerated()), id: \.offset) { _, day in
                         Text(day)
                             .font(typography.weekdayHeaderFont)
                             .lineLimit(1)
@@ -124,7 +93,10 @@ struct CalendarBodyView: View {
                 alignment: .center,
                 spacing: metrics.rowSpacing
             ) {
-                ForEach(orderedDayItems) { item in
+                // Days stay in reading order. A right-to-left calendar inherits `.rightToLeft`,
+                // and the grid mirrors itself, putting each week's first day on the right. Reversing
+                // rows by hand as well flipped them back, so Persian and Hebrew weeks read backwards.
+                ForEach(snapshot.days) { item in
                     if let date = item.date, !(hideOverflowDays && !item.isInDisplayedMonth) {
                         let context = CalendarDayContext(
                             date: date,
