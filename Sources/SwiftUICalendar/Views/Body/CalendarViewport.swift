@@ -6,8 +6,8 @@ import SwiftUI
 ///
 /// Two kinds of horizontal space surround the day grid, and they give way in different orders:
 ///
-/// - *Hard* insets — the device safe area — are never occupied. They are subtracted before `width`
-///   reaches this type.
+/// - The safe area is never occupied. SwiftUI places the viewport inside it, so `width` already
+///   excludes it.
 /// - *Soft* margins — the calendar's own margin and, in the vertically scrolling body, each month's
 ///   inset — are decoration. They shrink first: while the bare grid still fits, the grid spreads into
 ///   them and every cell stays on screen without scrolling.
@@ -19,7 +19,7 @@ struct CalendarViewportLayout: Equatable {
     let overflows: Bool
 
     /// - Parameters:
-    ///   - width: Horizontal space left after hard insets.
+    ///   - width: Horizontal space inside the safe area.
     ///   - minimumWidth: Narrowest the day grid can be: seven minimum-size cells and their spacing.
     ///   - margins: Total soft margin around the grid, restored in full once the grid overflows.
     init(width: CGFloat, minimumWidth: CGFloat, margins: CGFloat = 0) {
@@ -28,24 +28,15 @@ struct CalendarViewportLayout: Equatable {
     }
 }
 
-/// What the viewport knows about its own frame, read in a single geometry pass.
-///
-/// File-scope rather than nested in the generic ``CalendarViewport``: a nested type would make the
-/// nonisolated geometry closure capture the view's `Content` metatype.
-private struct CalendarViewportGeometry: Equatable {
-    var width: CGFloat = 0
-    var safeArea = EdgeInsets()
-}
-
 /// Keeps every date reachable without reducing the grid's minimum touch targets.
 /// The same scroll container remains mounted across the overflow boundary.
 struct CalendarViewport<Content: View>: View {
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarConfiguration) private var configuration
-    // The viewport's own width and safe area. Content is not laid out until this is measured, so
-    // its first layout pass already has the final width — never a placeholder width that a vertical
+    // The viewport's measured width. Content is not laid out until it is known, so the content's
+    // first layout pass already has the final width — never a placeholder width that a vertical
     // `LazyVStack` could settle empty on.
-    @State private var geometry = CalendarViewportGeometry()
+    @State private var width: CGFloat = 0
     @ViewBuilder let content: (Bool) -> Content
 
     /// Total soft margin around the grid. The vertically scrolling body insets each month as well.
@@ -54,42 +45,34 @@ struct CalendarViewport<Content: View>: View {
             + (configuration.scrollMode == .vertical ? 2 * metrics.monthInset : 0)
     }
 
-    private var hardInsets: EdgeInsets { geometry.safeArea }
-
     private var layout: CalendarViewportLayout {
         CalendarViewportLayout(
-            width: geometry.width - hardInsets.leading - hardInsets.trailing,
-            minimumWidth: metrics.minCalendarWidth,
-            margins: softMargins
-        )
+            width: width, minimumWidth: metrics.minCalendarWidth, margins: softMargins)
     }
 
     var body: some View {
-        let hard = hardInsets
+        // The safe area is left to SwiftUI: the scroll view sits inside it — a notch or a host's
+        // `.safeAreaPadding` alike — so its measured width is already the usable width. Two shapes
+        // that handled it explicitly failed on device. Ignoring the horizontal safe area and padding
+        // by the reported insets double-counted `.safeAreaPadding`, which that modifier does not let
+        // a view ignore, pushing the grid off screen during a resize. And sizing the content with
+        // `containerRelativeFrame` in that shape never finished laying out a right-to-left calendar:
+        // Persian or Hebrew in landscape on a notched iPhone hung the app.
         ScrollView(.horizontal) {
-            if geometry.width > 0 {
+            if width > 0 {
                 // Paging is handed back to the viewport only while the grid genuinely overflows, so
                 // a horizontal swipe scrolls to the clipped columns instead of flipping the month.
                 content(!layout.overflows)
                     .padding(.horizontal, metrics.calendarMargin)
-                    // Sized from the measured width rather than `containerRelativeFrame`, which never
-                    // finished laying out in a right-to-left calendar once this scroll view ignored a
-                    // horizontal safe area: Persian or Hebrew on a notched iPhone in landscape hung.
                     .frame(width: layout.contentWidth)
-                    .padding(.leading, hard.leading)
-                    .padding(.trailing, hard.trailing)
             }
         }
-        // The horizontal safe area is applied above, explicitly, so it is subtracted exactly once.
-        // Left to the scroll view it becomes content margins on top of the measured width, and the
-        // grid ends up sized for space it does not actually have.
-        .ignoresSafeArea(.container, edges: .horizontal)
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .defaultScrollAnchor(.leading)
-        .onGeometryChange(for: CalendarViewportGeometry.self) { proxy in
-            CalendarViewportGeometry(width: proxy.size.width, safeArea: proxy.safeAreaInsets)
-        } action: { newGeometry in
-            geometry = newGeometry
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            width = newWidth
         }
         // Vertical margins stay safe-area padding, exactly as before this viewport existed, so the
         // vertically scrolling body can still scroll content beneath them.
