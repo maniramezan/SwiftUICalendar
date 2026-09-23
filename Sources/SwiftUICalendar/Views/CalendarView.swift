@@ -146,6 +146,7 @@ public struct CalendarView: View {
         .focusable(!configuration.keyboardNavigation.isEmpty, interactions: .edit)
         .focused($isKeyboardFocused)
         .onChange(of: isKeyboardFocused) { _, focused in
+            logger.debug("Keyboard focus \(focused ? "gained" : "lost", privacy: .public)")
             keyboard.isActive = focused
             if focused {
                 keyboard.follow(viewModel.currentDate, calendar: viewModel.engine.calendar)
@@ -158,7 +159,15 @@ public struct CalendarView: View {
             keyboard.follow(date, calendar: viewModel.engine.calendar)
         }
         .onKeyPress(phases: [.down, .repeat]) { press in
-            handleKeyPress(press)
+            let result = handleKeyPress(press)
+            // Key codes, not characters: the log never carries text a person typed.
+            let key = press.key.character.unicodeScalars
+                .map { String($0.value, radix: 16) }.joined()
+            let outcome = result == .handled ? "handled" : "ignored"
+            logger.debug(
+                "Key \(key, privacy: .public) modifiers \(press.modifiers.rawValue) → \(outcome, privacy: .public)"
+            )
+            return result
         }
         .environment(viewModel)
         .environment(theme)
