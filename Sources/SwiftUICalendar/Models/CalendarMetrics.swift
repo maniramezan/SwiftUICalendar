@@ -44,8 +44,24 @@ struct CalendarMetrics: Equatable, Sendable {
     let controlSpacing: CGFloat
     /// Padding between a dual-calendar day cell's border and its labels.
     let dayContentPadding: CGFloat
-    /// Corner radius for a selected year option's fill.
-    let optionCornerRadius: CGFloat
+    /// Corner radius for the calendar's rounded surfaces: square day cells, the weekday header, and
+    /// a selected year option's fill.
+    let cornerRadius: CGFloat
+    /// Gap between a header chevron and the picker it steps.
+    let chevronSpacing: CGFloat
+    /// Opacity of a disabled header control.
+    let disabledOpacity: Double
+    /// Floor for the weekday header row's height.
+    let weekdayHeaderMinHeight: CGFloat
+    /// Bounds on how much of the adjacent months the horizontal pager reveals at each edge.
+    let minimumPeekWidth: CGFloat
+    let maximumPeekWidth: CGFloat
+    /// How far a compact control's hit area extends past its visible bounds on each side, so the
+    /// tappable region reaches the platform touch floor without enlarging the control itself.
+    ///
+    /// Only for controls with at least this much clear space around them. The header's adjacent
+    /// month and year chevrons do not have it — enlarged there, a tap on one fired the other.
+    let hitTargetOutset: CGFloat
     /// Minimum height of a year option in the decade grid.
     let yearOptionMinHeight: CGFloat
     /// Width of the decade-grid year picker's popover.
@@ -82,11 +98,19 @@ struct CalendarMetrics: Equatable, Sendable {
         // decision rather than folded into a value-preserving refactor.
         compactControlSize = spacing.threeUnits + spacing.halfUnit
         todayRowHeight = compactControlSize
+        hitTargetOutset = (motion.minimumHitTarget - compactControlSize) / 2
         controlPadding = spacing.oneUnit
         tightPadding = spacing.halfUnit
         controlSpacing = spacing.oneAndHalfUnits
         dayContentPadding = spacing.oneUnit
-        optionCornerRadius = theme.radius.oneUnit
+        cornerRadius = theme.radius.oneUnit
+        // Previously a raw 3pt with no matching step; `halfUnit` is the nearest token.
+        chevronSpacing = spacing.halfUnit
+        // Previously a raw 0.4.
+        disabledOpacity = motion.disabledOpacity
+        weekdayHeaderMinHeight = spacing.threeUnits
+        minimumPeekWidth = spacing.oneAndHalfUnits
+        maximumPeekWidth = spacing.sixUnits
         // Derived: one spacing step of breathing room above the compact control size.
         yearOptionMinHeight = spacing.fourUnits + spacing.halfUnit
         // A component-level popover width with no matching global token, centralized here so the

@@ -35,7 +35,6 @@ public struct CalendarView: View {
     // See `CalendarViewModel.sync(state:onAction:)` for why replacing the instance every render
     // would defeat `@Observable`'s per-property diffing for every downstream view.
     @State private var externalViewModel: CalendarViewModel?
-    @Environment(\.calendarMetrics) private var metrics
     @State private var keyboard = CalendarKeyboardCursor()
     @FocusState private var isKeyboardFocused: Bool
     private let logger = Logger.swiftUICalendar(for: CalendarView.self)
@@ -115,16 +114,11 @@ public struct CalendarView: View {
     public var body: some View {
         CalendarViewport(keyboard: keyboard) { allowsPaging in
             VStack {
-                // Both control rows pin a height because each wraps a `GeometryReader`, which is
-                // greedy in both axes. The heights come from `CalendarMetrics` so this file holds no
-                // raw layout numbers.
                 #if os(iOS)
                     CalendarTodayControl(viewModel: viewModel)
-                        .frame(height: metrics.todayRowHeight)
                 #endif
                 if configuration.showsHeader {
                     CalendarHeaderControl()
-                        .frame(height: metrics.headerRowHeight)
                 }
                 CalendarBodyContent(
                     viewModel: viewModel,
@@ -248,6 +242,10 @@ private struct CalendarHeaderControl: View {
                 )
                 .frame(maxWidth: .infinity)
         }
+        // Pinned because a `GeometryReader` is greedy in both axes. Applied here rather than by
+        // `CalendarView`: metrics resolve from the design theme below `CalendarView`'s own body, so
+        // reading them there always got the defaults and ignored a custom theme.
+        .frame(height: metrics.headerRowHeight)
     }
 }
 
@@ -277,6 +275,8 @@ private struct CalendarHeaderControl: View {
                 )
                 .frame(maxWidth: .infinity)
             }
+            // See `CalendarHeaderControl`: resolved here so a custom theme applies.
+            .frame(height: metrics.todayRowHeight)
         }
     }
 #endif

@@ -83,7 +83,9 @@ struct YearDecadeGridPopoverContent: View {
                     Image(systemName: "chevron.backward")
                         .font(.body.weight(.semibold))
                         .frame(
-                            width: metrics.compactControlSize, height: metrics.compactControlSize)
+                            width: metrics.compactControlSize, height: metrics.compactControlSize
+                        )
+                        .contentShape(Rectangle().inset(by: -metrics.hitTargetOutset))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Calendar.Navigation.Previous".localized)
@@ -100,14 +102,19 @@ struct YearDecadeGridPopoverContent: View {
                     Image(systemName: "chevron.forward")
                         .font(.body.weight(.semibold))
                         .frame(
-                            width: metrics.compactControlSize, height: metrics.compactControlSize)
+                            width: metrics.compactControlSize, height: metrics.compactControlSize
+                        )
+                        .contentShape(Rectangle().inset(by: -metrics.hitTargetOutset))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Calendar.Navigation.Next".localized)
                 .disabled(!YearDecadeGrid.canPageForward(from: pageStart, maxYear: maxYear))
             }
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible()), count: 3),
+                spacing: metrics.itemSpacing
+            ) {
                 ForEach(YearDecadeGrid.years(pageStart: pageStart), id: \.self) { year in
                     YearDecadeGridCell(
                         year: year,
@@ -157,7 +164,12 @@ private struct YearDecadeGridCell: View {
             Text(formatTitle(year))
                 .frame(maxWidth: .infinity, minHeight: metrics.yearOptionMinHeight)
                 .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: metrics.optionCornerRadius))
+                .clipShape(RoundedRectangle(cornerRadius: metrics.cornerRadius))
+                // Reaches the touch floor by growing into the grid's row spacing, so adjacent
+                // options' tappable regions meet rather than overlap.
+                .contentShape(
+                    Rectangle().inset(
+                        by: -max(0, (metrics.minCellSize - metrics.yearOptionMinHeight) / 2)))
         }
         .buttonStyle(.plain)
         .disabled(!isSelectable)

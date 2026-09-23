@@ -3,7 +3,6 @@ import SwiftUI
 
 struct CalendarBodyView: View {
     private static let headerHeightRatio: CGFloat = 0.45
-    private static let minHeaderHeight: CGFloat = 24
 
     @Environment(CalendarViewModel.self) var viewModel
     @Environment(Theme.self) var theme
@@ -36,7 +35,7 @@ struct CalendarBodyView: View {
     }
 
     private var headerHeight: CGFloat {
-        max(Self.headerHeightRatio * cellSize, Self.minHeaderHeight)
+        max(Self.headerHeightRatio * cellSize, metrics.weekdayHeaderMinHeight)
     }
 
     private var columns: [GridItem] {

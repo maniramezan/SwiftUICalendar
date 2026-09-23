@@ -6,13 +6,10 @@ import SwiftUI
 
 struct CalendarBodyHorizontalView: View {
     private static let headerHeightRatio: CGFloat = 0.45
-    private static let minHeaderHeight: CGFloat = 24
     private static let heightCeilingPadding: CGFloat = 2
     private static let swipeThresholdRatio: CGFloat = 0.25
     private static let minimumSwipeThreshold: CGFloat = 56
     private static let peekContentFraction: CGFloat = 0.35
-    private static let minimumPeekWidth: CGFloat = 12
-    private static let maximumPeekWidth: CGFloat = 48
     private static let pagingAnimation = Animation.interactiveSpring(
         response: 0.32,
         dampingFraction: 0.88,
@@ -60,7 +57,9 @@ struct CalendarBodyHorizontalView: View {
             minCalendarWidth: metrics.minCalendarWidth,
             itemSpacing: metrics.itemSpacing,
             minCellSize: metrics.minCellSize,
-            maxCellSize: metrics.maxCellSize
+            maxCellSize: metrics.maxCellSize,
+            minimumPeekWidth: metrics.minimumPeekWidth,
+            maximumPeekWidth: metrics.maximumPeekWidth
         )
     }
 
@@ -70,7 +69,9 @@ struct CalendarBodyHorizontalView: View {
             minCalendarWidth: metrics.minCalendarWidth,
             itemSpacing: metrics.itemSpacing,
             minCellSize: metrics.minCellSize,
-            maxCellSize: metrics.maxCellSize
+            maxCellSize: metrics.maxCellSize,
+            minimumPeekWidth: metrics.minimumPeekWidth,
+            maximumPeekWidth: metrics.maximumPeekWidth
         )
     }
 
@@ -84,7 +85,7 @@ struct CalendarBodyHorizontalView: View {
     }
 
     private var weekdayHeaderHeight: CGFloat {
-        Self.weekdayHeaderHeight(cellSize: cellSize)
+        Self.weekdayHeaderHeight(cellSize: cellSize, minimumHeight: metrics.weekdayHeaderMinHeight)
     }
 
     private var columns: [GridItem] {
@@ -161,7 +162,9 @@ struct CalendarBodyHorizontalView: View {
         minCalendarWidth: CGFloat,
         itemSpacing: CGFloat,
         minCellSize: CGFloat,
-        maxCellSize: CGFloat
+        maxCellSize: CGFloat,
+        minimumPeekWidth: CGFloat = CalendarMetrics.default.minimumPeekWidth,
+        maximumPeekWidth: CGFloat = CalendarMetrics.default.maximumPeekWidth
     ) -> CGFloat {
         let approxCellSize = cellSize(
             layoutWidth: containerWidth,
@@ -172,9 +175,9 @@ struct CalendarBodyHorizontalView: View {
         let approxColumnWidth = containerWidth / 7
         let marginToContent = max(0, (approxColumnWidth - approxCellSize) / 2)
         let desired = min(
-            Self.maximumPeekWidth,
+            maximumPeekWidth,
             max(
-                Self.minimumPeekWidth, marginToContent + (approxCellSize * Self.peekContentFraction)
+                minimumPeekWidth, marginToContent + (approxCellSize * Self.peekContentFraction)
             )
         )
         return min(desired, max(0, (containerWidth - minCalendarWidth) / 2))
@@ -186,7 +189,9 @@ struct CalendarBodyHorizontalView: View {
         minCalendarWidth: CGFloat,
         itemSpacing: CGFloat,
         minCellSize: CGFloat,
-        maxCellSize: CGFloat
+        maxCellSize: CGFloat,
+        minimumPeekWidth: CGFloat = CalendarMetrics.default.minimumPeekWidth,
+        maximumPeekWidth: CGFloat = CalendarMetrics.default.maximumPeekWidth
     ) -> CGFloat {
         containerWidth
             - (2
@@ -195,7 +200,9 @@ struct CalendarBodyHorizontalView: View {
                     minCalendarWidth: minCalendarWidth,
                     itemSpacing: itemSpacing,
                     minCellSize: minCellSize,
-                    maxCellSize: maxCellSize
+                    maxCellSize: maxCellSize,
+                    minimumPeekWidth: minimumPeekWidth,
+                    maximumPeekWidth: maximumPeekWidth
                 ))
     }
 
@@ -211,8 +218,11 @@ struct CalendarBodyHorizontalView: View {
         return min(maxCellSize, max(minCellSize, columnWidth))
     }
 
-    static func weekdayHeaderHeight(cellSize: CGFloat) -> CGFloat {
-        max(Self.headerHeightRatio * cellSize, Self.minHeaderHeight)
+    static func weekdayHeaderHeight(
+        cellSize: CGFloat,
+        minimumHeight: CGFloat = CalendarMetrics.default.weekdayHeaderMinHeight
+    ) -> CGFloat {
+        max(Self.headerHeightRatio * cellSize, minimumHeight)
     }
 
     static func previousMonthBaseOffset(layoutWidth: CGFloat, layoutDirectionMultiplier: CGFloat)
