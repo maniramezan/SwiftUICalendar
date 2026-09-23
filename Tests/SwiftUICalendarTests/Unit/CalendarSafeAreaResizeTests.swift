@@ -46,9 +46,12 @@
                 #expect(model.visibleMonth == originalMonth)
                 #expect(model.selection == originalSelection)
                 #expect(frames.inMonth.count >= 28)
+                // Clear of the inset *and* the calendar's own margin: checking the inset alone let a
+                // grid that had lost its margins, running edge to edge, pass.
+                let margin = CalendarMetrics.default.calendarMargin
                 for frame in frames.inMonth.values {
-                    #expect(frame.minX >= leading)
-                    #expect(frame.maxX <= width - trailing)
+                    #expect(frame.minX >= leading + margin - 0.5)
+                    #expect(frame.maxX <= width - trailing - margin + 0.5)
                     #expect(frame.width >= CalendarMetrics.default.minCellSize)
                 }
             }
