@@ -65,8 +65,9 @@ final class CalendarKeyboardCursor {
     @discardableResult
     func moveMonths(_ months: Int, model: CalendarViewModel) throws -> Bool {
         guard let month = model.monthIdentifier(offset: months) else { return false }
+        let destination = try Self.projectedDate(after: .navigateMonth(month), in: model)
         try model.navigate(toMonth: month)
-        requestScroll(to: model.currentDate, calendar: model.engine.calendar)
+        requestScroll(to: destination, calendar: model.engine.calendar)
         return true
     }
 
@@ -76,8 +77,9 @@ final class CalendarKeyboardCursor {
     @discardableResult
     func goToToday(model: CalendarViewModel) -> Bool {
         guard model.canGoToToday else { return false }
+        let destination = (try? Self.projectedDate(after: .today, in: model)) ?? model.currentDate
         model.goToToday()
-        requestScroll(to: model.currentDate, calendar: model.engine.calendar)
+        requestScroll(to: destination, calendar: model.engine.calendar)
         return true
     }
 
@@ -89,6 +91,21 @@ final class CalendarKeyboardCursor {
         guard let date, model.engine.containsDay(date) else { return false }
         model.select(date)
         return true
+    }
+
+    /// Where `action` leaves the calendar, computed on a copy of its state.
+    ///
+    /// When a store owns the state, navigating only sends an action: `model.currentDate` does not
+    /// change until the store's update renders back in. Reading it straight after navigating gave the
+    /// month being *left*, so the cursor stayed put and the scroll request targeted the wrong month.
+    /// Applying the action to a copy yields the destination the owner's reducer will reach.
+    private static func projectedDate(after action: CalendarAction, in model: CalendarViewModel)
+        throws
+        -> Date
+    {
+        var projected = model.state
+        try projected.apply(action)
+        return projected.currentDate
     }
 
     private func navigate(to destination: Date, model: CalendarViewModel) throws {
@@ -103,6 +120,15 @@ final class CalendarKeyboardCursor {
         self.date = dayStart
         generation += 1
         scrollRequest = ScrollRequest(dayStart: dayStart, generation: generation)
+    }
+
+    /// The modifiers that change what a key press means.
+    ///
+    /// Caps Lock, and the numeric-pad and function flags AppKit attaches to every arrow key, would
+    /// otherwise fail an exact match — so arrow keys and ⌘-shortcuts silently did nothing with Caps
+    /// Lock on, and likely at all on macOS.
+    static func meaningfulModifiers(_ modifiers: EventModifiers) -> EventModifiers {
+        modifiers.intersection([.command, .option, .control, .shift])
     }
 
     static func dayOffset(for key: KeyEquivalent, direction: LayoutDirection) -> Int? {

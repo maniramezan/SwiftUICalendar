@@ -227,4 +227,67 @@ struct CalendarKeyboardTests {
         #expect(CalendarKeyboardCursor.monthOffset(for: .upArrow, direction: .leftToRight) == nil)
         #expect(CalendarKeyboardCursor.monthOffset(for: .space, direction: .leftToRight) == nil)
     }
+
+    // MARK: - Modifier filtering
+
+    /// Caps Lock, and the numeric-pad and function flags AppKit attaches to arrow keys, must not
+    /// turn a plain arrow or a ⌘-shortcut into an unrecognized chord.
+    @Test("Only meaningful modifiers are compared")
+    func meaningfulModifiers() {
+        #expect(CalendarKeyboardCursor.meaningfulModifiers(.capsLock).isEmpty)
+        #expect(CalendarKeyboardCursor.meaningfulModifiers([.numericPad, .function]).isEmpty)
+        #expect(CalendarKeyboardCursor.meaningfulModifiers([.command, .capsLock]) == .command)
+        #expect(CalendarKeyboardCursor.meaningfulModifiers([.command, .numericPad]) == .command)
+        #expect(CalendarKeyboardCursor.meaningfulModifiers(.shift) == .shift)
+        #expect(
+            CalendarKeyboardCursor.meaningfulModifiers([.command, .option]) == [.command, .option])
+    }
+
+    // MARK: - Store-owned state
+
+    /// When a store owns the state, navigation only sends an action and `currentDate` lags until the
+    /// store renders back in. The cursor must still land on the month it moved to.
+    @Test("Month movement lands on the new month when a store owns the state")
+    func externalMonthMovement() throws {
+        let seed = CalendarViewModel.test()
+        var actions: [CalendarAction] = []
+        let model = CalendarViewModel(state: seed.state) { actions.append($0) }
+        let cursor = CalendarKeyboardCursor()
+        cursor.isActive = true
+        let month = try #require(model.monthIdentifier(offset: 1))
+
+        #expect(try cursor.moveMonths(1, model: model))
+
+        var expected = seed.state
+        try expected.apply(.navigateMonth(month))
+        let calendar = model.engine.calendar
+        #expect(model.state == seed.state, "the store owns state; the model must not mutate it")
+        #expect(cursor.date == calendar.startOfDay(for: expected.currentDate))
+        #expect(cursor.scrollRequest?.dayStart == calendar.startOfDay(for: expected.currentDate))
+        #expect(
+            engineMonth(of: try #require(cursor.date), in: model) != model.visibleMonth,
+            "the cursor stayed on the month being left")
+        #expect(actions == [.navigateMonth(month)])
+    }
+
+    @Test("Today lands on today when a store owns the state")
+    func externalToday() throws {
+        var away = CalendarViewModel.test().state
+        try away.apply(.offsetMonths(3))
+        var actions: [CalendarAction] = []
+        let model = CalendarViewModel(state: away) { actions.append($0) }
+        let cursor = CalendarKeyboardCursor()
+        cursor.isActive = true
+
+        #expect(cursor.goToToday(model: model))
+
+        let calendar = model.engine.calendar
+        #expect(cursor.date == calendar.startOfDay(for: Date()))
+        #expect(model.state == away)
+        #expect(actions == [.today])
+    }
+
+    private func engineMonth(of date: Date, in model: CalendarViewModel) -> MonthIdentifier? {
+        model.engine.month(containing: date)
+    }
 }

@@ -180,24 +180,25 @@ public struct CalendarView: View {
     private func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
         let shortcuts = configuration.keyboardNavigation
         guard isKeyboardFocused, !shortcuts.isEmpty else { return .ignored }
+        let modifiers = CalendarKeyboardCursor.meaningfulModifiers(press.modifiers)
         do {
-            if shortcuts.contains(.arrows), press.modifiers.isEmpty,
+            if shortcuts.contains(.arrows), modifiers.isEmpty,
                 let days = CalendarKeyboardCursor.dayOffset(
                     for: press.key, direction: viewModel.layoutDirection)
             {
                 return try keyboard.move(days: days, model: viewModel) ? .handled : .ignored
             }
-            if shortcuts.contains(.arrows), press.modifiers.isEmpty,
+            if shortcuts.contains(.arrows), modifiers.isEmpty,
                 press.key == .return || press.key == .space
             {
                 // Selection fires once per physical press; a held key must not re-select.
                 guard press.phase == .down else { return .handled }
                 return keyboard.select(model: viewModel) ? .handled : .ignored
             }
-            if shortcuts.contains(.today), press.modifiers == .command, press.key == "t" {
+            if shortcuts.contains(.today), modifiers == .command, press.key == "t" {
                 return keyboard.goToToday(model: viewModel) ? .handled : .ignored
             }
-            if shortcuts.contains(.monthShortcuts), press.modifiers == .command,
+            if shortcuts.contains(.monthShortcuts), modifiers == .command,
                 let months = CalendarKeyboardCursor.monthOffset(
                     for: press.key, direction: viewModel.layoutDirection)
             {
@@ -291,9 +292,11 @@ private struct CalendarBodyHorizontalContainer: View {
                 .frame(maxWidth: .infinity, alignment: .top)
             }
             .scrollPosition($scrollPosition)
-            .onChange(of: keyboard.date) { _, date in
-                guard keyboard.isActive, let date else { return }
-                proxy.scrollTo("day-\(date.timeIntervalSinceReferenceDate)")
+            // `scrollRequest`, not `date`: swiping to another month or tapping Today moves the
+            // cursor to follow, and scrolling on that would move this list with no key pressed.
+            .onChange(of: keyboard.scrollRequest) { _, request in
+                guard keyboard.isActive, let request else { return }
+                proxy.scrollTo(request.identity)
             }
         }
     }
