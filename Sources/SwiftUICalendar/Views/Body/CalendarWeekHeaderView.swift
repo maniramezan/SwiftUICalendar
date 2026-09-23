@@ -7,7 +7,7 @@ struct CalendarWeekHeaderView: View {
     @State var weekDays: [String]
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: metrics.itemSpacing) {
             ForEach(weekDays, id: \.self) { day in
                 ZStack {
                     Text(day)
@@ -20,7 +20,7 @@ struct CalendarWeekHeaderView: View {
             }
         }
         .padding(.vertical, metrics.tightPadding)
-        .adaptiveGlass(shape: .roundedRectangle(cornerRadius: 8))
+        .adaptiveGlass(shape: .roundedRectangle(cornerRadius: metrics.cornerRadius))
     }
 }
 

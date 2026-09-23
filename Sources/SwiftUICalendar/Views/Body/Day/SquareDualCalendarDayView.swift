@@ -3,7 +3,6 @@ import SwiftUI
 struct SquareDualCalendarDayView: CalendarDayView {
     @Environment(\.calendarMetrics) private var metrics
     private let context: CalendarDayContext
-    private let cornerRadius: CGFloat = 8
     private let outerPadding: CGFloat = 4
 
     init(context: CalendarDayContext) {
@@ -53,10 +52,10 @@ struct SquareDualCalendarDayView: CalendarDayView {
             context.onSelect(context.date)
         } label: {
             ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: cornerRadius)
+                RoundedRectangle(cornerRadius: metrics.cornerRadius)
                     .fill(backgroundColor)
                     .overlay(
-                        RoundedRectangle(cornerRadius: cornerRadius)
+                        RoundedRectangle(cornerRadius: metrics.cornerRadius)
                             .strokeBorder(borderColor, lineWidth: borderWidth)
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

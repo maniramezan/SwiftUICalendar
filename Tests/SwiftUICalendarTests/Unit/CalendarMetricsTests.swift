@@ -1,4 +1,5 @@
 import DesignSystem
+import Foundation
 import Testing
 
 @testable import SwiftUICalendar
@@ -92,7 +93,13 @@ struct CalendarMetricsTests {
         #expect(metrics.tightPadding == 4)
         #expect(metrics.controlSpacing == 12)
         #expect(metrics.dayContentPadding == 8)
-        #expect(metrics.optionCornerRadius == 8)
+        #expect(metrics.cornerRadius == 8)
+        #expect(metrics.chevronSpacing == 4)
+        #expect(metrics.disabledOpacity == 0.45)
+        #expect(metrics.weekdayHeaderMinHeight == 24)
+        #expect(metrics.minimumPeekWidth == 12)
+        #expect(metrics.maximumPeekWidth == 48)
+        #expect(metrics.hitTargetOutset == 8)
         // fourUnits (32) + halfUnit (4)
         #expect(metrics.yearOptionMinHeight == 36)
         #expect(metrics.yearPickerPopoverWidth == 220)
@@ -128,6 +135,22 @@ struct CalendarMetricsTests {
 
     /// The compact control size is deliberately below the platform touch floor. Pin that so raising
     /// it becomes a conscious change rather than an accident.
+    /// The controls stay visually compact, but what a finger can hit must still reach the platform
+    /// touch floor.
+    @Test("Compact controls' tappable area reaches the minimum hit target")
+    func compactControlsHitAreaReachesTouchFloor() {
+        // Computed into typed locals: `#expect` evaluates each operand of a compound expression on
+        // its own, which let two equal 44.0 values compare unequal here.
+        let metrics = CalendarMetrics.default
+        let hitArea: CGFloat = metrics.compactControlSize + 2 * metrics.hitTargetOutset
+        #expect(hitArea == metrics.minCellSize)
+        let custom = CalendarMetrics(
+            theme: DesignSystem.DefaultTheme(
+                motion: DesignSystem.DefaultMotion(minimumHitTarget: 50)))
+        let customHitArea: CGFloat = custom.compactControlSize + 2 * custom.hitTargetOutset
+        #expect(customHitArea == 50)
+    }
+
     @Test("Compact controls are smaller than the minimum hit target")
     func compactControlsAreBelowHitTarget() {
         let metrics = CalendarMetrics.default
