@@ -85,14 +85,14 @@ struct CalendarViewport<Content: View>: View {
                     content(!layout.overflows)
                         .padding(.horizontal, metrics.calendarMargin)
                         .frame(width: layout.contentWidth)
-                        // Displaces the calendar into the band beside the fold. The insets plus the
-                        // band add back up to the viewport, so nothing overflows that would not anyway.
-                        .padding(.leading, fold.leading)
-                        .padding(.trailing, fold.trailing)
                 }
             }
             .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             .defaultScrollAnchor(.leading)
+            // Constrain the scroll view itself so overflow is clipped to the free band.
+            // Padding its content would scroll the reserved space along with the day cells.
+            .padding(.leading, fold.leading)
+            .padding(.trailing, fold.trailing)
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.width
             } action: { newWidth in
