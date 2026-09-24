@@ -154,6 +154,36 @@ struct CalendarFoldSpanTests {
     struct CalendarFoldDisplacementTests {
         private static let size = CGSize(width: 900, height: 800)
 
+        @Test(
+            "Overflow scroll viewport stays inside the free fold band",
+            arguments: [
+                LayoutDirection.leftToRight, .rightToLeft,
+            ])
+        func overflowViewportAvoidsFold(direction: LayoutDirection) throws {
+            let hosted = hostView(
+                CalendarViewport { _ in Color.blue.frame(height: 100) }
+                    .environment(\.calendarFoldRanges, [300...400])
+                    .environment(\.layoutDirection, direction),
+                size: CGSize(width: 700, height: 200))
+            defer { hosted.window.contentView = nil }
+            #expect(waitForStableRender(hosted.hosting))
+
+            func scrollViews(in view: NSView) -> [NSScrollView] {
+                (view as? NSScrollView).map { [$0] }
+                    ?? view.subviews.flatMap { scrollViews(in: $0) }
+            }
+            let scroll = try #require(scrollViews(in: hosted.hosting).first)
+            let viewport = scroll.convert(scroll.bounds, to: hosted.hosting)
+            #expect(abs(viewport.width - 300) < 1)
+            if direction == .leftToRight {
+                #expect(viewport.maxX <= 301)
+            } else {
+                #expect(viewport.minX >= 399)
+            }
+            let document = try #require(scroll.documentView)
+            #expect(document.frame.width > viewport.width)
+        }
+
         /// Right-to-left calendars flip leading and trailing padding, which once put the Persian
         /// grid at 382–878 — straight across a fold at 520–580 that the Gregorian grid cleared.
         @Test(
