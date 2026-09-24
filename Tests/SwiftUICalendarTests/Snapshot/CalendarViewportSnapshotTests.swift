@@ -21,4 +21,24 @@ struct CalendarViewportSnapshotTests {
             assertSnapshot(of: lines.joined(separator: "\n"), as: .lines)
         }
     }
+    @Test("Fold bands retain overflow geometry in both reading directions")
+    func foldedViewport() {
+        let metrics = CalendarMetrics.default
+        let lines = [LayoutDirection.leftToRight, .rightToLeft].map { direction in
+            let span = CalendarFoldSpan.resolve(
+                containerWidth: 700,
+                blocked: CalendarFoldSpan.leadingOrigin(
+                    [300...400], containerWidth: 700, layoutDirection: direction))
+            let width = 700 - span.total
+            let viewport = CalendarViewportLayout(
+                width: width, minimumWidth: metrics.minCalendarWidth,
+                margins: 2 * metrics.calendarMargin)
+            return
+                "direction=\(direction) viewport=\(width) leading=\(span.leading) trailing=\(span.trailing) content=\(viewport.contentWidth) overflow=\(viewport.overflows)"
+        }
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(of: lines.joined(separator: "\n"), as: .lines)
+        }
+    }
+
 }
