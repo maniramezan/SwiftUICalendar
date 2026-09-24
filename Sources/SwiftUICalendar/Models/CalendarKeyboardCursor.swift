@@ -23,6 +23,8 @@ final class CalendarKeyboardCursor {
     /// The focused day, always snapped to the start of the day so per-cell checks are plain `==`.
     var date: Date?
     var isActive = false
+    /// Observed by the owning view to request native focus after a day activation.
+    private(set) var focusRequest = 0
 
     /// Set only by keyboard-initiated movement.
     ///
@@ -41,6 +43,20 @@ final class CalendarKeyboardCursor {
     /// asking any scroll container to move.
     func follow(_ date: Date, calendar: Calendar) {
         self.date = calendar.startOfDay(for: date)
+    }
+
+    /// Establishes the cursor for a day activation before the view requests keyboard focus.
+    /// Does not navigate or request scrolling: the day activation already handles selection.
+    @discardableResult
+    func focus(
+        on date: Date, model: CalendarViewModel,
+        shortcuts: CalendarConfiguration.KeyboardNavigation
+    ) -> Bool {
+        guard !shortcuts.isEmpty, model.engine.containsDay(date) else { return false }
+        follow(date, calendar: model.engine.calendar)
+        isActive = true
+        focusRequest += 1
+        return true
     }
 
     /// Moves the cursor by `days`, navigating the calendar to keep it visible.

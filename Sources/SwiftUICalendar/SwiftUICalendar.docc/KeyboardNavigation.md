@@ -4,6 +4,11 @@ Browse and select dates from a hardware keyboard, and decide which shortcuts the
 
 ## Overview
 
+On iPad, tap an enabled day to give the calendar keyboard focus, then use the arrow keys.
+The cursor starts on the tapped day. Setting `keyboardNavigation: []` also disables this focus acquisition.
+Tab focus on iPad can currently be lost shortly after entry; tapping a day is the supported entry path.
+
+
 A calendar on iPad with a Magic Keyboard, or on macOS, is expected to respond to the arrow keys. Give
 the calendar keyboard focus and it draws a *focus ring* around one day — the keyboard cursor — which
 moves independently of the current selection. Nothing is selected until the reader asks for it, so
