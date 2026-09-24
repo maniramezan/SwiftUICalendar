@@ -6,6 +6,43 @@ import Testing
 @MainActor
 @Suite("Calendar keyboard navigation")
 struct CalendarKeyboardTests {
+    @Test(
+        "Day activation starts arrows at the tapped date",
+        arguments: [
+            Calendar.Identifier.gregorian, .persian,
+        ], [CalendarSelection.single(nil), .range(nil, nil), .multiple([])])
+    func tapFocus(identifier: Calendar.Identifier, selection: CalendarSelection) throws {
+        let model = CalendarViewModel.test(identifier: identifier, selection: selection)
+        let cursor = CalendarKeyboardCursor()
+        let tapped = try #require(
+            model.engine.calendar.date(byAdding: .day, value: 5, to: model.currentDate))
+        let originalMonth = model.visibleMonth
+        #expect(cursor.focus(on: tapped, model: model, shortcuts: .all))
+        #expect(cursor.isFocused(model.engine.calendar.startOfDay(for: tapped)))
+        #expect(cursor.focusRequest == 1)
+        #expect(cursor.scrollRequest == nil)
+        #expect(model.visibleMonth == originalMonth)
+        #expect(model.selection == selection)
+        #expect(try cursor.move(days: 1, model: model))
+        #expect(
+            model.engine.calendar.dateComponents(
+                [.day], from: model.engine.calendar.startOfDay(for: tapped),
+                to: try #require(cursor.date)
+            ).day == 1)
+    }
+
+    @Test("Disabled shortcuts and unavailable days do not acquire focus")
+    func tapFocusOptOut() {
+        let model = CalendarViewModel.test()
+        let cursor = CalendarKeyboardCursor()
+        #expect(!cursor.focus(on: model.currentDate, model: model, shortcuts: []))
+        #expect(!cursor.focus(on: .distantPast, model: model, shortcuts: .all))
+        #expect(!cursor.isActive)
+        #expect(cursor.focusRequest == 0)
+        #expect(cursor.date == nil)
+        #expect(cursor.scrollRequest == nil)
+    }
+
     @Test("Arrows follow layout direction")
     func direction() {
         #expect(CalendarKeyboardCursor.dayOffset(for: .leftArrow, direction: .leftToRight) == -1)
@@ -291,3 +328,80 @@ struct CalendarKeyboardTests {
         model.engine.month(containing: date)
     }
 }
+
+#if os(macOS)
+    @MainActor
+    @Suite("Day activation keyboard wiring", .serialized)
+    struct CalendarDayActivationTests {
+        @Test(
+            "Rendered day activation requests focus",
+            arguments: [
+                CalendarConfiguration.ScrollMode.none, .vertical, .horizontal,
+            ], [Calendar.Identifier.gregorian, .persian])
+        func activation(mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier)
+            throws
+        {
+            let model = CalendarViewModel.snapshot(identifier: identifier)
+            let cursor = CalendarKeyboardCursor()
+            let actions = DayActions()
+            let theme = Theme()
+            theme.day.setDayContent { context in
+                ActivationDay(context: context, actions: actions)
+            }
+            let hosted = hostView(
+                body(mode: mode, model: model, cursor: cursor)
+                    .environment(model)
+                    .environment(theme)
+                    .environment(Typography.default)
+                    .environment(\.calendarConfiguration, .init(scrollMode: mode)),
+                size: CGSize(width: 600, height: 800))
+            defer { hosted.window.contentView = nil }
+            #expect(waitForStableRender(hosted.hosting))
+            let select = try #require(actions.select)
+            let date = try #require(actions.date)
+            select()
+            #expect(cursor.focusRequest == 1)
+            #expect(cursor.isFocused(model.engine.calendar.startOfDay(for: date)))
+            #expect(model.isSelected(date: date))
+            #expect(cursor.scrollRequest == nil)
+        }
+
+        @ViewBuilder
+        private func body(
+            mode: CalendarConfiguration.ScrollMode, model: CalendarViewModel,
+            cursor: CalendarKeyboardCursor
+        ) -> some View {
+            switch mode {
+            case .none: CalendarBodyView(keyboard: cursor)
+            case .vertical: CalendarBodyVerticalView(keyboard: cursor)
+            case .horizontal: CalendarBodyHorizontalView(viewModel: model, keyboard: cursor)
+            }
+        }
+
+        private struct ActivationDay: CalendarDayView {
+            let context: CalendarDayContext
+            var actions: DayActions?
+
+            init(context: CalendarDayContext) { self.context = context }
+
+            init(context: CalendarDayContext, actions: DayActions) {
+                self.context = context
+                self.actions = actions
+            }
+
+            var body: some View {
+                Text(context.dayLabel).onAppear {
+                    if context.isInCurrentMonth && context.isEnabled {
+                        actions?.select = { context.onSelect(context.date) }
+                        actions?.date = context.date
+                    }
+                }
+            }
+        }
+
+        private final class DayActions {
+            var select: (() -> Void)?
+            var date: Date?
+        }
+    }
+#endif

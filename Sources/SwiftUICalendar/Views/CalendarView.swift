@@ -135,10 +135,11 @@ public struct CalendarView: View {
         .focusable(!configuration.keyboardNavigation.isEmpty, interactions: .edit)
         .focused($isKeyboardFocused)
         .onChange(of: isKeyboardFocused) { _, focused in
-            keyboard.isActive = focused
-            if focused {
+            // A day activation has already placed the cursor on the tapped date.
+            if focused && !keyboard.isActive {
                 keyboard.follow(viewModel.currentDate, calendar: viewModel.engine.calendar)
             }
+            keyboard.isActive = focused
         }
         .onChange(of: viewModel.currentDate) { _, date in
             // `follow`, not a scroll request: this also fires when a settled scroll navigates the
@@ -148,6 +149,10 @@ public struct CalendarView: View {
         }
         .onKeyPress(phases: [.down, .repeat]) { press in
             handleKeyPress(press)
+        }
+        .onChange(of: keyboard.focusRequest) { _, _ in
+            guard !configuration.keyboardNavigation.isEmpty else { return }
+            isKeyboardFocused = true
         }
         .environment(viewModel)
         .environment(theme)

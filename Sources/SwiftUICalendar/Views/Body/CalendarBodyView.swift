@@ -227,6 +227,8 @@ extension CalendarBodyView {
         // mutating `currentDate` here would trigger an unwanted scroll jump.
         viewModel.select(
             selectedDate, navigating: navigatesOnOverflowTap && !item.isInDisplayedMonth)
+        keyboard?.focus(
+            on: selectedDate, model: viewModel, shortcuts: configuration.keyboardNavigation)
     }
 
 }
