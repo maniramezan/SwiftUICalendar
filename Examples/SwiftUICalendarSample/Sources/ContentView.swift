@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var theme = Theme()
     @State private var typography = Typography.default
     @State private var isSettingsPresented = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         NavigationStack {
@@ -32,21 +33,30 @@ struct ContentView: View {
             .navigationTitle("Calendar")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
+                    // A toggle: in regular width the inspector sits beside the calendar, and the
+                    // same button is how it closes.
                     Button("Settings", systemImage: "gearshape") {
-                        isSettingsPresented = true
+                        isSettingsPresented.toggle()
                     }
                     .accessibilityHint("Choose calendar display settings")
                 }
             }
-        }
-        .sheet(isPresented: $isSettingsPresented) {
-            ConfigurationView(
-                architecture: $architecture,
-                calendarIdentifier: $calendarIdentifier,
-                selectionMode: $selectionMode,
-                scrollMode: $scrollMode,
-                horizontalHeightMode: $horizontalHeightMode,
-                dayViewMode: $dayViewMode
+            .modifier(
+                SettingsPresentation(
+                    isPresented: $isSettingsPresented,
+                    usesSheet: horizontalSizeClass == .compact
+                ) { showsDone in
+                    ConfigurationView(
+                        architecture: $architecture,
+                        calendarIdentifier: $calendarIdentifier,
+                        selectionMode: $selectionMode,
+                        scrollMode: $scrollMode,
+                        horizontalHeightMode: $horizontalHeightMode,
+                        dayViewMode: $dayViewMode,
+                        isPresented: $isSettingsPresented,
+                        showsDone: showsDone
+                    )
+                }
             )
         }
         .onChange(of: architecture) { _, _ in
@@ -202,15 +212,39 @@ private struct SampleCalendarPath: View {
     }
 }
 
-private struct ConfigurationView: View {
-    @Environment(\.dismiss) private var dismiss
+/// Settings beside the calendar in regular width, as a sheet in compact width.
+///
+/// One `.inspector` covering both failed in two ways. Attached outside the `NavigationStack`, the
+/// iPad column stopped opening from the app's second launch on. Attached inside it, the compact
+/// sheet lost its navigation bar — title and Done hoisted into the covered calendar's bar — and
+/// regular width gained a Done that lingered after close. So each width gets its own presentation.
+private struct SettingsPresentation<Settings: View>: ViewModifier {
+    @Binding var isPresented: Bool
+    let usesSheet: Bool
+    @ViewBuilder let settings: (_ showsDone: Bool) -> Settings
 
+    func body(content: Content) -> some View {
+        content
+            .inspector(isPresented: usesSheet ? .constant(false) : $isPresented) {
+                settings(false)
+                    .inspectorColumnWidth(min: 320, ideal: 360, max: 420)
+            }
+            .sheet(isPresented: usesSheet ? $isPresented : .constant(false)) {
+                settings(true)
+            }
+    }
+}
+
+private struct ConfigurationView: View {
     @Binding var architecture: SampleArchitecture
     @Binding var calendarIdentifier: Calendar.Identifier
     @Binding var selectionMode: SelectionMode
     @Binding var scrollMode: CalendarConfiguration.ScrollMode
     @Binding var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode
     @Binding var dayViewMode: DayViewMode
+    @Binding var isPresented: Bool
+    /// Whether the settings arrive as a sheet, which needs its own way out.
+    let showsDone: Bool
 
     var body: some View {
         NavigationStack {
@@ -268,15 +302,19 @@ private struct ConfigurationView: View {
             }
             .navigationTitle("Settings")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
+                // Only the compact sheet needs a way out. In regular width the inspector's toolbar
+                // merges into the calendar's navigation bar, where a Done would linger after close.
+                // The caller decides: inside the inspector the size class does not report compact
+                // even when it is presented as a sheet.
+                if showsDone {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            isPresented = false
+                        }
                     }
                 }
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.hidden)
     }
 }
 
