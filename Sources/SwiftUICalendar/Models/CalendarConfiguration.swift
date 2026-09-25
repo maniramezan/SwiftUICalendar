@@ -37,6 +37,37 @@ public struct CalendarConfiguration: Equatable, Sendable {
         case flexible
     }
 
+    /// Keyboard shortcuts the calendar handles while it holds focus.
+    ///
+    /// The calendar consumes these key presses only while it is the focused view, but a host app may
+    /// still own some of them — `⌘T` is "new tab" in many document apps, for example. Narrow this set
+    /// to hand those back:
+    ///
+    /// ```swift
+    /// // Arrow-key browsing and month paging, but leave ⌘T to the app.
+    /// CalendarConfiguration(keyboardNavigation: [.arrows, .monthShortcuts])
+    ///
+    /// // No keyboard handling at all.
+    /// CalendarConfiguration(keyboardNavigation: [])
+    /// ```
+    public struct KeyboardNavigation: OptionSet, Equatable, Sendable {
+        public let rawValue: Int
+
+        public init(rawValue: Int) {
+            self.rawValue = rawValue
+        }
+
+        /// Arrow keys move the cursor by a day or a week; Return and Space select the focused day.
+        public static let arrows = KeyboardNavigation(rawValue: 1 << 0)
+        /// `⌘←` and `⌘→` move to the previous and next month, following the layout direction.
+        public static let monthShortcuts = KeyboardNavigation(rawValue: 1 << 1)
+        /// `⌘T` returns to today when today is inside the calendar's date range.
+        public static let today = KeyboardNavigation(rawValue: 1 << 2)
+
+        /// Every shortcut the calendar knows about. This is the default.
+        public static let all: KeyboardNavigation = [.arrows, .monthShortcuts, .today]
+    }
+
     public struct YearSelection: Equatable, Sendable {
         public enum Style: Equatable, Sendable {
             case wheel
@@ -61,19 +92,23 @@ public struct CalendarConfiguration: Equatable, Sendable {
     public var gridSizing: GridSizing
     public var showsHeader: Bool
     public var yearSelection: YearSelection
+    /// Keyboard shortcuts the calendar handles while focused.
+    public var keyboardNavigation: KeyboardNavigation
 
     public init(
         scrollMode: ScrollMode = .none,
         horizontalHeightMode: HorizontalHeightMode = .sixRows,
         gridSizing: GridSizing = .adaptive,
         showsHeader: Bool = true,
-        yearSelection: YearSelection = YearSelection()
+        yearSelection: YearSelection = YearSelection(),
+        keyboardNavigation: KeyboardNavigation = .all
     ) {
         self.scrollMode = scrollMode
         self.horizontalHeightMode = horizontalHeightMode
         self.gridSizing = gridSizing
         self.showsHeader = showsHeader
         self.yearSelection = yearSelection
+        self.keyboardNavigation = keyboardNavigation
     }
 }
 

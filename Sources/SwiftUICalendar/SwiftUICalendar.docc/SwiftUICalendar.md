@@ -99,11 +99,16 @@ CalendarView(model: calendar, theme: theme)
 - ``CalendarConfiguration/HorizontalHeightMode``
 - ``CalendarConfiguration/GridSizing``
 - ``CalendarConfiguration/YearSelection``
+- ``CalendarConfiguration/KeyboardNavigation``
 - ``Theme/Day``
 - ``Theme/Day/SecondaryLabelMode``
 - ``Typography``
 - ``DayViewTypography``
 - ``DayViewType``
+
+### Interaction
+
+- <doc:KeyboardNavigation>
 
 ### Custom Day Views
 

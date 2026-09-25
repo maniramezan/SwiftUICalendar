@@ -37,6 +37,7 @@ struct CalendarViewport<Content: View>: View {
     // first layout pass already has the final width — never a placeholder width that a vertical
     // `LazyVStack` could settle empty on.
     @State private var width: CGFloat = 0
+    var keyboard: CalendarKeyboardCursor? = nil
     @ViewBuilder let content: (Bool) -> Content
 
     /// Total soft margin around the grid. The vertically scrolling body insets each month as well.
@@ -58,21 +59,28 @@ struct CalendarViewport<Content: View>: View {
         // a view ignore, pushing the grid off screen during a resize. And sizing the content with
         // `containerRelativeFrame` in that shape never finished laying out a right-to-left calendar:
         // Persian or Hebrew in landscape on a notched iPhone hung the app.
-        ScrollView(.horizontal) {
-            if width > 0 {
-                // Paging is handed back to the viewport only while the grid genuinely overflows, so
-                // a horizontal swipe scrolls to the clipped columns instead of flipping the month.
-                content(!layout.overflows)
-                    .padding(.horizontal, metrics.calendarMargin)
-                    .frame(width: layout.contentWidth)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                if width > 0 {
+                    // Paging is handed back to the viewport only while the grid genuinely overflows, so
+                    // a horizontal swipe scrolls to the clipped columns instead of flipping the month.
+                    content(!layout.overflows)
+                        .padding(.horizontal, metrics.calendarMargin)
+                        .frame(width: layout.contentWidth)
+                }
             }
-        }
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-        .defaultScrollAnchor(.leading)
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.size.width
-        } action: { newWidth in
-            width = newWidth
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .defaultScrollAnchor(.leading)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { newWidth in
+                width = newWidth
+            }
+            // Only keyboard-initiated movement asks to scroll; see `CalendarKeyboardCursor`.
+            .onChange(of: keyboard?.scrollRequest) { _, request in
+                guard layout.overflows, let request, keyboard?.isActive == true else { return }
+                proxy.scrollTo(request.identity, anchor: .center)
+            }
         }
         // Vertical margins stay safe-area padding, exactly as before this viewport existed, so the
         // vertically scrolling body can still scroll content beneath them.

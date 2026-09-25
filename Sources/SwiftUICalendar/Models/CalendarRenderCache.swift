@@ -219,10 +219,13 @@ final class CalendarRenderCache {
                     return nil
                 }
                 let day = calendar.component(.day, from: date)
+                let dayStart = calendar.startOfDay(for: date)
                 return MonthGeometry.Day(
-                    id: "day-\(date.timeIntervalSinceReferenceDate)",
+                    // Keyed on `dayStart` so a cursor holding a normalized date resolves the same
+                    // id the cell was tagged with. See `MonthSnapshot.Day.identity(for:)`.
+                    id: MonthSnapshot.Day.identity(for: dayStart),
                     date: date,
-                    dayStart: calendar.startOfDay(for: date),
+                    dayStart: dayStart,
                     day: day,
                     dayLabel: NumberFormatter.formatDay(day, locale: locale),
                     month: calendar.component(.month, from: date),

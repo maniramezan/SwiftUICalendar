@@ -89,6 +89,13 @@ extension Theme {
         public var todayBorderColorWidth: CGFloat = 1
         /// Background color for the current day.
         public var todayBackgroundColor: Color = .clear
+        /// Border color for the keyboard focus ring.
+        ///
+        /// The ring marks which day the keyboard cursor is on, independently of selection, and is
+        /// drawn only while the calendar holds keyboard focus.
+        public var focusBorderColor: Color = .accentColor
+        /// Border width for the keyboard focus ring.
+        public var focusBorderWidth: CGFloat = 3
         /// Border color for days outside the currently displayed month.
         public var emptyDayBorderColor: Color = .clear
         /// Border width for days outside the currently displayed month.
