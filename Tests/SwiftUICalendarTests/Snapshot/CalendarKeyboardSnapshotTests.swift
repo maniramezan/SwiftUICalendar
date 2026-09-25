@@ -12,6 +12,7 @@ struct CalendarKeyboardSnapshotTests {
         let model = CalendarViewModel.snapshot(identifier: identifier)
         let cursor = CalendarKeyboardCursor()
         cursor.isActive = true
+        cursor.hasSeenKeyInput = true
         try cursor.move(days: 1, model: model)
         let date = try #require(cursor.date)
         let before =
