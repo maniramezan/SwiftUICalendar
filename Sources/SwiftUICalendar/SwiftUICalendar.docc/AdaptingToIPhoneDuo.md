@@ -38,27 +38,17 @@ calendar from side to side as the hinge angle wobbles.
 The displacement itself needs nothing newer than the package's own minimum, iOS 18 / macOS 15, and is
 active on every platform.
 
-What *does* need a newer SDK is reading the hinge from the system.
-`GeometryProxy.reservedRegions(kind: .division)` arrives in the iOS 27.1 SDK, and Swift has no way to
-compile conditionally on SDK version, so referencing it would make Xcode 27.1 a hard requirement for
-building the package at all.
+Reading the hinge from the system needs a newer SDK: `GeometryProxy.reservedRegions(kind: .division)`
+arrives in the iOS 27.1 SDK. The calendar calls it whenever it is *built* with that SDK or newer, and
+compiles the call out otherwise, so the package still builds with Xcode 27.0.
 
-The fold source is therefore injected rather than called inline. The layout reads blocked bands from
-the `calendarFoldRanges` environment value, which means the behavior is complete and testable today,
-and connecting it to the system is one availability-gated line once the toolchain moves:
+- **Built with Xcode 27.1 or later**, on iOS 27.1 or later: the calendar reads the hinge itself and
+  moves clear of it. Nothing to adopt.
+- **Built with Xcode 27.0**, or running on an earlier iOS: no hinge is reported, and the calendar lays
+  out exactly as it does on any other iPhone.
 
-```swift
-// Added when the project builds against the iOS 27.1 SDK.
-.onGeometryChange(for: [ClosedRange<CGFloat>].self) { proxy in
-    guard #available(iOS 27.1, *) else { return [] }
-    // `.fixed`: the calendar expects physical coordinates and handles right-to-left itself.
-    return proxy.reservedRegions(kind: .division, layoutDirectionBehavior: .fixed)
-        .filter(\.isActive)
-        .map { $0.frame.minX...$0.frame.maxX }
-} action: { ranges in
-    foldRanges = ranges
-}
-```
+Swift has no SDK-version conditional, and Xcode 27.0 and 27.1 ship the same compiler, but their
+SwiftUICore modules differ in version, which `canImport(SwiftUICore, _version:)` can test. That is the
+gate; `#available(iOS 27.1, *)` then guards older devices at run time.
 
-Until then the calendar renders exactly as it always has on an unfolded display, because an empty set
-of blocked bands resolves to no displacement.
+To ship Duo support in your app, build it with Xcode 27.1 or later.
