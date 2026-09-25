@@ -112,6 +112,23 @@ CalendarView(model: calendar, configuration: configuration)
 Use `.compact` when the calendar should look identical regardless of window size, and `.flexible`
 when it should track the full width of a resizable pane.
 
+## iPhone Duo
+
+On a partially folded iPhone Duo the hinge divides the inner display, and the system reports a
+`division` reserved region where it crosses. Rather than straddle the fold, the calendar displaces
+itself into the widest band beside it, so a week still reads as one row and day cells keep their full
+touch targets. If that band is narrower than the grid's minimum width, it scrolls horizontally like
+any other narrow window.
+
+Nothing to configure. The displacement needs nothing newer than the package's own iOS 18 / macOS 15
+minimum.
+
+Reading the hinge from the system uses `GeometryProxy.reservedRegions(kind:)`, which lands in the iOS
+27.1 SDK — and because Swift cannot compile conditionally on SDK version, referencing it would make
+Xcode 27.1 mandatory just to build. So the blocked bands are injected through the `calendarFoldRanges`
+environment value instead, and wiring them to the system is a one-line, availability-gated follow-up
+once the toolchain moves.
+
 ## Keyboard Navigation
 
 With keyboard focus on the calendar, use Left/Right to move by one day and Up/Down to move

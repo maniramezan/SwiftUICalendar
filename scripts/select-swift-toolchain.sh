@@ -17,6 +17,14 @@ if [[ -n "${XCODE_VERSION:-}" ]]; then
   developer_path="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
   if [[ ! -d "${developer_path}" ]]; then
     echo "error: required Xcode ${XCODE_VERSION} is not installed" >&2
+    echo "Installed Xcode toolchains:" >&2
+    for xcode_app in /Applications/Xcode*.app; do
+      [[ -d "${xcode_app}/Contents/Developer" ]] || continue
+      # No pipe here: `head` would close the pipe early and SIGPIPE aborts the script under
+      # `set -o pipefail`, swallowing the very diagnostic this loop exists to print.
+      version="$("${xcode_app}/Contents/Developer/usr/bin/xcodebuild" -version 2>/dev/null || true)"
+      echo "  ${xcode_app} (${version%%$'\n'*})" >&2
+    done
     exit 1
   fi
   sudo xcode-select -s "${developer_path}"
