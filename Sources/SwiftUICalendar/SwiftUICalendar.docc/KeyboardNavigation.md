@@ -9,11 +9,15 @@ the calendar keyboard focus and it draws a *focus ring* around one day — the k
 moves independently of the current selection. Nothing is selected until the reader asks for it, so
 arrowing across a month never disturbs a range the reader already built.
 
+Tapping or clicking a day gives the calendar keyboard focus at that day, so a reader can tap and
+then keep going with the arrow keys. The ring appears with the first key press, so someone who only
+ever touches the screen never sees it.
+
 | Key | Action |
 | --- | --- |
 | `←` `→` | Move the cursor one day, following the calendar's layout direction |
 | `↑` `↓` | Move the cursor one week |
-| `Return` `Space` | Select the focused day using the current selection mode |
+| `Space` `Return` | Select the focused day using the current selection mode (on iPad, `Space`: the system keeps `Return`) |
 | `⌘←` `⌘→` | Move to the previous or next month |
 | `⌘T` | Return to today, when today is inside ``CalendarViewModel/dateRange`` |
 
