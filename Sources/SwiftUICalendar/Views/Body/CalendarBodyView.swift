@@ -256,6 +256,10 @@ extension CalendarBodyView {
         // mutating `currentDate` here would trigger an unwanted scroll jump.
         viewModel.select(
             selectedDate, navigating: navigatesOnOverflowTap && !item.isInDisplayedMonth)
+        // A tapped day is where keyboard users continue from; see `CalendarKeyboardCursor.focusRequest`.
+        if let dayStart = item.dayStart {
+            keyboard?.requestFocus(at: dayStart)
+        }
     }
 
 }
