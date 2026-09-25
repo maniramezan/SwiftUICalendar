@@ -6,6 +6,7 @@ import SwiftUI
 /// .menu` always renders a dropdown regardless of item count, independent of `MenuPicker`'s
 /// internal wheel-fallback threshold.
 struct YearMenuPickerView: View {
+    @Environment(\.calendarMetrics) private var metrics
     let items: [YearItem]
     @Binding var currentValue: YearItem
 
@@ -27,8 +28,8 @@ struct YearMenuPickerView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .allowsTightening(true)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, metrics.controlPadding)
+                .padding(.vertical, metrics.tightPadding)
         }
         .menuIndicator(.hidden)
         .fixedSize(horizontal: true, vertical: false)

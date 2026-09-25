@@ -5,6 +5,7 @@ import SwiftUI
 /// Each page shows nine consecutive years. Use the chevrons in the popover's navigation row to
 /// page nine years at a time; paging is clamped to the supplied `minYear`/`maxYear` bounds.
 struct YearDecadeGridPickerView: View {
+    @Environment(\.calendarMetrics) private var metrics
     let minYear: Int
     let maxYear: Int
     let formatTitle: (Int) -> String
@@ -45,8 +46,8 @@ struct YearDecadeGridPickerView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .allowsTightening(true)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, metrics.controlPadding)
+                .padding(.vertical, metrics.tightPadding)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
@@ -67,6 +68,7 @@ struct YearDecadeGridPickerView: View {
 /// The popover body for `YearDecadeGridPickerView`: a paging header plus a 3x3 grid of years.
 /// Internal (not private) so hosting tests can render the grid without presenting a popover.
 struct YearDecadeGridPopoverContent: View {
+    @Environment(\.calendarMetrics) private var metrics
     let minYear: Int
     let maxYear: Int
     @Binding var pageStart: Int
@@ -75,12 +77,15 @@ struct YearDecadeGridPopoverContent: View {
     @Binding var isPresented: Bool
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: metrics.controlSpacing) {
             HStack {
                 Button(action: pageBackward) {
                     Image(systemName: "chevron.backward")
                         .font(.body.weight(.semibold))
-                        .frame(width: 28, height: 28)
+                        .frame(
+                            width: metrics.compactControlSize, height: metrics.compactControlSize
+                        )
+                        .contentShape(Rectangle().inset(by: -metrics.hitTargetOutset))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Calendar.Navigation.Previous".localized)
@@ -96,14 +101,20 @@ struct YearDecadeGridPopoverContent: View {
                 Button(action: pageForward) {
                     Image(systemName: "chevron.forward")
                         .font(.body.weight(.semibold))
-                        .frame(width: 28, height: 28)
+                        .frame(
+                            width: metrics.compactControlSize, height: metrics.compactControlSize
+                        )
+                        .contentShape(Rectangle().inset(by: -metrics.hitTargetOutset))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Calendar.Navigation.Next".localized)
                 .disabled(!YearDecadeGrid.canPageForward(from: pageStart, maxYear: maxYear))
             }
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible()), count: 3),
+                spacing: metrics.itemSpacing
+            ) {
                 ForEach(YearDecadeGrid.years(pageStart: pageStart), id: \.self) { year in
                     YearDecadeGridCell(
                         year: year,
@@ -120,7 +131,7 @@ struct YearDecadeGridPopoverContent: View {
             }
         }
         .padding()
-        .frame(width: 220)
+        .frame(width: metrics.yearPickerPopoverWidth)
     }
 
     private func pageBackward() {
@@ -136,6 +147,7 @@ struct YearDecadeGridPopoverContent: View {
 
 /// A single selectable year cell within the decade grid popover.
 private struct YearDecadeGridCell: View {
+    @Environment(\.calendarMetrics) private var metrics
     let year: Int
     let minYear: Int
     let maxYear: Int
@@ -150,9 +162,14 @@ private struct YearDecadeGridCell: View {
     var body: some View {
         Button(action: onSelect) {
             Text(formatTitle(year))
-                .frame(maxWidth: .infinity, minHeight: 36)
+                .frame(maxWidth: .infinity, minHeight: metrics.yearOptionMinHeight)
                 .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: metrics.cornerRadius))
+                // Reaches the touch floor by growing into the grid's row spacing, so adjacent
+                // options' tappable regions meet rather than overlap.
+                .contentShape(
+                    Rectangle().inset(
+                        by: -max(0, (metrics.minCellSize - metrics.yearOptionMinHeight) / 2)))
         }
         .buttonStyle(.plain)
         .disabled(!isSelectable)
