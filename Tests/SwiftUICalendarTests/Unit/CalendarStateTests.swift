@@ -30,12 +30,56 @@ struct CalendarStateTests {
     @Test("Convenience initialization clamps unsupported clocks without trapping")
     func clampedInitialization() throws {
         let calendar = Calendar(identifier: .gregorian)
-        let state = CalendarState(
+        var state = CalendarState(
             calendar: calendar, clamping: try date(1800, 1, 1), selection: .single(nil))
+        #expect(state.currentDate == (try date(1900, 1, 1)))
+        try state.apply(.navigateVisibleEraMonth(state.visibleMonth))
         #expect(state.currentDate == (try date(1900, 1, 1)))
         let model = CalendarViewModel(state: state)
         #expect(throws: (any Error).self) { try model.updateMonth(byAdding: -1) }
         #expect(model.state == state)
+    }
+
+    @Test(
+        "Identifier initialization assigns calendar-specific locales",
+        arguments: [Calendar.Identifier.hebrew, .islamic, .islamicCivil, .islamicTabular,
+            .islamicUmmAlQura, .japanese, .buddhist, .persian])
+    func identifierInitializationUsesCalendarLocale(identifier: Calendar.Identifier) throws {
+        let currentDate = try date(2025, 6, 1)
+        let state = try CalendarState(calendarIdentifier: identifier, currentDate: currentDate)
+
+        #expect(state.calendar.identifier == identifier)
+        #expect(state.currentDate == currentDate)
+        #expect(!state.calendar.locale!.identifier.isEmpty)
+        let model = CalendarViewModel(state: state)
+        #expect(!model.locale.identifier.isEmpty)
+        let gregorianYearStart = try date(2025, 1, 1)
+        #expect(
+            try model.convertGregorianYearToCurrentCalendar(2025)
+                == state.calendar.component(.year, from: gregorianYearStart))
+    }
+
+    @Test("Clamping initialization ignores a date range outside supported dates")
+    func clampedInitializationIgnoresUnsupportedRange() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let unsupported = try date(1700, 1, 1)...date(1800, 1, 1)
+        let state = CalendarState(
+            calendar: calendar, clamping: try date(2025, 6, 1), selection: .single(nil),
+            dateRange: unsupported)
+
+        #expect(state.currentDate == (try date(2025, 6, 1)))
+        #expect(state.dateRange.lowerBound == (try date(1900, 1, 1)))
+    }
+
+    @Test("Visible-era month navigation remains inside the active Japanese era")
+    func visibleEraMonthNavigation() throws {
+        let currentDate = try date(2025, 6, 1)
+        var state = try CalendarState(
+            calendarIdentifier: .japanese, currentDate: currentDate)
+
+        try state.apply(.navigateVisibleEraMonth(state.visibleMonth))
+
+        #expect(state.currentDate == currentDate)
     }
 
     @Test("Rejected compound actions preserve both selection and navigation")
