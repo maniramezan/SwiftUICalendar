@@ -29,7 +29,6 @@ public struct CalendarView: View {
     private let theme: Theme
     private let typography: Typography
     private let configuration: CalendarConfiguration
-    @State private var widthClass: Int = 0
     // Persists the projection built for `.external` across re-renders (e.g. every TCA store
     // mutation) instead of the `init(state:onAction:)` below constructing a fresh one each time.
     // See `CalendarViewModel.sync(state:onAction:)` for why replacing the instance every render
@@ -133,19 +132,7 @@ public struct CalendarView: View {
             calendarBodyContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .layoutPriority(1)
-                .onGeometryChange(for: Int.self) {
-                    Int($0.size.width / 100)
-                } action: { newClass in
-                    widthClass = newClass
-                }
-                // Every calendar body mode (`.none`, `.vertical`, `.horizontal`) resolves its own day
-                // grid from a container width that some of them cache in @State (e.g. `CalendarBodyView`
-                // measures itself via `.onGeometryChange` when not driven by a parent pager). That cached
-                // width can persist from the previous orientation for one render, producing a grid sized
-                // for the old width and centered/clipped inside the new, differently-sized viewport.
-                // Resetting identity when the width crosses a coarse threshold (which any orientation
-                // change does) forces a full re-measurement from scratch instead of reusing stale state.
-                .id(widthClass)
+
         }
         .safeAreaPadding(10)
         .environment(viewModel)
@@ -226,9 +213,6 @@ private struct CalendarBodyHorizontalContainer: View {
     var body: some View {
         // A six-row month can exceed a short landscape viewport. Keep the pager horizontally
         // interactive while allowing its rows to overflow vertically instead of compressing.
-        // Note: the enclosing `calendarBodyContent` in `CalendarView` already resets this entire
-        // subtree's identity (and thus this @State) on orientation change, so `scrollPosition`
-        // starts fresh at `.top` for every new orientation without needing its own tracking here.
         ScrollView(.vertical) {
             CalendarBodyHorizontalView(viewModel: viewModel)
                 .frame(maxWidth: .infinity, alignment: .top)

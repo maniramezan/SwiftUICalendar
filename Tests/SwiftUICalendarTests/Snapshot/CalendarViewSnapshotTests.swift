@@ -10,6 +10,19 @@ struct CalendarViewSnapshotTests {
 
     private let snapshotWidth: CGFloat = 390
 
+    @Test(
+        "Resizable iPad calendar",
+        arguments: [
+            CalendarConfiguration.ScrollMode.none, .vertical, .horizontal,
+        ], [Calendar.Identifier.gregorian, .persian])
+    func resizableCalendar(mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier)
+    {
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
+        assertCalendarStructure(
+            model: model, configuration: .init(scrollMode: mode),
+            width: 600, named: "ipad-\(mode)-\(identifier)")
+    }
+
     @Test("Fixed calendar with header")
     func fixedCalendarWithHeader() throws {
         let vm = CalendarViewModel.snapshot(selection: .single(nil))
