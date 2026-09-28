@@ -82,6 +82,7 @@ struct CalendarMetricsTests {
         // Derived ceiling: minimumHitTarget (44) + twoAndHalfUnits (20).
         #expect(metrics.maxCellSize == 64)
         #expect(metrics.monthSpacing == 24)
+        #expect(metrics.monthInset == 16)
         // 7 * 44 + 6 * 8
         #expect(metrics.minCalendarWidth == 356)
     }
@@ -91,7 +92,8 @@ struct CalendarMetricsTests {
     @Test("Custom design-theme tokens flow into the resolved metrics")
     func customThemeTokens() {
         let theme = DesignSystem.DefaultTheme(
-            spacing: DesignSystem.DefaultSpacing(oneUnit: 10, twoAndHalfUnits: 30, threeUnits: 36),
+            spacing: DesignSystem.DefaultSpacing(
+                oneUnit: 10, twoUnits: 22, twoAndHalfUnits: 30, threeUnits: 36),
             motion: DesignSystem.DefaultMotion(minimumHitTarget: 50)
         )
         let metrics = CalendarMetrics(theme: theme)
@@ -100,6 +102,7 @@ struct CalendarMetricsTests {
         #expect(metrics.minCellSize == 50)
         #expect(metrics.maxCellSize == 80)
         #expect(metrics.monthSpacing == 36)
+        #expect(metrics.monthInset == 22)
     }
 
     // MARK: - Cap relationship
