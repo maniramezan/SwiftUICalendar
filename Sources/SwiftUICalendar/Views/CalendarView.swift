@@ -1,3 +1,4 @@
+import OSLog
 import SwiftCommons
 import SwiftUI
 
@@ -34,6 +35,9 @@ public struct CalendarView: View {
     // See `CalendarViewModel.sync(state:onAction:)` for why replacing the instance every render
     // would defeat `@Observable`'s per-property diffing for every downstream view.
     @State private var externalViewModel: CalendarViewModel?
+    @State private var keyboard = CalendarKeyboardCursor()
+    @FocusState private var isKeyboardFocused: Bool
+    private let logger = Logger.swiftUICalendar(for: CalendarView.self)
 
     private var viewModel: CalendarViewModel {
         switch source {
@@ -107,11 +111,12 @@ public struct CalendarView: View {
     private func calendarBodyContent(allowsPaging: Bool) -> some View {
         switch configuration.scrollMode {
         case .none:
-            CalendarBodyView()
+            CalendarBodyView(keyboard: keyboard)
         case .vertical:
-            CalendarBodyVerticalContainer()
+            CalendarBodyVerticalContainer(keyboard: keyboard)
         case .horizontal:
-            CalendarBodyHorizontalContainer(viewModel: viewModel, allowsPaging: allowsPaging)
+            CalendarBodyHorizontalContainer(
+                viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
         }
     }
 
@@ -120,7 +125,7 @@ public struct CalendarView: View {
     /// You normally do not call this property directly. SwiftUI evaluates it as part of the
     /// standard `View` lifecycle.
     public var body: some View {
-        CalendarViewport { allowsPaging in
+        CalendarViewport(keyboard: keyboard) { allowsPaging in
             VStack {
                 #if os(iOS)
                     CalendarTodayControl(viewModel: viewModel)
@@ -136,6 +141,48 @@ public struct CalendarView: View {
 
             }
         }
+        // Not focusable at all when the host declined every shortcut, so the calendar stops
+        // being a tab stop it would do nothing with.
+        .focusable(!configuration.keyboardNavigation.isEmpty, interactions: .edit)
+        .focused($isKeyboardFocused)
+        .onChange(of: isKeyboardFocused) { _, focused in
+            logger.debug("Keyboard focus \(focused ? "gained" : "lost", privacy: .public)")
+            keyboard.isActive = focused
+            if focused {
+                if let tapped = keyboard.takePendingFocusDate() {
+                    keyboard.date = tapped
+                } else {
+                    keyboard.follow(viewModel.currentDate, calendar: viewModel.engine.calendar)
+                }
+            }
+        }
+        .onChange(of: keyboard.focusRequest) { _, _ in
+            guard !configuration.keyboardNavigation.isEmpty else { return }
+            logger.debug("Keyboard focus requested by a tapped day")
+            if isKeyboardFocused, let tapped = keyboard.takePendingFocusDate() {
+                keyboard.date = tapped
+            } else {
+                isKeyboardFocused = true
+            }
+        }
+        .onChange(of: viewModel.currentDate) { _, date in
+            // `follow`, not a scroll request: this also fires when a settled scroll navigates the
+            // model, and asking the scroll container to move would fight the user's own gesture.
+            guard keyboard.isActive else { return }
+            keyboard.follow(date, calendar: viewModel.engine.calendar)
+        }
+        .onKeyPress(phases: [.down, .repeat]) { press in
+            keyboard.hasSeenKeyInput = true
+            let result = handleKeyPress(press)
+            // Key codes, not characters: the log never carries text a person typed.
+            let key = press.key.character.unicodeScalars
+                .map { String($0.value, radix: 16) }.joined()
+            let outcome = result == .handled ? "handled" : "ignored"
+            logger.debug(
+                "Key \(key, privacy: .public) modifiers \(press.modifiers.rawValue) → \(outcome, privacy: .public)"
+            )
+            return result
+        }
         .environment(viewModel)
         .environment(theme)
         .environment(typography)
@@ -144,6 +191,48 @@ public struct CalendarView: View {
         .environment(\.layoutDirection, viewModel.layoutDirection)
         .resolveCalendarMetrics()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    // MARK: - Keyboard Input
+
+    /// Routes a key press to the cursor, consuming it only when the calendar acted on it.
+    ///
+    /// A refused shortcut returns `.ignored` rather than `.handled`: swallowing `⌘T` at the edge of
+    /// the date range, or an arrow key at the first available day, would stop the host app and the
+    /// system from seeing a key the calendar did nothing with.
+    private func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
+        let shortcuts = configuration.keyboardNavigation
+        guard isKeyboardFocused, !shortcuts.isEmpty else { return .ignored }
+        let modifiers = CalendarKeyboardCursor.meaningfulModifiers(press.modifiers)
+        do {
+            if shortcuts.contains(.arrows), modifiers.isEmpty,
+                let days = CalendarKeyboardCursor.dayOffset(
+                    for: press.key, direction: viewModel.layoutDirection)
+            {
+                return try keyboard.move(days: days, model: viewModel) ? .handled : .ignored
+            }
+            if shortcuts.contains(.arrows), modifiers.isEmpty,
+                press.key == .return || press.key == .space
+            {
+                // Selection fires once per physical press; a held key must not re-select.
+                guard press.phase == .down else { return .handled }
+                return keyboard.select(model: viewModel) ? .handled : .ignored
+            }
+            if shortcuts.contains(.today), modifiers == .command, press.key == "t" {
+                return keyboard.goToToday(model: viewModel) ? .handled : .ignored
+            }
+            if shortcuts.contains(.monthShortcuts), modifiers == .command,
+                let months = CalendarKeyboardCursor.monthOffset(
+                    for: press.key, direction: viewModel.layoutDirection)
+            {
+                return try keyboard.moveMonths(months, model: viewModel) ? .handled : .ignored
+            }
+        } catch {
+            logger.error(
+                "Keyboard navigation failed", error: error, context: "calendar keyboard navigation")
+            return .ignored
+        }
+        return .ignored
     }
 }
 
@@ -202,23 +291,36 @@ private struct CalendarHeaderControl: View {
 }
 
 private struct CalendarBodyVerticalContainer: View {
+    let keyboard: CalendarKeyboardCursor
+
     var body: some View {
-        CalendarBodyVerticalView()
+        CalendarBodyVerticalView(keyboard: keyboard)
     }
 }
 
 private struct CalendarBodyHorizontalContainer: View {
     let viewModel: CalendarViewModel
     let allowsPaging: Bool
+    let keyboard: CalendarKeyboardCursor
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
     var body: some View {
         // A six-row month can exceed a short landscape viewport. Keep the pager horizontally
         // interactive while allowing its rows to overflow vertically instead of compressing.
-        ScrollView(.vertical) {
-            CalendarBodyHorizontalView(viewModel: viewModel, allowsPaging: allowsPaging)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                CalendarBodyHorizontalView(
+                    viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard
+                )
                 .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .scrollPosition($scrollPosition)
+            // `scrollRequest`, not `date`: swiping to another month or tapping Today moves the
+            // cursor to follow, and scrolling on that would move this list with no key pressed.
+            .onChange(of: keyboard.scrollRequest) { _, request in
+                guard keyboard.isActive, let request else { return }
+                proxy.scrollTo(request.identity)
+            }
         }
-        .scrollPosition($scrollPosition)
     }
 }

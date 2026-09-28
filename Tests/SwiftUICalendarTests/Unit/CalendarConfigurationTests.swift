@@ -32,4 +32,28 @@ struct CalendarConfigurationTests {
         #expect(CalendarConfiguration(gridSizing: .compact).gridSizing == .compact)
         #expect(CalendarConfiguration(gridSizing: .flexible).gridSizing == .flexible)
     }
+
+    // MARK: - Keyboard navigation
+
+    @Test("every shortcut is enabled by default")
+    func keyboardNavigationDefaultsToAll() {
+        let configuration = CalendarConfiguration()
+        #expect(configuration.keyboardNavigation == .all)
+        #expect(configuration.keyboardNavigation.contains(.arrows))
+        #expect(configuration.keyboardNavigation.contains(.monthShortcuts))
+        #expect(configuration.keyboardNavigation.contains(.today))
+    }
+
+    @Test("a host can decline individual shortcuts")
+    func keyboardNavigationSubsets() {
+        let withoutToday = CalendarConfiguration(
+            keyboardNavigation: [.arrows, .monthShortcuts])
+        #expect(withoutToday.keyboardNavigation.contains(.arrows))
+        #expect(withoutToday.keyboardNavigation.contains(.monthShortcuts))
+        #expect(!withoutToday.keyboardNavigation.contains(.today))
+
+        let none = CalendarConfiguration(keyboardNavigation: [])
+        #expect(none.keyboardNavigation.isEmpty)
+        #expect(!none.keyboardNavigation.contains(.arrows))
+    }
 }

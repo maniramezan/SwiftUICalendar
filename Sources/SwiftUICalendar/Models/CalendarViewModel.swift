@@ -408,7 +408,8 @@ import SwiftUI
             let availableDays = engine.availableDayStarts
             let days = geometry.days.map { day in
                 MonthSnapshot.Day(
-                    id: day.id, date: day.date, day: day.day, dayLabel: day.dayLabel,
+                    id: day.id, date: day.date, dayStart: day.dayStart, day: day.day,
+                    dayLabel: day.dayLabel,
                     month: day.month,
                     year: day.year, isInDisplayedMonth: day.isInDisplayedMonth,
                     isToday: day.dayStart == today, isSelected: isSelected(day.dayStart),

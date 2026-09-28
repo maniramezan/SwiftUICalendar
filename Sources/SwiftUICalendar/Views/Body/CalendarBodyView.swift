@@ -13,6 +13,7 @@ struct CalendarBodyView: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var containerWidth: CGFloat = 0
     private let layoutWidth: CGFloat?
+    private let keyboard: CalendarKeyboardCursor?
     private let monthIdentifier: MonthIdentifier?
     private let displayMonth: Int?
     private let displayYear: Int?
@@ -148,6 +149,22 @@ struct CalendarBodyView: View {
                             // Keep the cell a square (cellSize × cellSize) and center it in the wider column so
                             // square day views stay square when the grid fills a wide window.
                             .frame(width: cellSize, height: cellSize)
+                            .overlay {
+                                // `item.dayStart`, never `item.date`: the cursor stores a
+                                // start-of-day date, and `date` keeps whatever time-of-day the month
+                                // arithmetic produced, so comparing the two could never match.
+                                if let dayStart = item.dayStart,
+                                    keyboard?.isFocused(dayStart) == true
+                                {
+                                    RoundedRectangle(cornerRadius: metrics.focusRingRadius)
+                                        .strokeBorder(
+                                            theme.day.focusBorderColor,
+                                            lineWidth: theme.day.focusBorderWidth
+                                        )
+                                        .allowsHitTesting(false)
+                                        .accessibilityHidden(true)
+                                }
+                            }
                             .frame(maxWidth: .infinity)
                             // Days outside `dateRange` share the overflow-day styling and are
                             // disabled, which also disables buttons inside custom day views and
@@ -183,7 +200,7 @@ struct CalendarBodyView: View {
         monthIdentifier: MonthIdentifier? = nil,
         displayMonth: Int? = nil, displayYear: Int? = nil, showWeekdayHeader: Bool = true,
         hideOverflowDays: Bool = false, navigatesOnOverflowTap: Bool = true,
-        layoutWidth: CGFloat? = nil
+        layoutWidth: CGFloat? = nil, keyboard: CalendarKeyboardCursor? = nil
     ) {
         self.monthIdentifier = monthIdentifier
         self.displayMonth = displayMonth
@@ -192,6 +209,7 @@ struct CalendarBodyView: View {
         self.hideOverflowDays = hideOverflowDays
         self.navigatesOnOverflowTap = navigatesOnOverflowTap
         self.layoutWidth = layoutWidth
+        self.keyboard = keyboard
     }
 }
 
@@ -238,6 +256,10 @@ extension CalendarBodyView {
         // mutating `currentDate` here would trigger an unwanted scroll jump.
         viewModel.select(
             selectedDate, navigating: navigatesOnOverflowTap && !item.isInDisplayedMonth)
+        // A tapped day is where keyboard users continue from; see `CalendarKeyboardCursor.focusRequest`.
+        if let dayStart = item.dayStart {
+            keyboard?.requestFocus(at: dayStart)
+        }
     }
 
 }

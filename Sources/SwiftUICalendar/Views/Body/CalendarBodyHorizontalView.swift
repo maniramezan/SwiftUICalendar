@@ -27,6 +27,7 @@ struct CalendarBodyHorizontalView: View {
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     private let reduceMotionOverride: Bool?
     private let allowsPaging: Bool
+    private let keyboard: CalendarKeyboardCursor?
     private var reduceMotion: Bool { reduceMotionOverride ?? systemReduceMotion }
     @Environment(Theme.self) var theme
     @Environment(Typography.self) var typography
@@ -135,10 +136,14 @@ struct CalendarBodyHorizontalView: View {
         viewModel.monthIdentifier(offset: 1) ?? currentMonth
     }
 
-    init(viewModel: CalendarViewModel, reduceMotion: Bool? = nil, allowsPaging: Bool = true) {
+    init(
+        viewModel: CalendarViewModel, reduceMotion: Bool? = nil, allowsPaging: Bool = true,
+        keyboard: CalendarKeyboardCursor? = nil
+    ) {
         self.viewModel = viewModel
         self.reduceMotionOverride = reduceMotion
         self.allowsPaging = allowsPaging
+        self.keyboard = keyboard
     }
 
     static func layoutWidth(containerWidth: CGFloat, minCalendarWidth: CGFloat) -> CGFloat {
@@ -342,7 +347,7 @@ struct CalendarBodyHorizontalView: View {
                     monthIdentifier: previousMonth,
                     showWeekdayHeader: false,
                     hideOverflowDays: true,
-                    layoutWidth: pageWidth
+                    layoutWidth: pageWidth, keyboard: keyboard
                 )
                 // The model is required: this view receives it as a stored property, not from the
                 // environment, so its pages would otherwise find none. Theme and typography are
@@ -359,7 +364,7 @@ struct CalendarBodyHorizontalView: View {
                     monthIdentifier: currentMonth,
                     showWeekdayHeader: false,
                     hideOverflowDays: true,
-                    layoutWidth: pageWidth
+                    layoutWidth: pageWidth, keyboard: keyboard
                 )
                 // The model is required: this view receives it as a stored property, not from the
                 // environment, so its pages would otherwise find none. Theme and typography are
@@ -376,7 +381,7 @@ struct CalendarBodyHorizontalView: View {
                     monthIdentifier: nextMonth,
                     showWeekdayHeader: false,
                     hideOverflowDays: true,
-                    layoutWidth: pageWidth
+                    layoutWidth: pageWidth, keyboard: keyboard
                 )
                 // The model is required: this view receives it as a stored property, not from the
                 // environment, so its pages would otherwise find none. Theme and typography are
