@@ -110,6 +110,10 @@ CalendarView(model: calendar, theme: theme)
 
 - <doc:KeyboardNavigation>
 
+### Devices
+
+- <doc:AdaptingToIPhoneDuo>
+
 ### Custom Day Views
 
 - <doc:CustomizingDayViews>
