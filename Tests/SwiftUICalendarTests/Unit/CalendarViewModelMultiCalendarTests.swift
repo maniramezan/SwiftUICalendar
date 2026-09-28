@@ -28,6 +28,22 @@ struct CalendarViewModelMultiCalendarTests {
         #expect(vm.headerTitles.first == expectedFirstWeekday)
     }
 
+    @Test(
+        "Islamic calendar variants use distinct native locales",
+        arguments: [
+            (Calendar.Identifier.islamic, "calendar=islamic"),
+            (.islamicCivil, "calendar=islamic-civil"),
+            (.islamicTabular, "calendar=islamic-tbla"),
+        ]
+    )
+    func islamicCalendarVariantsUseNativeLocales(
+        identifier: Calendar.Identifier,
+        expectedCalendar: String
+    ) {
+        let locale = CalendarState.locale(for: identifier)
+        #expect(locale.identifier.lowercased().contains(expectedCalendar))
+    }
+
     // MARK: - Persian
 
     @MainActor

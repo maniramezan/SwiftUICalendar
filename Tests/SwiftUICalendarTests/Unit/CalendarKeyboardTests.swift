@@ -134,6 +134,7 @@ struct CalendarKeyboardTests {
         cursor.hasSeenKeyInput = true
         #expect(try cursor.move(days: 1, model: model))
         let first = try #require(cursor.scrollRequest)
+        #expect(first.identity == MonthSnapshot.Day.identity(for: first.dayStart))
         #expect(try cursor.move(days: -1, model: model))
         #expect(try cursor.move(days: 1, model: model))
         let third = try #require(cursor.scrollRequest)
@@ -158,6 +159,26 @@ struct CalendarKeyboardTests {
             let dayStart = try #require(day.dayStart)
             #expect(MonthSnapshot.Day.identity(for: dayStart) == day.id)
         }
+    }
+
+    @Test("Refused month and today shortcuts leave the cursor unchanged")
+    func refusedMonthAndToday() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let current = try #require(
+            calendar.date(from: DateComponents(year: 2025, month: 6, day: 1)))
+        let rangeEnd = try #require(
+            calendar.date(from: DateComponents(year: 2025, month: 6, day: 30)))
+        let state = try CalendarState(
+            currentDate: current,
+            dateRange: current...rangeEnd)
+        let model = CalendarViewModel(state: state)
+        let cursor = CalendarKeyboardCursor()
+        cursor.follow(current, calendar: calendar)
+
+        #expect(try !cursor.moveMonths(1, model: model))
+        #expect(!cursor.goToToday(model: model))
+        #expect(cursor.date == calendar.startOfDay(for: current))
+        #expect(cursor.scrollRequest == nil)
     }
 
     // MARK: - Focus matching

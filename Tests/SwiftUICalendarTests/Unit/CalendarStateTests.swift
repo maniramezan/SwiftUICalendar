@@ -38,6 +38,40 @@ struct CalendarStateTests {
         #expect(model.state == state)
     }
 
+    @Test("Convenience initialization falls back when a range misses supported dates")
+    func unsupportedRangeFallsBack() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let unsupportedStart = try date(2200, 1, 1)
+        let unsupportedEnd = try date(2200, 12, 31)
+        let state = CalendarState(
+            calendar: calendar,
+            clamping: try date(2025, 6, 1),
+            selection: .single(nil),
+            dateRange: unsupportedStart...unsupportedEnd)
+
+        #expect(state.dateRange.lowerBound == (try date(1900, 1, 1)))
+        #expect(state.dateRange.upperBound < (try date(2101, 1, 1)))
+        #expect(state.currentDate == (try date(2025, 6, 1)))
+    }
+
+    @Test("Relative year navigation respects the configured date range")
+    func relativeYearRange() throws {
+        let lower = try date(2024, 1, 1)
+        let upper = try date(2026, 12, 31)
+        var state = try CalendarState(
+            currentDate: date(2025, 6, 1), dateRange: lower...upper)
+
+        #expect(state.relativeYearDate(-1) != nil)
+        #expect(state.relativeYearDate(1) != nil)
+        #expect(state.relativeYearDate(-2) == nil)
+        #expect(state.relativeYearDate(2) == nil)
+        try state.apply(.offsetYears(1))
+        #expect(state.currentDate == (try date(2026, 6, 1)))
+        let beforeRejectedNavigation = state
+        #expect(throws: (any Error).self) { try state.apply(.offsetYears(1)) }
+        #expect(state == beforeRejectedNavigation)
+    }
+
     @Test("Rejected compound actions preserve both selection and navigation")
     func atomicSelection() throws {
         var state = try CalendarState(currentDate: date(2025, 6, 1))
