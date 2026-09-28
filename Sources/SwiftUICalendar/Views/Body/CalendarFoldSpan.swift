@@ -115,13 +115,13 @@ struct SystemFoldReader: ViewModifier {
 
     func body(content: Content) -> some View {
         #if os(iOS)
-        if #available(iOS 27.1, *) {
-            content.modifier(SystemFoldRegionReader(ranges: $ranges))
-        } else {
-            content
-        }
+            if #available(iOS 27.1, *) {
+                content.modifier(SystemFoldRegionReader(ranges: $ranges))
+            } else {
+                content
+            }
         #else
-        content
+            content
         #endif
     }
 }
@@ -137,7 +137,7 @@ private struct SystemFoldRegionReader: ViewModifier {
                 .filter(\.isActive)
                 .map { $0.frame.minX...$0.frame.maxX }
         } action: { newRanges in
-                ranges = newRanges
+            ranges = newRanges
         }
     }
 }
