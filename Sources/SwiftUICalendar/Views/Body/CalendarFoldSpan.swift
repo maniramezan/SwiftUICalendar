@@ -114,11 +114,15 @@ struct SystemFoldReader: ViewModifier {
     @Binding var ranges: [ClosedRange<CGFloat>]
 
     func body(content: Content) -> some View {
+        #if os(iOS)
         if #available(iOS 27.1, *) {
             content.modifier(SystemFoldRegionReader(ranges: $ranges))
         } else {
             content
         }
+        #else
+        content
+        #endif
     }
 }
 
@@ -129,15 +133,11 @@ private struct SystemFoldRegionReader: ViewModifier {
 
     func body(content: Content) -> some View {
         content.onGeometryChange(for: [ClosedRange<CGFloat>].self) { proxy in
-            // `.fixed`: the calendar handles right-to-left itself and expects physical coordinates.
-            return proxy.reservedRegions(kind: .division, layoutDirectionBehavior: .fixed)
+            proxy.reservedRegions(kind: .division, layoutDirectionBehavior: .fixed)
                 .filter(\.isActive)
                 .map { $0.frame.minX...$0.frame.maxX }
         } action: { newRanges in
-            Logger.calendarUI.info(
-                "System fold bands changed: \(newRanges.count) active, \(String(describing: newRanges))"
-            )
-            ranges = newRanges
+                ranges = newRanges
         }
     }
 }
