@@ -34,10 +34,10 @@ final class VerticalScrollDateUpdateReproUITests: XCTestCase {
         XCTAssertTrue(waitForHeaderToLeaveViewport(currentHeader, in: app))
 
         app.buttons["Settings"].tap()
-        let architecturePicker = app.segmentedControls["state-owner-picker"]
+        let architecturePicker = app.descendants(matching: .any)["state-owner-picker"]
         XCTAssertTrue(architecturePicker.waitForExistence(timeout: 5))
         architecturePicker.buttons["TCA"].tap()
-        app.buttons["Done"].tap()
+        app.dismissSettings()
 
         XCTAssertTrue(app.staticTexts[currentHeader].waitForExistence(timeout: 5))
     }
@@ -58,14 +58,14 @@ final class VerticalScrollDateUpdateReproUITests: XCTestCase {
 
     private func configure(_ app: XCUIApplication, architecture: String) {
         app.buttons["Settings"].tap()
-        let scrollPicker = app.segmentedControls["scroll-mode-picker"]
+        let scrollPicker = app.descendants(matching: .any)["scroll-mode-picker"]
         XCTAssertTrue(scrollPicker.waitForExistence(timeout: 5))
         scrollPicker.buttons["Vertical"].tap()
 
-        let architecturePicker = app.segmentedControls["state-owner-picker"]
+        let architecturePicker = app.descendants(matching: .any)["state-owner-picker"]
         XCTAssertTrue(architecturePicker.waitForExistence(timeout: 5))
         architecturePicker.buttons[architecture].tap()
-        app.buttons["Done"].tap()
+        app.dismissSettings()
         XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))
     }
 
