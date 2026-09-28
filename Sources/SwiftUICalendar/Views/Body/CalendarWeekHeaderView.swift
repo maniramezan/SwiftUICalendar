@@ -2,11 +2,12 @@ import SwiftCommons
 import SwiftUI
 
 struct CalendarWeekHeaderView: View {
+    @Environment(\.calendarMetrics) private var metrics
 
     @State var weekDays: [String]
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: metrics.itemSpacing) {
             ForEach(weekDays, id: \.self) { day in
                 ZStack {
                     Text(day)
@@ -18,8 +19,8 @@ struct CalendarWeekHeaderView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
-        .adaptiveGlass(shape: .roundedRectangle(cornerRadius: 8))
+        .padding(.vertical, metrics.tightPadding)
+        .adaptiveGlass(shape: .roundedRectangle(cornerRadius: metrics.cornerRadius))
     }
 }
 

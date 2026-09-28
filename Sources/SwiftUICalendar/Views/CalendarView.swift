@@ -107,19 +107,6 @@ public struct CalendarView: View {
             initialValue: CalendarViewModel(state: state, onAction: onAction))
     }
 
-    @ViewBuilder
-    private func calendarBodyContent(allowsPaging: Bool) -> some View {
-        switch configuration.scrollMode {
-        case .none:
-            CalendarBodyView(keyboard: keyboard)
-        case .vertical:
-            CalendarBodyVerticalContainer(keyboard: keyboard)
-        case .horizontal:
-            CalendarBodyHorizontalContainer(
-                viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
-        }
-    }
-
     /// The SwiftUI body for the calendar view.
     ///
     /// You normally do not call this property directly. SwiftUI evaluates it as part of the
@@ -129,16 +116,18 @@ public struct CalendarView: View {
             VStack {
                 #if os(iOS)
                     CalendarTodayControl(viewModel: viewModel)
-                        .frame(height: 28)
                 #endif
                 if configuration.showsHeader {
                     CalendarHeaderControl()
-                        .frame(height: 44)
                 }
-                calendarBodyContent(allowsPaging: allowsPaging)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .layoutPriority(1)
-
+                CalendarBodyContent(
+                    viewModel: viewModel,
+                    scrollMode: configuration.scrollMode,
+                    allowsPaging: allowsPaging,
+                    keyboard: keyboard
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .layoutPriority(1)
             }
         }
         // Not focusable at all when the host declined every shortcut, so the calendar stops
@@ -236,6 +225,30 @@ public struct CalendarView: View {
     }
 }
 
+/// Resolves the body for the configured scroll mode.
+///
+/// Its own `View` type rather than a `@ViewBuilder` member of ``CalendarView``: a `@ViewBuilder`
+/// property or method is inlined into the owning `body` and re-evaluated whenever that body is, so
+/// SwiftUI has nothing to diff and cannot skip the subtree.
+private struct CalendarBodyContent: View {
+    let viewModel: CalendarViewModel
+    let scrollMode: CalendarConfiguration.ScrollMode
+    let allowsPaging: Bool
+    let keyboard: CalendarKeyboardCursor
+
+    var body: some View {
+        switch scrollMode {
+        case .none:
+            CalendarBodyView(keyboard: keyboard)
+        case .vertical:
+            CalendarBodyVerticalContainer(keyboard: keyboard)
+        case .horizontal:
+            CalendarBodyHorizontalContainer(
+                viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
+        }
+    }
+}
+
 private struct CalendarHeaderControl: View {
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
@@ -252,6 +265,10 @@ private struct CalendarHeaderControl: View {
                 )
                 .frame(maxWidth: .infinity)
         }
+        // Pinned because a `GeometryReader` is greedy in both axes. Applied here rather than by
+        // `CalendarView`: metrics resolve from the design theme below `CalendarView`'s own body, so
+        // reading them there always got the defaults and ignored a custom theme.
+        .frame(height: metrics.headerRowHeight)
     }
 }
 
@@ -281,6 +298,8 @@ private struct CalendarHeaderControl: View {
                 )
                 .frame(maxWidth: .infinity)
             }
+            // See `CalendarHeaderControl`: resolved here so a custom theme applies.
+            .frame(height: metrics.todayRowHeight)
         }
     }
 #endif
