@@ -42,8 +42,16 @@ struct CalendarStateTests {
 
     @Test(
         "Identifier initialization assigns calendar-specific locales",
-        arguments: [Calendar.Identifier.hebrew, .islamic, .islamicCivil, .islamicTabular,
-            .islamicUmmAlQura, .japanese, .buddhist, .persian])
+        arguments: [
+            Calendar.Identifier.hebrew,
+            .islamic,
+            .islamicCivil,
+            .islamicTabular,
+            .islamicUmmAlQura,
+            .japanese,
+            .buddhist,
+            .persian,
+        ])
     func identifierInitializationUsesCalendarLocale(identifier: Calendar.Identifier) throws {
         let currentDate = try date(2025, 6, 1)
         let state = try CalendarState(calendarIdentifier: identifier, currentDate: currentDate)
