@@ -35,14 +35,11 @@ final class MeasuredDayFrames {
         inMonth.removeAll()
     }
 
-    /// Records every displayed day of every realized month.
-    init() {
-        month = nil
-        calendar = Calendar(identifier: .gregorian)
-    }
-
-    /// Records only the displayed days of `month`.
-    init(month: MonthIdentifier, calendar: Calendar) {
+    /// Records displayed days, optionally restricting measurement to `month`.
+    init(
+        month: MonthIdentifier? = nil,
+        calendar: Calendar = Calendar(identifier: .gregorian)
+    ) {
         self.month = month
         self.calendar = calendar
     }
