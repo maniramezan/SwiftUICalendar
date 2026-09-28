@@ -9,10 +9,7 @@ final class RotationScrollUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        app.buttons["Settings"].tap()
-        XCTAssertTrue(app.buttons["Horizontal"].waitForExistence(timeout: 5))
-        app.buttons["Horizontal"].tap()
-        app.buttons["Done"].tap()
+        app.chooseScrollMode("Horizontal")
 
         XCUIDevice.shared.orientation = .landscapeLeft
         Thread.sleep(forTimeInterval: 2.0)

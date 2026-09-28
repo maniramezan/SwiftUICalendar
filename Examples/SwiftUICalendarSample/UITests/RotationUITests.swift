@@ -13,11 +13,7 @@ final class RotationUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // Switch to horizontal scroll mode via the settings sheet.
-        app.buttons["Settings"].tap()
-        XCTAssertTrue(app.buttons["Horizontal"].waitForExistence(timeout: 5))
-        app.buttons["Horizontal"].tap()
-        app.buttons["Done"].tap()
+        app.chooseScrollMode("Horizontal")
         XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
         app.buttons["Settings"].tap()
         // Scoped to the picker's own identifier: "Horizontal" also reads as a prefix of the
@@ -29,7 +25,7 @@ final class RotationUITests: XCTestCase {
         XCTAssertTrue(horizontalOption.waitForExistence(timeout: 5))
         XCTAssertTrue(
             horizontalOption.isSelected, "Inspector reopening must preserve configuration")
-        app.buttons["Done"].tap()
+        app.dismissSettings()
 
         XCUIDevice.shared.orientation = .portrait
         Thread.sleep(forTimeInterval: 1.5)
