@@ -1,6 +1,7 @@
 import OSLog
 import SwiftCommons
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 struct CalendarBodyVerticalView: View {
     var keyboard: CalendarKeyboardCursor? = nil
@@ -436,7 +437,8 @@ private struct VerticalMonthView: View {
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier(
-                "vertical-month-header-\(item.id.year)-\(item.id.month)"
+                CalendarAccessibilityID.verticalMonthHeader(
+                    year: item.id.year, month: item.id.month)
             )
 
             CalendarBodyView(

@@ -1,3 +1,4 @@
+import SwiftUICalendarAccessibility
 import XCTest
 
 final class VerticalScrollDateUpdateReproUITests: XCTestCase {
@@ -8,24 +9,26 @@ final class VerticalScrollDateUpdateReproUITests: XCTestCase {
     func testVerticalScrollMovesInBothDirectionsForMVVM() throws {
         let app = XCUIApplication()
         app.launch()
-        configure(app, architecture: "MVVM")
+        configure(app, architecture: .mvvm)
         assertBidirectionalScrolling(app)
     }
 
     func testVerticalScrollMovesInBothDirectionsForTCA() throws {
         let app = XCUIApplication()
         app.launch()
-        configure(app, architecture: "TCA")
+        configure(app, architecture: .tca)
         assertBidirectionalScrolling(app)
     }
 
     func testSwitchingArchitectureResetsToCurrentMonth() throws {
         let app = XCUIApplication()
         app.launch()
-        configure(app, architecture: "MVVM")
+        configure(app, architecture: .mvvm)
 
         let currentHeaderElement = app.staticTexts.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'vertical-month-header-'")
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                CalendarAccessibilityID.verticalMonthHeaderPrefix)
         ).firstMatch
         XCTAssertTrue(currentHeaderElement.waitForExistence(timeout: 5))
         let currentHeader = currentHeaderElement.identifier
@@ -33,11 +36,12 @@ final class VerticalScrollDateUpdateReproUITests: XCTestCase {
         app.scrollViews.firstMatch.swipeUp(velocity: .slow)
         XCTAssertTrue(waitForHeaderToLeaveViewport(currentHeader, in: app))
 
-        app.buttons["Settings"].tap()
-        let architecturePicker = app.segmentedControls["state-owner-picker"]
+        app.buttons[CalendarSampleAccessibilityID.settings].tap()
+        let architecturePicker = app.segmentedControls[
+            CalendarSampleAccessibilityID.stateOwnerPicker]
         XCTAssertTrue(architecturePicker.waitForExistence(timeout: 5))
-        architecturePicker.buttons["TCA"].tap()
-        app.buttons["Done"].tap()
+        architecturePicker.buttons[SampleArchitecture.tca.accessibilityIdentifier].tap()
+        app.buttons[CalendarSampleAccessibilityID.done].tap()
 
         XCTAssertTrue(app.staticTexts[currentHeader].waitForExistence(timeout: 5))
     }
@@ -46,9 +50,10 @@ final class VerticalScrollDateUpdateReproUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        configure(app, architecture: "TCA")
+        configure(app, architecture: .tca)
 
-        let dayButtons = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] ','"))
+        let dayButtons = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))
         let rendered = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "count > 0"), object: dayButtons)
         XCTAssertEqual(
@@ -56,16 +61,8 @@ final class VerticalScrollDateUpdateReproUITests: XCTestCase {
             "The TCA-hosted calendar should render day buttons")
     }
 
-    private func configure(_ app: XCUIApplication, architecture: String) {
-        app.buttons["Settings"].tap()
-        let scrollPicker = app.segmentedControls["scroll-mode-picker"]
-        XCTAssertTrue(scrollPicker.waitForExistence(timeout: 5))
-        scrollPicker.buttons["Vertical"].tap()
-
-        let architecturePicker = app.segmentedControls["state-owner-picker"]
-        XCTAssertTrue(architecturePicker.waitForExistence(timeout: 5))
-        architecturePicker.buttons[architecture].tap()
-        app.buttons["Done"].tap()
+    private func configure(_ app: XCUIApplication, architecture: SampleArchitecture) {
+        app.chooseScrollMode(.vertical, architecture: architecture)
         XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))
     }
 
@@ -88,16 +85,18 @@ final class VerticalScrollDateUpdateReproUITests: XCTestCase {
 
     private func visibleMonthOrdinals(_ app: XCUIApplication) -> [Int] {
         let headers = app.staticTexts.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'vertical-month-header-'")
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                CalendarAccessibilityID.verticalMonthHeaderPrefix)
         )
         var ordinals: [Int] = []
         for index in 0..<headers.count {
-            let components = headers.element(boundBy: index).identifier.split(separator: "-")
-            guard components.count == 5,
-                let year = Int(components[3]),
-                let month = Int(components[4])
+            guard
+                let month = CalendarAccessibilityID.parseVerticalMonthHeader(
+                    headers.element(boundBy: index).identifier
+                )
             else { continue }
-            ordinals.append(year * 12 + month)
+            ordinals.append(month.year * 12 + month.month)
         }
         return ordinals
     }

@@ -1,5 +1,6 @@
 import SwiftCommons
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 struct CalendarBodyView: View {
     private static let headerHeightRatio: CGFloat = 0.45
@@ -117,6 +118,10 @@ struct CalendarBodyView: View {
 
                         CalendarDayCell(context: context, renderer: theme.day.renderer)
                             .id(item.id)
+                            .accessibilityIdentifier(
+                                CalendarAccessibilityID.day(
+                                    year: item.year, month: item.month, day: item.day)
+                            )
                             // Keep the cell a square (cellSize × cellSize) and center it in the wider column so
                             // square day views stay square when the grid fills a wide window.
                             .frame(width: cellSize, height: cellSize)

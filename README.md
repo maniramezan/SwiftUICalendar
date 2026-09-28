@@ -36,6 +36,18 @@ Then add the product to your target:
 .product(name: "SwiftUICalendar", package: "SwiftUICalendar")
 ```
 
+UI automation targets can link the lightweight `SwiftUICalendarAccessibility` product to share
+stable identifiers with the calendar without importing SwiftUI or TCA:
+
+```swift
+.product(name: "SwiftUICalendarAccessibility", package: "SwiftUICalendar")
+```
+
+`CalendarAccessibilityID` provides day and vertical month-header identifiers. Scope queries to a
+specific calendar when displaying multiple calendars or repeated dates. The sample app also shares
+`CalendarSampleAccessibilityID`, `SampleArchitecture`, and `CalendarScrollMode` with its UI tests.
+`CalendarConfiguration.ScrollMode` remains available as an alias of `CalendarScrollMode`.
+
 ## Quick Start
 
 ```swift

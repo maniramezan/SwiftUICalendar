@@ -1,3 +1,4 @@
+import SwiftUICalendarAccessibility
 import XCTest
 
 final class RotationScrollUITests: XCTestCase {
@@ -9,10 +10,7 @@ final class RotationScrollUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        app.buttons["Settings"].tap()
-        XCTAssertTrue(app.buttons["Horizontal"].waitForExistence(timeout: 5))
-        app.buttons["Horizontal"].tap()
-        app.buttons["Done"].tap()
+        app.chooseScrollMode(.horizontal)
 
         XCUIDevice.shared.orientation = .landscapeLeft
         Thread.sleep(forTimeInterval: 2.0)
@@ -29,10 +27,9 @@ final class RotationScrollUITests: XCTestCase {
 
         // The first day of the current month must be visible within the portrait window — not
         // scrolled off-screen due to a stale scroll offset carried over from the landscape state.
-        let month = Date().formatted(.dateTime.month(.wide))
-        let dayOne = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "\(month) 1,")
-        ).firstMatch
+        let calendar = Calendar(identifier: .gregorian)
+        let monthStart = try XCTUnwrap(calendar.dateInterval(of: .month, for: Date())?.start)
+        let dayOne = app.buttons[app.dayIdentifier(for: monthStart)].firstMatch
         XCTAssertTrue(dayOne.waitForExistence(timeout: 3))
         let dayOneFrame = dayOne.frame
         XCTAssertTrue(

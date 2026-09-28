@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 import SwiftUICalendar
+import SwiftUICalendarAccessibility
 import SwiftUICalendarTCA
 
 struct ContentView: View {
@@ -36,6 +37,7 @@ struct ContentView: View {
                         isSettingsPresented = true
                     }
                     .accessibilityHint("Choose calendar display settings")
+                    .accessibilityIdentifier(CalendarSampleAccessibilityID.settings)
                 }
             }
         }
@@ -219,10 +221,11 @@ private struct ConfigurationView: View {
                     Picker("State Owner", selection: $architecture) {
                         ForEach(SampleArchitecture.allCases) { path in
                             Text(path.title).tag(path)
+                                .accessibilityIdentifier(path.accessibilityIdentifier)
                         }
                     }
                     .pickerStyle(.segmented)
-                    .accessibilityIdentifier("state-owner-picker")
+                    .accessibilityIdentifier(CalendarSampleAccessibilityID.stateOwnerPicker)
                 }
 
                 Section("Calendar") {
@@ -243,11 +246,17 @@ private struct ConfigurationView: View {
                 Section("Layout") {
                     Picker("Scroll", selection: $scrollMode) {
                         Text("None").tag(CalendarConfiguration.ScrollMode.none)
+                            .accessibilityIdentifier(
+                                CalendarScrollMode.none.accessibilityIdentifier)
                         Text("Vertical").tag(CalendarConfiguration.ScrollMode.vertical)
+                            .accessibilityIdentifier(
+                                CalendarScrollMode.vertical.accessibilityIdentifier)
                         Text("Horizontal").tag(CalendarConfiguration.ScrollMode.horizontal)
+                            .accessibilityIdentifier(
+                                CalendarScrollMode.horizontal.accessibilityIdentifier)
                     }
                     .pickerStyle(.segmented)
-                    .accessibilityIdentifier("scroll-mode-picker")
+                    .accessibilityIdentifier(CalendarSampleAccessibilityID.scrollModePicker)
 
                     if scrollMode == .horizontal {
                         Picker("Horizontal Height", selection: $horizontalHeightMode) {
@@ -272,27 +281,12 @@ private struct ConfigurationView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .accessibilityIdentifier(CalendarSampleAccessibilityID.done)
                 }
             }
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.hidden)
-    }
-}
-
-private enum SampleArchitecture: String, CaseIterable, Identifiable {
-    case mvvm
-    case tca
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .mvvm:
-            return "MVVM"
-        case .tca:
-            return "TCA"
-        }
     }
 }
 

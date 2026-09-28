@@ -76,6 +76,10 @@
       ],
       "package-product-members": [
         {
+          "product-name": "SwiftUICalendarAccessibility",
+          "build-phase": { "build-phase": "frameworks" },
+        },
+        {
           "product-name": "SwiftUICalendar",
           "build-phase": { "build-phase": "frameworks" },
         }, {
@@ -120,6 +124,12 @@
         "compile-sources",
         "frameworks",
         "resources",
+      ],
+      "package-product-members": [
+        {
+          "product-name": "SwiftUICalendarAccessibility",
+          "build-phase": { "build-phase": "frameworks" },
+        },
       ],
       "build-settings": {
         "CLANG_ENABLE_OBJC_WEAK": "NO",

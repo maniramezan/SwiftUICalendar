@@ -1,3 +1,4 @@
+import SwiftUICalendarAccessibility
 import XCTest
 
 /// Regression coverage for the exact bug captured in a real device recording: after rotating
@@ -30,10 +31,7 @@ final class FixedCalendarRotationUITests: XCTestCase {
         // of every day-of-month button. A correctly laid-out grid has 7 distinct columns; the
         // captured bug rendered only 5 (Sunday and Saturday clipped off both edges).
         let dayButtons = app.buttons.matching(
-            NSPredicate(
-                format:
-                    "label MATCHES '.*(January|February|March|April|May|June|July|August|September|October|November|December) [0-9]+, [0-9]+.*'"
-            )
+            NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix)
         )
         let dayCellCount = dayButtons.count
         XCTAssertGreaterThan(dayCellCount, 0, "no day cells found after rotation")
@@ -50,9 +48,8 @@ final class FixedCalendarRotationUITests: XCTestCase {
                 + "columns may be clipped off the viewport edges"
         )
 
-        // Today's day cell must be fully visible (not cropped at an edge). Distinguish the day cell
-        // (label like "Jul 19, 2026, Today, Selected") from the standalone "Today" nav button.
-        let today = app.buttons.matching(NSPredicate(format: "label CONTAINS ', Today'")).firstMatch
+        // Today's day cell must be fully visible after rotation.
+        let today = app.buttons[app.dayIdentifier(for: Date())].firstMatch
         XCTAssertTrue(today.waitForExistence(timeout: 3))
         let todayFrame = today.frame
         XCTAssertGreaterThanOrEqual(

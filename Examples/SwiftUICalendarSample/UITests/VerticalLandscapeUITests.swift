@@ -1,3 +1,4 @@
+import SwiftUICalendarAccessibility
 import XCTest
 
 /// The vertically scrolling calendar fills a ±20-year window around the current month and then
@@ -18,16 +19,15 @@ final class VerticalLandscapeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        app.chooseScrollMode("Vertical")
+        app.chooseScrollMode(.vertical)
         Thread.sleep(forTimeInterval: 1.5)
 
         let now = Date()
-        let month = now.formatted(.dateTime.month(.wide))
-        let year = now.formatted(.dateTime.year())
+        let calendar = Calendar(identifier: .gregorian)
+        let year = calendar.component(.year, from: now)
+        let month = calendar.component(.month, from: now)
         let window = app.windows.firstMatch.frame
-        let currentMonthDays = app.buttons.matching(
-            NSPredicate(
-                format: "label BEGINSWITH %@ AND label CONTAINS %@", "\(month) ", ", \(year)"))
+        let currentMonthDays = app.dayButtons(inMonthContaining: now)
         let visible = (0..<currentMonthDays.count)
             .map { currentMonthDays.element(boundBy: $0).frame }
             .filter { $0.minY >= 0 && $0.maxY <= window.height && $0.width > 0 }
@@ -36,9 +36,11 @@ final class VerticalLandscapeUITests: XCTestCase {
             "no day of \(month) \(year) is on screen in landscape; the vertical calendar opened elsewhere"
         )
 
-        let twentyYearsAgo = String(Int(year).map { $0 - 20 } ?? 0)
+        let twentyYearsAgo = year - 20
         let ancientDays = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", ", \(twentyYearsAgo)"))
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                CalendarAccessibilityID.dayYearPrefix(year: twentyYearsAgo)))
         let ancientVisible = (0..<ancientDays.count)
             .map { ancientDays.element(boundBy: $0).frame }
             .filter { $0.minY >= 0 && $0.maxY <= window.height && $0.width > 0 }

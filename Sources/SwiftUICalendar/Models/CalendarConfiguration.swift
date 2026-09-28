@@ -1,13 +1,10 @@
 import Foundation
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 /// Immutable presentation behavior for a calendar view.
 public struct CalendarConfiguration: Equatable, Sendable {
-    public enum ScrollMode: Equatable, Sendable {
-        case none
-        case vertical
-        case horizontal
-    }
+    public typealias ScrollMode = CalendarScrollMode
 
     public enum HorizontalHeightMode: Equatable, Sendable {
         case hugContent

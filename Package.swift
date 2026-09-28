@@ -24,6 +24,7 @@ let package = Package(
         .macOS(.v15),
     ],
     products: [
+        .library(name: "SwiftUICalendarAccessibility", targets: ["SwiftUICalendarAccessibility"]),
         .library(
             name: "SwiftUICalendar",
             targets: ["SwiftUICalendar"]),
@@ -44,9 +45,11 @@ let package = Package(
         ),
     ] + tcaDependencies,
     targets: [
+        .target(name: "SwiftUICalendarAccessibility"),
         .target(
             name: "SwiftUICalendar",
             dependencies: [
+                "SwiftUICalendarAccessibility",
                 "SwiftCommons",
                 .product(name: "Components", package: "SwiftUIComponents"),
                 .product(name: "DesignSystem", package: "SwiftUIComponents"),
@@ -81,6 +84,7 @@ let package = Package(
                 .product(
                     name: "ComposableArchitecture", package: "swift-composable-architecture"),
                 "SwiftUICalendar",
+                "SwiftUICalendarAccessibility",
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
             ],
             exclude: ["Snapshot/__Snapshots__"]
