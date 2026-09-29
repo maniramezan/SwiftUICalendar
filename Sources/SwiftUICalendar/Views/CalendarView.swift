@@ -115,7 +115,7 @@ public struct CalendarView: View {
         CalendarViewport(keyboard: keyboard) { allowsPaging in
             VStack {
                 #if os(iOS)
-                    CalendarTodayControl(viewModel: viewModel)
+                CalendarTodayControl(viewModel: viewModel)
                 #endif
                 if configuration.showsHeader {
                     CalendarHeaderControl()
@@ -273,35 +273,35 @@ private struct CalendarHeaderControl: View {
 }
 
 #if os(iOS)
-    private struct CalendarTodayControl: View {
-        @Environment(\.calendarConfiguration) private var configuration
-        @Environment(\.calendarMetrics) private var metrics
-        let viewModel: CalendarViewModel
+private struct CalendarTodayControl: View {
+    @Environment(\.calendarConfiguration) private var configuration
+    @Environment(\.calendarMetrics) private var metrics
+    let viewModel: CalendarViewModel
 
-        var body: some View {
-            GeometryReader { geometry in
-                HStack {
-                    Spacer()
-                    Button("Calendar.Today".localized) {
-                        viewModel.goToToday()
-                    }
-                    // Today can fall outside `dateRange` (for example, a past-only calendar).
-                    .disabled(!viewModel.canGoToToday)
+    var body: some View {
+        GeometryReader { geometry in
+            HStack {
+                Spacer()
+                Button("Calendar.Today".localized) {
+                    viewModel.goToToday()
                 }
-                .frame(
-                    width: CalendarGridLayout(
-                        containerWidth: geometry.size.width,
-                        metrics: metrics,
-                        sizing: configuration.gridSizing
-                    ).gridWidth,
-                    alignment: .trailing
-                )
-                .frame(maxWidth: .infinity)
+                // Today can fall outside `dateRange` (for example, a past-only calendar).
+                .disabled(!viewModel.canGoToToday)
             }
-            // See `CalendarHeaderControl`: resolved here so a custom theme applies.
-            .frame(height: metrics.todayRowHeight)
+            .frame(
+                width: CalendarGridLayout(
+                    containerWidth: geometry.size.width,
+                    metrics: metrics,
+                    sizing: configuration.gridSizing
+                ).gridWidth,
+                alignment: .trailing
+            )
+            .frame(maxWidth: .infinity)
         }
+        // See `CalendarHeaderControl`: resolved here so a custom theme applies.
+        .frame(height: metrics.todayRowHeight)
     }
+}
 #endif
 
 #Preview("Calendar") {

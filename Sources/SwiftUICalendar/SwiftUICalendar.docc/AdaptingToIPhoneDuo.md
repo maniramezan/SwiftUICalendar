@@ -38,17 +38,18 @@ calendar from side to side as the hinge angle wobbles.
 The displacement itself needs nothing newer than the package's own minimum, iOS 18 / macOS 15, and is
 active on every platform.
 
-Reading the hinge from the system needs a newer SDK: `GeometryProxy.reservedRegions(kind: .division)`
-arrives in the iOS 27.1 SDK. The calendar calls it whenever it is *built* with that SDK or newer, and
-compiles the call out otherwise, so the package still builds with Xcode 27.0.
+Reading the hinge from the system needs a newer SDK. `GeometryProxy.reservedRegions(kind: .division)`
+is declared `@available(anyAppleOS 27.1, *)` and does not exist in the 27.0 SDKs. The call is wrapped in
+`#if canImport(SwiftUICore, _version: 8.0.85)`, so older toolchains compile the call out and keep
+building.
 
 - **Built with Xcode 27.1 or later**, on iOS 27.1 or later: the calendar reads the hinge itself and
   moves clear of it. Nothing to adopt.
-- **Built with Xcode 27.0**, or running on an earlier iOS: no hinge is reported, and the calendar lays
+- **Built with Xcode 27.0**, or running on an earlier OS: no hinge is reported, and the calendar lays
   out exactly as it does on any other iPhone.
 
-Swift has no SDK-version conditional, and Xcode 27.0 and 27.1 ship the same compiler, but their
-SwiftUICore modules differ in version, which `canImport(SwiftUICore, _version:)` can test. That is the
-gate; `#available(iOS 27.1, *)` then guards older devices at run time.
+Inside the compile-time gate, a runtime `#available(iOS 27.1, macOS 27.1, *)` check guards older
+devices. The version in `canImport` is required: a bare `#if canImport(SwiftUICore)` succeeds on
+every SDK back to iOS 18, so it cannot tell 27.0 from 27.1.
 
 To ship Duo support in your app, build it with Xcode 27.1 or later.

@@ -4,5 +4,6 @@
     "spaces": 4
   },
   "tabWidth": 8,
-  "lineLength": 100
+  "lineLength": 100,
+  "indentConditionalCompilationBlocks": false
 }
