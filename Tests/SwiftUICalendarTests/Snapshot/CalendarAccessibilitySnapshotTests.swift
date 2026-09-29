@@ -21,7 +21,7 @@ struct CalendarAccessibilitySnapshotTests {
         }
         withSnapshotTesting(record: globalRecordMode) {
             assertSnapshot(
-                of: ([header] + days).joined(separator: "\n"), as: .lines,
+                of: (Self.controlIdentifiers + [header] + days).joined(separator: "\n"), as: .lines,
                 named: "identifiers-\(identifier)")
         }
         for mode in CalendarScrollMode.allCases {
@@ -30,4 +30,18 @@ struct CalendarAccessibilitySnapshotTests {
                 named: "\(identifier)-\(mode)")
         }
     }
+
+    /// The controls the header offers, in the order they appear on screen.
+    private static let controlIdentifiers = [
+        CalendarAccessibilityID.previousMonthButton,
+        CalendarAccessibilityID.monthButton,
+        CalendarAccessibilityID.nextMonthButton,
+        CalendarAccessibilityID.previousYearButton,
+        CalendarAccessibilityID.yearButton,
+        CalendarAccessibilityID.nextYearButton,
+        CalendarAccessibilityID.yearPagePreviousButton,
+        CalendarAccessibilityID.yearPageNextButton,
+        CalendarAccessibilityID.yearPickerDoneButton,
+        CalendarAccessibilityID.todayButton,
+    ]
 }

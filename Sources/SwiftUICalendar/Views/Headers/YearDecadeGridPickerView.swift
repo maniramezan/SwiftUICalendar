@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 /// A trigger button that presents a popover with a 3x3 grid of selectable years.
 ///
@@ -52,6 +53,7 @@ struct YearDecadeGridPickerView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
         .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+        .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
         .popover(isPresented: $isPresented) {
             YearDecadeGridPopoverContent(
                 minYear: minYear,
@@ -89,6 +91,7 @@ struct YearDecadeGridPopoverContent: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Calendar.Navigation.Previous".localized)
+                .accessibilityIdentifier(CalendarAccessibilityID.yearPagePreviousButton)
                 .disabled(!YearDecadeGrid.canPageBackward(from: pageStart, minYear: minYear))
 
                 Spacer()
@@ -108,6 +111,7 @@ struct YearDecadeGridPopoverContent: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Calendar.Navigation.Next".localized)
+                .accessibilityIdentifier(CalendarAccessibilityID.yearPageNextButton)
                 .disabled(!YearDecadeGrid.canPageForward(from: pageStart, maxYear: maxYear))
             }
 
@@ -172,6 +176,7 @@ private struct YearDecadeGridCell: View {
                         by: -max(0, (metrics.minCellSize - metrics.yearOptionMinHeight) / 2)))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(CalendarAccessibilityID.yearOption(year: year))
         .disabled(!isSelectable)
         .opacity(isSelectable ? 1 : 0.3)
     }

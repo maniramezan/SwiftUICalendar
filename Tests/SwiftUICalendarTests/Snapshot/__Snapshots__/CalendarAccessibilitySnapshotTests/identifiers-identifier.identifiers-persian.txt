@@ -1,3 +1,13 @@
+calendar-previous-month-button
+calendar-month-button
+calendar-next-month-button
+calendar-previous-year-button
+calendar-year-button
+calendar-next-year-button
+calendar-year-page-previous-button
+calendar-year-page-next-button
+calendar-year-picker-done-button
+calendar-today-button
 vertical-month-header-1404-3
 calendar-day-1404-3-1
 calendar-day-1404-3-2

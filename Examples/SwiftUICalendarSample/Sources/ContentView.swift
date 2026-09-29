@@ -6,9 +6,9 @@ import SwiftUICalendarTCA
 
 struct ContentView: View {
     @State private var calendarIdentifier: Calendar.Identifier = .gregorian
-    @State private var selectionMode: SelectionMode = .single
+    @State private var selectionMode: SampleSelectionMode = .single
     @State private var scrollMode: CalendarConfiguration.ScrollMode = .none
-    @State private var dayViewMode: DayViewMode = .circle
+    @State private var dayViewMode: SampleDayViewMode = .circle
     @State private var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode = .sixRows
     @State private var architecture: SampleArchitecture = .mvvm
     @State private var viewModel = CalendarViewModel(
@@ -78,7 +78,7 @@ struct ContentView: View {
     // MARK: - Architecture switching
 
     private func resettleArchitecture() {
-        let selection = selectionMode.selectionValue(baseDate: Date())
+        let selection = selectionMode.selectionValue
         switch architecture {
         case .mvvm:
             tcaStore = nil
@@ -107,7 +107,7 @@ struct ContentView: View {
     }
 
     private func applySelectionMode() {
-        let selection = selectionMode.selectionValue(baseDate: Date())
+        let selection = selectionMode.selectionValue
         switch architecture {
         case .mvvm:
             viewModel.selection = selection
@@ -240,10 +240,10 @@ private struct SettingsPresentation<Settings: View>: ViewModifier {
 private struct ConfigurationView: View {
     @Binding var architecture: SampleArchitecture
     @Binding var calendarIdentifier: Calendar.Identifier
-    @Binding var selectionMode: SelectionMode
+    @Binding var selectionMode: SampleSelectionMode
     @Binding var scrollMode: CalendarConfiguration.ScrollMode
     @Binding var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode
-    @Binding var dayViewMode: DayViewMode
+    @Binding var dayViewMode: SampleDayViewMode
     @Binding var isPresented: Bool
     /// Whether the settings arrive as a sheet, which needs its own way out.
     let showsDone: Bool
@@ -265,16 +265,23 @@ private struct ConfigurationView: View {
                 Section("Calendar") {
                     Picker("Calendar", selection: $calendarIdentifier) {
                         Text("Gregorian").tag(Calendar.Identifier.gregorian)
+                            .accessibilityIdentifier(
+                                CalendarSampleAccessibilityID.calendarOption(.gregorian))
                         Text("Persian").tag(Calendar.Identifier.persian)
+                            .accessibilityIdentifier(
+                                CalendarSampleAccessibilityID.calendarOption(.persian))
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier(CalendarSampleAccessibilityID.calendarPicker)
 
                     Picker("Selection", selection: $selectionMode) {
-                        ForEach(SelectionMode.allCases) { mode in
+                        ForEach(SampleSelectionMode.allCases) { mode in
                             Text(mode.title).tag(mode)
+                                .accessibilityIdentifier(mode.accessibilityIdentifier)
                         }
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier(CalendarSampleAccessibilityID.selectionPicker)
                 }
 
                 Section("Layout") {
@@ -294,19 +301,24 @@ private struct ConfigurationView: View {
 
                     if scrollMode == .horizontal {
                         Picker("Horizontal Height", selection: $horizontalHeightMode) {
-                            Text("Hug Content").tag(
-                                CalendarConfiguration.HorizontalHeightMode.hugContent)
-                            Text("Six Rows").tag(CalendarConfiguration.HorizontalHeightMode.sixRows)
+                            ForEach(CalendarHorizontalHeightMode.allCases, id: \.self) { mode in
+                                Text(mode.title).tag(mode)
+                                    .accessibilityIdentifier(mode.accessibilityIdentifier)
+                            }
                         }
                         .pickerStyle(.segmented)
+                        .accessibilityIdentifier(
+                            CalendarSampleAccessibilityID.horizontalHeightPicker)
                     }
 
                     Picker("Day View", selection: $dayViewMode) {
-                        ForEach(DayViewMode.allCases) { mode in
+                        ForEach(SampleDayViewMode.allCases) { mode in
                             Text(mode.title).tag(mode)
+                                .accessibilityIdentifier(mode.accessibilityIdentifier)
                         }
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier(CalendarSampleAccessibilityID.dayViewPicker)
                 }
             }
             .navigationTitle("Settings")
@@ -328,25 +340,9 @@ private struct ConfigurationView: View {
     }
 }
 
-private enum SelectionMode: String, CaseIterable, Identifiable {
-    case single
-    case range
-    case multiple
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .single:
-            "Single"
-        case .range:
-            "Range"
-        case .multiple:
-            "Multiple"
-        }
-    }
-
-    func selectionValue(baseDate: Date) -> CalendarViewModel.Selection {
+/// The library's selection types stay in the sample, where the model is available to build them.
+extension SampleSelectionMode {
+    var selectionValue: CalendarViewModel.Selection {
         switch self {
         case .single:
             return .single(nil)
@@ -358,18 +354,13 @@ private enum SelectionMode: String, CaseIterable, Identifiable {
     }
 }
 
-private enum DayViewMode: String, CaseIterable, Identifiable {
-    case circle
-    case square
-
-    var id: String { rawValue }
-
+extension CalendarHorizontalHeightMode {
     var title: String {
         switch self {
-        case .circle:
-            "Circle"
-        case .square:
-            "Square"
+        case .hugContent:
+            return "Hug Content"
+        case .sixRows:
+            return "Six Rows"
         }
     }
 }

@@ -5,11 +5,7 @@ import SwiftUICalendarAccessibility
 /// Immutable presentation behavior for a calendar view.
 public struct CalendarConfiguration: Equatable, Sendable {
     public typealias ScrollMode = CalendarScrollMode
-
-    public enum HorizontalHeightMode: Equatable, Sendable {
-        case hugContent
-        case sixRows
-    }
+    public typealias HorizontalHeightMode = CalendarHorizontalHeightMode
 
     /// Controls whether the calendar grid fills its container or retains its natural width.
     ///

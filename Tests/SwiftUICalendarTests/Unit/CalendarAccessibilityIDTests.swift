@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUICalendarAccessibility
 import Testing
 
@@ -22,16 +23,45 @@ struct CalendarAccessibilityIDTests {
         #expect(CalendarScrollMode(rawValue: "") == nil)
     }
 
-    @Test("Control identifiers are unique")
-    func uniqueControls() {
+    @Test(
+        "Horizontal height modes use the same type in configuration and automation",
+        arguments: CalendarHorizontalHeightMode.allCases)
+    func horizontalHeightModes(mode: CalendarHorizontalHeightMode) {
+        let configuration = CalendarConfiguration(horizontalHeightMode: mode)
+        #expect(configuration.horizontalHeightMode == mode)
+        #expect(CalendarConfiguration.HorizontalHeightMode.hugContent == .hugContent)
+        #expect(mode.accessibilityIdentifier == "horizontal-height-\(mode.rawValue.lowercased())")
+    }
+
+    @Test(
+        "Control identifiers are unique",
+        arguments: [
+            Calendar.Identifier.gregorian, .persian,
+        ])
+    func uniqueControls(calendar: Calendar.Identifier) {
         let identifiers =
-            [
-                CalendarSampleAccessibilityID.settings, CalendarSampleAccessibilityID.done,
-                CalendarSampleAccessibilityID.scrollModePicker,
-                CalendarSampleAccessibilityID.stateOwnerPicker,
-            ] + CalendarScrollMode.allCases.map(\.accessibilityIdentifier)
-            + SampleArchitecture.allCases.map(\.accessibilityIdentifier)
+            Self.allIdentifiers + [
+                CalendarSampleAccessibilityID.calendarOption(calendar)
+            ]
         #expect(Set(identifiers).count == identifiers.count)
+    }
+
+    @Test(
+        "Calendar options cannot be confused with the calendar's own day cells",
+        arguments: [Calendar.Identifier.gregorian, .persian, .buddhist, .hebrew])
+    func calendarOptions(identifier: Calendar.Identifier) {
+        let option = CalendarSampleAccessibilityID.calendarOption(identifier)
+        #expect(option.hasPrefix("calendar-option-"))
+        #expect(option != CalendarSampleAccessibilityID.calendarPicker)
+        #expect(!option.hasPrefix(CalendarAccessibilityID.dayPrefix))
+    }
+
+    @Test("Year options key off the year alone", arguments: [1900, 2025, 2100])
+    func yearOptions(year: Int) {
+        let option = CalendarAccessibilityID.yearOption(year: year)
+        #expect(option.hasPrefix(CalendarAccessibilityID.yearOptionPrefix))
+        #expect(option == "\(CalendarAccessibilityID.yearOptionPrefix)\(year)")
+        #expect(option != CalendarAccessibilityID.yearButton)
     }
 
     @Test(
@@ -65,4 +95,32 @@ struct CalendarAccessibilityIDTests {
         #expect(!day.hasPrefix(CalendarAccessibilityID.dayYearPrefix(year: 202)))
         #expect(day != CalendarAccessibilityID.day(year: 2025, month: 1, day: 11))
     }
+
+    /// Every identifier the package can emit, so a rename that collides with a sibling control
+    /// fails here rather than in a UI test that can no longer tell the two apart.
+    private static let allIdentifiers: [String] =
+        [
+            CalendarAccessibilityID.monthButton,
+            CalendarAccessibilityID.previousMonthButton,
+            CalendarAccessibilityID.nextMonthButton,
+            CalendarAccessibilityID.yearButton,
+            CalendarAccessibilityID.previousYearButton,
+            CalendarAccessibilityID.nextYearButton,
+            CalendarAccessibilityID.todayButton,
+            CalendarAccessibilityID.yearPagePreviousButton,
+            CalendarAccessibilityID.yearPageNextButton,
+            CalendarAccessibilityID.yearPickerDoneButton,
+            CalendarSampleAccessibilityID.settings,
+            CalendarSampleAccessibilityID.done,
+            CalendarSampleAccessibilityID.stateOwnerPicker,
+            CalendarSampleAccessibilityID.calendarPicker,
+            CalendarSampleAccessibilityID.selectionPicker,
+            CalendarSampleAccessibilityID.scrollModePicker,
+            CalendarSampleAccessibilityID.dayViewPicker,
+            CalendarSampleAccessibilityID.horizontalHeightPicker,
+        ] + CalendarScrollMode.allCases.map(\.accessibilityIdentifier)
+        + SampleArchitecture.allCases.map(\.accessibilityIdentifier)
+        + SampleSelectionMode.allCases.map(\.accessibilityIdentifier)
+        + SampleDayViewMode.allCases.map(\.accessibilityIdentifier)
+        + CalendarHorizontalHeightMode.allCases.map(\.accessibilityIdentifier)
 }

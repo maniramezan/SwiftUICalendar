@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 struct CalendarHeaderView: View {
 
@@ -34,6 +35,7 @@ struct CalendarHeaderView: View {
             model.goToToday()
         }
         .fixedSize()
+        .accessibilityIdentifier(CalendarAccessibilityID.todayButton)
         #endif
     }
 }

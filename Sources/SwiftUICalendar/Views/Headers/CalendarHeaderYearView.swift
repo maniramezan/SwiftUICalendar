@@ -1,6 +1,7 @@
 import OSLog
 import SwiftCommons
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 struct CalendarHeaderYearView: View {
     @Environment(CalendarViewModel.self) var model
@@ -81,6 +82,8 @@ struct CalendarHeaderYearView: View {
 
     var body: some View {
         CalendarHeaderChevronRow(
+            previousIdentifier: CalendarAccessibilityID.previousYearButton,
+            nextIdentifier: CalendarAccessibilityID.nextYearButton,
             onPrevious: {
                 do {
                     try model.updateYearToPreviousYear()

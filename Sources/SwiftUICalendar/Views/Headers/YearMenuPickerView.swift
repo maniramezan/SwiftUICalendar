@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 /// A trigger button that presents a native dropdown menu listing every selectable year.
 ///
@@ -35,6 +36,7 @@ struct YearMenuPickerView: View {
         .fixedSize(horizontal: true, vertical: false)
         .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
         .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+        .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
     }
 }
 
