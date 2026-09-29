@@ -339,3 +339,99 @@ struct CalendarKeyboardTests {
         model.engine.month(containing: date)
     }
 }
+
+#if os(macOS)
+@MainActor
+@Suite("Day activation keyboard wiring", .serialized)
+struct CalendarDayActivationTests {
+    @Test(
+        "Rendered day activation requests focus",
+        arguments: [
+            CalendarConfiguration.ScrollMode.none, .vertical, .horizontal,
+        ], [Calendar.Identifier.gregorian, .persian])
+    func activation(mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier)
+        throws
+    {
+        let model = CalendarViewModel.snapshot(identifier: identifier)
+        let cursor = CalendarKeyboardCursor()
+        let actions = DayActions()
+        let theme = Theme()
+        theme.day.setDayContent { context in
+            ActivationDay(context: context, actions: actions)
+        }
+        let hosted = hostView(
+            Body(mode: mode, model: model, cursor: cursor)
+                .environment(model)
+                .environment(theme)
+                .environment(Typography.default)
+                .environment(\.calendarConfiguration, .init(scrollMode: mode)),
+            size: CGSize(width: 600, height: 800))
+        defer { hosted.window.contentView = nil }
+        #expect(waitForStableRender(hosted.hosting))
+        let select = try #require(actions.select)
+        let date = try #require(actions.date)
+        let dayStart = model.engine.calendar.startOfDay(for: date)
+
+        select()
+        #expect(cursor.focusRequest == 1)
+        #expect(
+            !cursor.isFocused(dayStart),
+            "a tap alone must not draw the focus ring for a touch-only user")
+        #expect(model.isSelected(date: date))
+        #expect(cursor.scrollRequest == nil, "selection never asks a container to scroll")
+
+        // What `CalendarView` does once focus lands, and what a key press then adds.
+        cursor.date = try #require(cursor.takePendingFocusDate())
+        #expect(cursor.date == dayStart, "focus lands on the tapped day")
+        cursor.isActive = true
+        cursor.hasSeenKeyInput = true
+        #expect(cursor.isFocused(dayStart))
+        #expect(try cursor.move(days: 1, model: model))
+        #expect(
+            model.engine.calendar.dateComponents(
+                [.day], from: dayStart, to: try #require(cursor.date)
+            )
+            .day == 1)
+    }
+
+    private struct Body: View {
+        let mode: CalendarConfiguration.ScrollMode
+        let model: CalendarViewModel
+        let cursor: CalendarKeyboardCursor
+
+        var body: some View {
+            switch mode {
+            case .none: CalendarBodyView(keyboard: cursor)
+            case .vertical: CalendarBodyVerticalView(keyboard: cursor)
+            case .horizontal: CalendarBodyHorizontalView(viewModel: model, keyboard: cursor)
+            }
+        }
+    }
+
+    private struct ActivationDay: CalendarDayView {
+        let context: CalendarDayContext
+        var actions: DayActions?
+
+        init(context: CalendarDayContext) { self.context = context }
+
+        init(context: CalendarDayContext, actions: DayActions) {
+            self.context = context
+            self.actions = actions
+        }
+
+        var body: some View {
+            Text(context.dayLabel).onAppear {
+                if context.isInCurrentMonth && context.isEnabled {
+                    actions?.select = { context.onSelect(context.date) }
+                    actions?.date = context.date
+                }
+            }
+        }
+    }
+
+    private final class DayActions {
+        var select: (() -> Void)?
+        var date: Date?
+    }
+}
+#endif

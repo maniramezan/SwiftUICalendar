@@ -135,6 +135,9 @@ private struct SystemFoldRegionReader: ViewModifier {
                 .filter(\.isActive)
                 .map { $0.frame.minX...$0.frame.maxX }
         } action: { newRanges in
+            Logger.calendarUI.info(
+                "System fold bands changed: \(newRanges.count) active, \(String(describing: newRanges))"
+            )
             ranges = newRanges
         }
     }
