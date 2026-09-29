@@ -1,0 +1,2 @@
+direction=leftToRight viewport=300.0 leading=0.0 trailing=400.0 content=372.0 overflow=true
+direction=rightToLeft viewport=300.0 leading=0.0 trailing=400.0 content=372.0 overflow=true
