@@ -7,6 +7,10 @@ import Testing
 @Suite("CalendarBodyHorizontalView Swipe Resolver Tests")
 struct CalendarBodyHorizontalSwipeResolverTests {
 
+    /// The blend weight is a token now, so the resolver takes it as an argument and the test
+    /// supplies the resolved pager rather than a private copy of the constant.
+    private let metrics = CalendarMetrics.default
+
     // MARK: - Direction mapping
 
     @Test("Left swipe (negative translation) returns +1 (go to next)")
@@ -62,7 +66,8 @@ struct CalendarBodyHorizontalSwipeResolverTests {
         let resolved = HorizontalMonthSwipeResolver.resolvedTranslation(
             translation: -20,
             predictedEndTranslation: -210,
-            limit: 390
+            limit: 390,
+            momentumWeight: metrics.pager.momentumWeight
         )
 
         #expect(resolved < -100)
@@ -74,7 +79,8 @@ struct CalendarBodyHorizontalSwipeResolverTests {
         let resolved = HorizontalMonthSwipeResolver.resolvedTranslation(
             translation: 18,
             predictedEndTranslation: 200,
-            limit: 390
+            limit: 390,
+            momentumWeight: metrics.pager.momentumWeight
         )
 
         #expect(resolved > 100)
@@ -100,7 +106,8 @@ struct CalendarBodyHorizontalSwipeResolverTests {
         let resolved = HorizontalMonthSwipeResolver.resolvedTranslation(
             translation: 300,
             predictedEndTranslation: 800,
-            limit: 390
+            limit: 390,
+            momentumWeight: metrics.pager.momentumWeight
         )
         #expect(resolved <= 390)
         #expect(resolved >= -390)

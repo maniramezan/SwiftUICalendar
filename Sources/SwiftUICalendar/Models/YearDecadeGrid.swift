@@ -6,8 +6,11 @@ import Foundation
 /// decades (e.g. 2020-2029) because nine cells cannot hold a ten-year decade; instead each page
 /// is labeled with the literal range of years it displays (e.g. "2025-2033").
 enum YearDecadeGrid {
-    /// The number of years displayed per page (a 3x3 grid).
-    static let pageSize = 9
+    /// Years per row. The page shape is square, so a row count also fixes the page size.
+    static let columnCount = 3
+
+    /// The number of years displayed per page — one square of ``columnCount`` columns.
+    static let pageSize = columnCount * columnCount
 
     /// Returns the first year of the page that contains `year`.
     static func pageStart(for year: Int) -> Int {

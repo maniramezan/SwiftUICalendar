@@ -3,7 +3,6 @@ import SwiftUI
 struct SquareDualCalendarDayView: CalendarDayView {
     @Environment(\.calendarMetrics) private var metrics
     private let context: CalendarDayContext
-    private let outerPadding: CGFloat = 4
 
     init(context: CalendarDayContext) {
         self.context = context
@@ -59,19 +58,19 @@ struct SquareDualCalendarDayView: CalendarDayView {
                             .strokeBorder(borderColor, lineWidth: borderWidth)
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(outerPadding)
+                    .padding(metrics.tightPadding)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: metrics.dayLabelSpacing) {
                     Text(context.dayLabel)
                         .font(dayTypography.primaryFont)
-                        .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
+                        .minimumScaleFactor(typography.resolvedMinScaleFactor)
 
                     Spacer()
 
                     if let secondaryLabel = context.secondaryLabel {
                         Text(secondaryLabel)
                             .font(dayTypography.secondaryFont)
-                            .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
+                            .minimumScaleFactor(typography.resolvedMinScaleFactor)
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }

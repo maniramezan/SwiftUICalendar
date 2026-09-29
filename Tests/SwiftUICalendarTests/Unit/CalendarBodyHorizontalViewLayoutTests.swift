@@ -7,56 +7,28 @@ import Testing
 @Suite("CalendarBodyHorizontalView Layout Tests")
 struct CalendarBodyHorizontalViewLayoutTests {
 
+    /// The layout helpers are now `CalendarMetrics` methods, so a test pins a width against one
+    /// metrics instance instead of threading a scalar list per call.
+    private let metrics = CalendarMetrics.default
+
     @Test("layoutWidth respects the minimum calendar width")
     func layoutWidthRespectsMinimumCalendarWidth() {
-        #expect(
-            CalendarBodyHorizontalView.layoutWidth(containerWidth: 320, minCalendarWidth: 356)
-                == 356)
-        #expect(
-            CalendarBodyHorizontalView.layoutWidth(containerWidth: 390, minCalendarWidth: 356)
-                == 390)
+        #expect(metrics.layoutWidth(containerWidth: 320) == 356)
+        #expect(metrics.layoutWidth(containerWidth: 390) == 390)
     }
 
     @Test("carousel peek reaches past the centered cell's margin into real content")
     func carouselReservesAvailableWidthForPeeks() {
-        #expect(
-            CalendarBodyHorizontalView.peekWidth(
-                containerWidth: 390, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44,
-                maxCellSize: 64
-            ) == 17)
-        #expect(
-            CalendarBodyHorizontalView.pageWidth(
-                containerWidth: 390, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44,
-                maxCellSize: 64
-            ) == 356)
-        #expect(
-            CalendarBodyHorizontalView.peekWidth(
-                containerWidth: 356, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44,
-                maxCellSize: 64
-            ) == 0)
-        #expect(
-            CalendarBodyHorizontalView.pageWidth(
-                containerWidth: 356, minCalendarWidth: 356, itemSpacing: 8, minCellSize: 44,
-                maxCellSize: 64
-            ) == 356)
+        #expect(metrics.peekWidth(containerWidth: 390) == 17)
+        #expect(metrics.pageWidth(containerWidth: 390) == 356)
+        #expect(metrics.peekWidth(containerWidth: 356) == 0)
+        #expect(metrics.pageWidth(containerWidth: 356) == 356)
     }
 
     @Test("carousel track exposes the parked months on mirrored RTL edges")
     func carouselTrackMirrorsPeekedMonthsInRTL() {
-        let peekWidth = CalendarBodyHorizontalView.peekWidth(
-            containerWidth: 390,
-            minCalendarWidth: 356,
-            itemSpacing: 8,
-            minCellSize: 44,
-            maxCellSize: 64
-        )
-        let pageWidth = CalendarBodyHorizontalView.pageWidth(
-            containerWidth: 390,
-            minCalendarWidth: 356,
-            itemSpacing: 8,
-            minCellSize: 44,
-            maxCellSize: 64
-        )
+        let peekWidth = metrics.peekWidth(containerWidth: 390)
+        let pageWidth = metrics.pageWidth(containerWidth: 390)
 
         let ltrPrevious =
             CalendarBodyHorizontalView.previousMonthBaseOffset(
@@ -88,36 +60,22 @@ struct CalendarBodyHorizontalViewLayoutTests {
     @Test("cellSize clamps between minimum and maximum bounds")
     func cellSizeClampsBetweenBounds() {
         #expect(
-            CalendarBodyHorizontalView.cellSize(
-                layoutWidth: 320,
-                itemSpacing: 8,
-                minCellSize: 44,
-                maxCellSize: 64
-            ) == 44
-        )
+            CalendarGridLayout.cellSize(containerWidth: 320, metrics: metrics)
+                == metrics.minCellSize)
         #expect(
-            CalendarBodyHorizontalView.cellSize(
-                layoutWidth: 600,
-                itemSpacing: 8,
-                minCellSize: 44,
-                maxCellSize: 64
-            ) == 64
-        )
+            CalendarGridLayout.cellSize(containerWidth: 600, metrics: metrics)
+                == metrics.maxCellSize)
     }
 
     @Test("cellSize interpolates between bounds for mid-range widths")
     func cellSizeInterpolatesBetweenBounds() {
         // widthForCells = 400 - (8 * 6) = 352; columnWidth = 352 / 7 ≈ 50.29 → between 44 and 64.
-        let size = CalendarBodyHorizontalView.cellSize(
-            layoutWidth: 400,
-            itemSpacing: 8,
-            minCellSize: 44,
-            maxCellSize: 64
-        )
+        let size = CalendarGridLayout.cellSize(containerWidth: 400, metrics: metrics)
 
-        #expect(size > 44)
-        #expect(size < 64)
-        #expect(abs(size - 352.0 / 7.0) < 0.0001)
+        #expect(size > metrics.minCellSize)
+        #expect(size < metrics.maxCellSize)
+        #expect(
+            abs(size - (400 - metrics.itemSpacing * 6) / 7) < 0.0001)
     }
 
     @Test("rowCount hugs the tallest parked month and pins to six rows otherwise")
@@ -141,8 +99,8 @@ struct CalendarBodyHorizontalViewLayoutTests {
 
     @Test("weekdayHeaderHeight keeps the minimum header height")
     func weekdayHeaderHeightKeepsMinimum() {
-        #expect(CalendarBodyHorizontalView.weekdayHeaderHeight(cellSize: 44) == 24)
-        #expect(CalendarBodyHorizontalView.weekdayHeaderHeight(cellSize: 64) == 28.8)
+        #expect(metrics.weekdayHeaderHeight(cellSize: 44) == 24)
+        #expect(metrics.weekdayHeaderHeight(cellSize: 64) == 28.8)
     }
 
     @Test("month offsets mirror the layout direction multiplier")
@@ -175,22 +133,15 @@ struct CalendarBodyHorizontalViewLayoutTests {
 
     @Test("resolvedHeight includes row spacing and ceiling padding")
     func resolvedHeightIncludesSpacingAndPadding() {
-        let height = CalendarBodyHorizontalView.resolvedHeight(
-            rowCount: 6,
-            layoutWidth: 390,
-            itemSpacing: 8,
-            rowSpacing: 8,
-            minCellSize: 44,
-            maxCellSize: 64
-        )
+        let height = metrics.resolvedHeight(rowCount: 6, layoutWidth: 390)
 
         #expect(height == 336)
     }
 
     @Test("swipeThreshold respects the minimum threshold floor")
     func swipeThresholdRespectsMinimumFloor() {
-        #expect(CalendarBodyHorizontalView.swipeThreshold(layoutWidth: 120) == 56)
-        #expect(CalendarBodyHorizontalView.swipeThreshold(layoutWidth: 400) == 100)
+        #expect(metrics.pager.swipeThreshold(layoutWidth: 120) == 56)
+        #expect(metrics.pager.swipeThreshold(layoutWidth: 400) == 100)
     }
 
     @Test("nextDragOffset ignores updates during navigation")
@@ -220,7 +171,8 @@ struct CalendarBodyHorizontalViewLayoutTests {
                 translationWidth: -40,
                 predictedEndTranslationWidth: -220,
                 layoutDirectionMultiplier: 1,
-                layoutWidth: 390
+                layoutWidth: 390,
+                pager: metrics.pager
             ) == 1
         )
         #expect(
@@ -228,7 +180,8 @@ struct CalendarBodyHorizontalViewLayoutTests {
                 translationWidth: 40,
                 predictedEndTranslationWidth: 220,
                 layoutDirectionMultiplier: 1,
-                layoutWidth: 390
+                layoutWidth: 390,
+                pager: metrics.pager
             ) == -1
         )
         #expect(
@@ -236,7 +189,8 @@ struct CalendarBodyHorizontalViewLayoutTests {
                 translationWidth: 10,
                 predictedEndTranslationWidth: 20,
                 layoutDirectionMultiplier: 1,
-                layoutWidth: 390
+                layoutWidth: 390,
+                pager: metrics.pager
             ) == nil
         )
     }
@@ -250,7 +204,8 @@ struct CalendarBodyHorizontalViewLayoutTests {
                 translationWidth: -40,
                 predictedEndTranslationWidth: -220,
                 layoutDirectionMultiplier: -1,
-                layoutWidth: 390
+                layoutWidth: 390,
+                pager: metrics.pager
             ) == -1
         )
         #expect(
@@ -258,7 +213,8 @@ struct CalendarBodyHorizontalViewLayoutTests {
                 translationWidth: 40,
                 predictedEndTranslationWidth: 220,
                 layoutDirectionMultiplier: -1,
-                layoutWidth: 390
+                layoutWidth: 390,
+                pager: metrics.pager
             ) == 1
         )
     }

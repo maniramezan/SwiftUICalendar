@@ -68,7 +68,7 @@ struct CircleDayView: CalendarDayView {
                 }
                 Text(context.dayLabel)
                     .font(dayTypography.primaryFont)
-                    .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
+                    .minimumScaleFactor(typography.resolvedMinScaleFactor)
             }
             .contentShape(Circle())
         }
