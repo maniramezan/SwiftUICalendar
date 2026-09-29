@@ -43,9 +43,6 @@ extension XCUIApplication {
         let scroll = option(
             mode.accessibilityIdentifier, in: CalendarSampleAccessibilityID.scrollModePicker,
             file: file, line: line)
-        XCTAssertTrue(
-            scroll.exists, "scroll mode '\(mode.accessibilityIdentifier)' not found in settings",
-            file: file, line: line)
         scroll.tap()
         dismissSettings(file: file, line: line)
     }
@@ -55,20 +52,22 @@ extension XCUIApplication {
     /// Queries stay scoped to the picker's own identifier because an option's label also reads as
     /// the start of a longer row once that mode is active (the "Horizontal" scroll option next to
     /// the "Horizontal Height" row), so an app-wide query can resolve to the wrong element.
+    ///
+    /// The form is scrolled first and the picker is never awaited on its own: the picker's
+    /// identifier rides a lazily-rendered row that only enters the hierarchy once the section
+    /// scrolls into a short landscape sheet, so waiting for it up front deadlocks.
     func option(
         _ optionIdentifier: String, in pickerIdentifier: String,
         file: StaticString = #filePath, line: UInt = #line
     ) -> XCUIElement {
-        let picker = descendants(matching: .any)[pickerIdentifier]
-        XCTAssertTrue(
-            picker.waitForExistence(timeout: 5), "picker '\(pickerIdentifier)' not found",
-            file: file,
-            line: line)
-        let option = picker.buttons[optionIdentifier]
+        let option = descendants(matching: .any)[pickerIdentifier].buttons[optionIdentifier]
         let form = scrollViews.firstMatch
         for _ in 0..<4 where !option.waitForExistence(timeout: 1) {
             form.swipeUp()
         }
+        XCTAssertTrue(
+            option.exists, "'\(optionIdentifier)' not found in '\(pickerIdentifier)'", file: file,
+            line: line)
         return option
     }
 
