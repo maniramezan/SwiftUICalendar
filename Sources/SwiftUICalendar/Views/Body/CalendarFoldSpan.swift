@@ -106,10 +106,8 @@ extension EnvironmentValues {
 /// Reports the system's fold bands for the view it modifies, in that view's own physical
 /// coordinates — the same space `calendarFoldRanges` uses.
 ///
-/// `GeometryProxy.reservedRegions` requires the iOS 27.1 SDK. The actual call lives in
-/// `SystemFoldRegionReader`, which is only compiled when the SDK provides the API. This modifier
-/// always compiles; on older SDKs it is a no-op and the runtime `#available` check skips the call
-/// on older OS versions.
+/// `reservedRegions` needs the 27.1 SDK, so the call is compiled out on older toolchains and
+/// guarded at runtime by `#available` on older OS versions.
 struct SystemFoldReader: ViewModifier {
     @Binding var ranges: [ClosedRange<CGFloat>]
 
