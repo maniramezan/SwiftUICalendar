@@ -1,32 +1,6 @@
 import SwiftUI
 
-// MARK: - Narrow Window Layout
-
-/// How wide the calendar's scroll content is, and whether it overflows the viewport.
-///
-/// Two kinds of horizontal space surround the day grid, and they give way in different orders:
-///
-/// - The safe area is never occupied. SwiftUI places the viewport inside it, so `width` already
-///   excludes it.
-/// - *Soft* margins — the calendar's own margin and, in the vertically scrolling body, each month's
-///   inset — are decoration. They shrink first: while the bare grid still fits, the grid spreads into
-///   them and every cell stays on screen without scrolling.
-///
-/// Only when the grid itself no longer fits does the viewport scroll, and then the content carries
-/// its full soft margins so the outermost columns are reachable rather than cut off.
-struct CalendarViewportLayout: Equatable {
-    let contentWidth: CGFloat
-    let overflows: Bool
-
-    /// - Parameters:
-    ///   - width: Horizontal space inside the safe area.
-    ///   - minimumWidth: Narrowest the day grid can be: seven minimum-size cells and their spacing.
-    ///   - margins: Total soft margin around the grid, restored in full once the grid overflows.
-    init(width: CGFloat, minimumWidth: CGFloat, margins: CGFloat = 0) {
-        overflows = width < minimumWidth
-        contentWidth = overflows ? minimumWidth + margins : width
-    }
-}
+// MARK: - Viewport
 
 /// Keeps every date reachable without reducing the grid's minimum touch targets.
 /// The same scroll container remains mounted across the overflow boundary.

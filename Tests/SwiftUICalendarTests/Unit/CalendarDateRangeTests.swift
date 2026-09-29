@@ -53,6 +53,14 @@ struct CalendarDateRangeTests {
         #expect(persian.component(.year, from: range.upperBound) == 1404)
     }
 
+    @Test("years throws when the calendar cannot resolve the requested year")
+    func yearsRejectsUnresolvableYear() {
+        #expect(throws: (any Error).self) {
+            try ClosedRange<Date>.years(
+                100_000_000...100_000_000, in: Calendar(identifier: .gregorian))
+        }
+    }
+
     // MARK: - State
 
     @Test("dateRange is intersected with the supported interval")

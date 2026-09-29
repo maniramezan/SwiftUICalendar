@@ -115,7 +115,7 @@ public struct CalendarView: View {
         CalendarViewport(keyboard: keyboard) { allowsPaging in
             VStack {
                 #if os(iOS)
-                    CalendarTodayControl(viewModel: viewModel)
+                CalendarTodayControl(viewModel: viewModel)
                 #endif
                 if configuration.showsHeader {
                     CalendarHeaderControl()
@@ -135,11 +135,24 @@ public struct CalendarView: View {
         .focusable(!configuration.keyboardNavigation.isEmpty, interactions: .edit)
         .focused($isKeyboardFocused)
         .onChange(of: isKeyboardFocused) { _, focused in
-            // A day activation has already placed the cursor on the tapped date.
-            if focused && !keyboard.isActive {
-                keyboard.follow(viewModel.currentDate, calendar: viewModel.engine.calendar)
-            }
+            logger.debug("Keyboard focus \(focused ? "gained" : "lost", privacy: .public)")
             keyboard.isActive = focused
+            if focused {
+                if let tapped = keyboard.takePendingFocusDate() {
+                    keyboard.date = tapped
+                } else {
+                    keyboard.follow(viewModel.currentDate, calendar: viewModel.engine.calendar)
+                }
+            }
+        }
+        .onChange(of: keyboard.focusRequest) { _, _ in
+            guard !configuration.keyboardNavigation.isEmpty else { return }
+            logger.debug("Keyboard focus requested by a tapped day")
+            if isKeyboardFocused, let tapped = keyboard.takePendingFocusDate() {
+                keyboard.date = tapped
+            } else {
+                isKeyboardFocused = true
+            }
         }
         .onChange(of: viewModel.currentDate) { _, date in
             // `follow`, not a scroll request: this also fires when a settled scroll navigates the
@@ -148,11 +161,16 @@ public struct CalendarView: View {
             keyboard.follow(date, calendar: viewModel.engine.calendar)
         }
         .onKeyPress(phases: [.down, .repeat]) { press in
-            handleKeyPress(press)
-        }
-        .onChange(of: keyboard.focusRequest) { _, _ in
-            guard !configuration.keyboardNavigation.isEmpty else { return }
-            isKeyboardFocused = true
+            keyboard.hasSeenKeyInput = true
+            let result = handleKeyPress(press)
+            // Key codes, not characters: the log never carries text a person typed.
+            let key = press.key.character.unicodeScalars
+                .map { String($0.value, radix: 16) }.joined()
+            let outcome = result == .handled ? "handled" : "ignored"
+            logger.debug(
+                "Key \(key, privacy: .public) modifiers \(press.modifiers.rawValue) → \(outcome, privacy: .public)"
+            )
+            return result
         }
         .environment(viewModel)
         .environment(theme)
@@ -255,35 +273,35 @@ private struct CalendarHeaderControl: View {
 }
 
 #if os(iOS)
-    private struct CalendarTodayControl: View {
-        @Environment(\.calendarConfiguration) private var configuration
-        @Environment(\.calendarMetrics) private var metrics
-        let viewModel: CalendarViewModel
+private struct CalendarTodayControl: View {
+    @Environment(\.calendarConfiguration) private var configuration
+    @Environment(\.calendarMetrics) private var metrics
+    let viewModel: CalendarViewModel
 
-        var body: some View {
-            GeometryReader { geometry in
-                HStack {
-                    Spacer()
-                    Button("Calendar.Today".localized) {
-                        viewModel.goToToday()
-                    }
-                    // Today can fall outside `dateRange` (for example, a past-only calendar).
-                    .disabled(!viewModel.canGoToToday)
+    var body: some View {
+        GeometryReader { geometry in
+            HStack {
+                Spacer()
+                Button("Calendar.Today".localized) {
+                    viewModel.goToToday()
                 }
-                .frame(
-                    width: CalendarGridLayout(
-                        containerWidth: geometry.size.width,
-                        metrics: metrics,
-                        sizing: configuration.gridSizing
-                    ).gridWidth,
-                    alignment: .trailing
-                )
-                .frame(maxWidth: .infinity)
+                // Today can fall outside `dateRange` (for example, a past-only calendar).
+                .disabled(!viewModel.canGoToToday)
             }
-            // See `CalendarHeaderControl`: resolved here so a custom theme applies.
-            .frame(height: metrics.todayRowHeight)
+            .frame(
+                width: CalendarGridLayout(
+                    containerWidth: geometry.size.width,
+                    metrics: metrics,
+                    sizing: configuration.gridSizing
+                ).gridWidth,
+                alignment: .trailing
+            )
+            .frame(maxWidth: .infinity)
         }
+        // See `CalendarHeaderControl`: resolved here so a custom theme applies.
+        .frame(height: metrics.todayRowHeight)
     }
+}
 #endif
 
 #Preview("Calendar") {

@@ -35,14 +35,11 @@ final class MeasuredDayFrames {
         inMonth.removeAll()
     }
 
-    /// Records every displayed day of every realized month.
-    init() {
-        month = nil
-        calendar = Calendar(identifier: .gregorian)
-    }
-
-    /// Records only the displayed days of `month`.
-    init(month: MonthIdentifier, calendar: Calendar) {
+    /// Records displayed days, optionally restricting measurement to `month`.
+    init(
+        month: MonthIdentifier? = nil,
+        calendar: Calendar = Calendar(identifier: .gregorian)
+    ) {
         self.month = month
         self.calendar = calendar
     }
@@ -84,38 +81,38 @@ struct MeasuringDayView: CalendarDayView {
 }
 
 #if os(iOS)
-    import UIKit
+import UIKit
 
-    // MARK: - UIKit Hosting
+// MARK: - UIKit Hosting
 
-    /// Hosts `view` in a window of `size`, adding `safeArea` on top of the window's own insets.
-    ///
-    /// The macOS hosted suites cannot produce a device safe area, so this is how the iOS suites
-    /// exercise notch and home-indicator insets.
-    @MainActor
-    func hostView<V: View>(
-        _ view: V,
-        size: CGSize,
-        safeArea: UIEdgeInsets = .zero
-    ) -> (window: UIWindow, hosting: UIHostingController<V>) {
-        let hosting = UIHostingController(rootView: view)
-        hosting.additionalSafeAreaInsets = safeArea
-        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
-        window.rootViewController = hosting
-        window.isHidden = false
-        return (window, hosting)
+/// Hosts `view` in a window of `size`, adding `safeArea` on top of the window's own insets.
+///
+/// The macOS hosted suites cannot produce a device safe area, so this is how the iOS suites
+/// exercise notch and home-indicator insets.
+@MainActor
+func hostView<V: View>(
+    _ view: V,
+    size: CGSize,
+    safeArea: UIEdgeInsets = .zero
+) -> (window: UIWindow, hosting: UIHostingController<V>) {
+    let hosting = UIHostingController(rootView: view)
+    hosting.additionalSafeAreaInsets = safeArea
+    let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+    window.rootViewController = hosting
+    window.isHidden = false
+    return (window, hosting)
+}
+
+/// Lays out and pumps the run loop until the hosted tree has settled.
+///
+/// Measuring frames rather than pixels, so a bounded number of layout-and-run-loop passes is
+/// enough: geometry callbacks land within a few turns of the run loop.
+@MainActor
+func settle(_ view: UIView, passes: Int = 40) {
+    for _ in 0..<passes {
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(1.0 / 60.0))
     }
-
-    /// Lays out and pumps the run loop until the hosted tree has settled.
-    ///
-    /// Measuring frames rather than pixels, so a bounded number of layout-and-run-loop passes is
-    /// enough: geometry callbacks land within a few turns of the run loop.
-    @MainActor
-    func settle(_ view: UIView, passes: Int = 40) {
-        for _ in 0..<passes {
-            view.setNeedsLayout()
-            view.layoutIfNeeded()
-            RunLoop.current.run(until: Date().addingTimeInterval(1.0 / 60.0))
-        }
-    }
+}
 #endif
