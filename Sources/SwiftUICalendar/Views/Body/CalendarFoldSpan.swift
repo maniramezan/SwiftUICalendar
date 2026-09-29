@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 // MARK: - Fold Avoidance
@@ -96,11 +97,46 @@ extension EnvironmentValues {
     /// Horizontal bands of the calendar's viewport that the grid must not occupy, measured from the
     /// viewport's physical left edge regardless of layout direction — where the hinge actually is.
     ///
-    /// This is the seam where an iPhone Duo fold enters the layout. Reading the hinge from the system
-    /// needs `GeometryProxy.reservedRegions(kind: .division)`, which exists only in the iOS 27.1 SDK
-    /// and therefore cannot be referenced while the project still builds against 27.0. Keeping the
-    /// source injected rather than called inline means the displacement behavior is complete, live and
-    /// testable on every platform today, and switching it on later adds one availability-gated line
-    /// that populates this value.
+    /// Tests inject folds here; on a device the system's hinge arrives through `SystemFoldReader`
+    /// and is added to whatever this holds. Keeping band selection over plain ranges is what makes
+    /// the displacement testable at all: `ReservedRegion` has no public initializer.
     @Entry var calendarFoldRanges: [ClosedRange<CGFloat>] = []
 }
+
+/// Reports the system's fold bands for the view it modifies, in that view's own physical
+/// coordinates — the same space `calendarFoldRanges` uses.
+///
+/// `reservedRegions` needs the 27.1 SDK, so the call is compiled out on older toolchains and
+/// guarded at runtime by `#available` on older OS versions.
+struct SystemFoldReader: ViewModifier {
+    @Binding var ranges: [ClosedRange<CGFloat>]
+
+    func body(content: Content) -> some View {
+        #if canImport(SwiftUICore, _version: 8.0.85)
+        if #available(iOS 27.1, macOS 27.1, *) {
+            content.modifier(SystemFoldRegionReader(ranges: $ranges))
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
+#if canImport(SwiftUICore, _version: 8.0.85)
+@available(iOS 27.1, macOS 27.1, *)
+private struct SystemFoldRegionReader: ViewModifier {
+    @Binding var ranges: [ClosedRange<CGFloat>]
+
+    func body(content: Content) -> some View {
+        content.onGeometryChange(for: [ClosedRange<CGFloat>].self) { proxy in
+            proxy.reservedRegions(kind: .division, layoutDirectionBehavior: .fixed)
+                .filter(\.isActive)
+                .map { $0.frame.minX...$0.frame.maxX }
+        } action: { newRanges in
+            ranges = newRanges
+        }
+    }
+}
+#endif
