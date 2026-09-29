@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 /// A trigger button that presents a sheet containing a wheel-style year picker.
 ///
@@ -27,6 +28,7 @@ struct YearWheelPickerView: View {
             "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
         )
         .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+        .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
         .sheet(isPresented: $isPresented) {
             NavigationStack {
                 Picker("", selection: $currentValue) {
@@ -40,6 +42,7 @@ struct YearWheelPickerView: View {
                         Button("Calendar.Done".localized) {
                             isPresented = false
                         }
+                        .accessibilityIdentifier(CalendarAccessibilityID.yearPickerDoneButton)
                     }
                 }
             }

@@ -3,9 +3,13 @@ import SwiftUI
 /// A shared previous/next chevron row used by the header's month and year controls.
 ///
 /// Wraps arbitrary center content (a picker trigger) between two chevron buttons so every
-/// year-selection style shares identical navigation chrome.
+/// year-selection style shares identical navigation chrome. The chevrons take their identifiers as
+/// parameters because the same row pages months in one header and years in the other, and a shared
+/// identifier would make every query ambiguous.
 struct CalendarHeaderChevronRow<Content: View>: View {
     @Environment(\.calendarMetrics) private var metrics
+    let previousIdentifier: String
+    let nextIdentifier: String
     let onPrevious: () -> Void
     let onNext: () -> Void
     var isPreviousDisabled: Bool = false
@@ -28,6 +32,7 @@ struct CalendarHeaderChevronRow<Content: View>: View {
             // push-button background around it.
             .buttonStyle(.plain)
             .accessibilityLabel("Calendar.Navigation.Previous".localized)
+            .accessibilityIdentifier(previousIdentifier)
             .opacity(isPreviousDisabled ? metrics.disabledOpacity : 1.0)
             .disabled(isPreviousDisabled)
 
@@ -43,6 +48,7 @@ struct CalendarHeaderChevronRow<Content: View>: View {
             // push-button background around it.
             .buttonStyle(.plain)
             .accessibilityLabel("Calendar.Navigation.Next".localized)
+            .accessibilityIdentifier(nextIdentifier)
             .opacity(isNextDisabled ? metrics.disabledOpacity : 1.0)
             .disabled(isNextDisabled)
         }

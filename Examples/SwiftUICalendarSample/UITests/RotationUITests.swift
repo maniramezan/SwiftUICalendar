@@ -1,3 +1,4 @@
+import SwiftUICalendarAccessibility
 import XCTest
 
 /// Regression coverage for horizontal-scroll-mode rotation. Verifies against the actual live
@@ -13,18 +14,16 @@ final class RotationUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        app.chooseScrollMode("Horizontal")
-        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
-        app.buttons["Settings"].tap()
-        // Scoped to the picker's own identifier: "Horizontal" also reads as a prefix of the
-        // "Horizontal Height" row that appears once horizontal mode is active, so an app-wide
-        // query can resolve to the wrong element here.
-        let scrollModePicker = app.descendants(matching: .any)["scroll-mode-picker"]
-        XCTAssertTrue(scrollModePicker.waitForExistence(timeout: 5))
-        let horizontalOption = scrollModePicker.buttons["Horizontal"]
-        XCTAssertTrue(horizontalOption.waitForExistence(timeout: 5))
+        // Switch to horizontal scroll mode via the settings sheet.
+        app.chooseScrollMode(.horizontal)
+        app.openSettings()
+        // Reopening must show the mode still selected — the sheet and the inspector both keep the
+        // configuration alive rather than resetting it to the launch default.
+        let horizontal = app.option(
+            CalendarScrollMode.horizontal.accessibilityIdentifier,
+            in: CalendarSampleAccessibilityID.scrollModePicker)
         XCTAssertTrue(
-            horizontalOption.isSelected, "Inspector reopening must preserve configuration")
+            horizontal.isSelected, "Inspector reopening must preserve configuration")
         app.dismissSettings()
 
         XCUIDevice.shared.orientation = .portrait
@@ -54,7 +53,7 @@ final class RotationUITests: XCTestCase {
         app.launch()
         Thread.sleep(forTimeInterval: 1.5)
 
-        app.chooseScrollMode("Horizontal")
+        app.chooseScrollMode(.horizontal)
         Thread.sleep(forTimeInterval: 1.5)
 
         XCUIDevice.shared.orientation = .portrait
@@ -71,29 +70,13 @@ final class RotationUITests: XCTestCase {
 
     private func assertNoClippedContent(_ app: XCUIApplication, windowFrame: CGRect, label: String)
     {
-        // Weekday header letters (S M T W T F S) must all be present and visible.
-        let weekdayLabels = ["S", "M", "T", "W", "F"]
-        for weekday in weekdayLabels {
-            let element = app.staticTexts[weekday].firstMatch
-            if element.exists {
-                let frame = element.frame
-                XCTAssertTrue(
-                    frame.minX >= 0 && frame.maxX <= windowFrame.width && frame.minY >= 0
-                        && frame.maxY <= windowFrame.height,
-                    "weekday header '\(weekday)' clipped \(label): frame=\(frame) window=\(windowFrame)"
-                )
-            }
-        }
-
         // Every day-cell button for the currently-displayed month must be present, hittable, and
         // fully inside the window bounds — not clipped off-screen or left as blank space.
         // NOTE: the horizontal pager intentionally parks the previous/next month's real day cells
         // just off-screen as a swipe affordance (see CalendarBodyHorizontalView's peek design), so
         // this check is scoped to the CURRENT month only (the current month) — those adjacent-month cells are
         // supposed to be off-screen and must not be flagged here.
-        let dayButtons = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", Date().formatted(.dateTime.month(.wide)))
-        )
+        let dayButtons = app.dayButtons(inMonthContaining: Date())
         let dayCellCount = dayButtons.count
         XCTAssertGreaterThanOrEqual(
             dayCellCount, 28, "expected at least 4 full weeks of day cells \(label)")

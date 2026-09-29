@@ -1,5 +1,6 @@
 import Components
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
     let items: [Item]
@@ -11,12 +12,15 @@ struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
 
     var body: some View {
         CalendarHeaderChevronRow(
+            previousIdentifier: CalendarAccessibilityID.previousMonthButton,
+            nextIdentifier: CalendarAccessibilityID.nextMonthButton,
             onPrevious: onPrevious,
             onNext: onNext,
             isPreviousDisabled: isPreviousDisabled,
             isNextDisabled: isNextDisabled
         ) {
             MenuPicker(items: items, currentValue: selectedItem)
+                .accessibilityIdentifier(CalendarAccessibilityID.monthButton)
         }
     }
 }
