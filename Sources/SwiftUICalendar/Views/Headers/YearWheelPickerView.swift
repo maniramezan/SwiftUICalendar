@@ -14,42 +14,42 @@ struct YearWheelPickerView: View {
 
     var body: some View {
         #if os(iOS)
-            Button(action: { isPresented = true }) {
-                Text(currentValue.title)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .allowsTightening(true)
-                    .padding(.horizontal, metrics.controlPadding)
-                    .padding(.vertical, metrics.tightPadding)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(
-                "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
-            )
-            .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
-            .sheet(isPresented: $isPresented) {
-                NavigationStack {
-                    Picker("", selection: $currentValue) {
-                        ForEach(items) { item in
-                            Text(item.title).tag(item)
-                        }
+        Button(action: { isPresented = true }) {
+            Text(currentValue.title)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .allowsTightening(true)
+                .padding(.horizontal, metrics.controlPadding)
+                .padding(.vertical, metrics.tightPadding)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
+        )
+        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+        .sheet(isPresented: $isPresented) {
+            NavigationStack {
+                Picker("", selection: $currentValue) {
+                    ForEach(items) { item in
+                        Text(item.title).tag(item)
                     }
-                    .pickerStyle(.wheel)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Calendar.Done".localized) {
-                                isPresented = false
-                            }
+                }
+                .pickerStyle(.wheel)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Calendar.Done".localized) {
+                            isPresented = false
                         }
                     }
                 }
-                .presentationDetents([.height(280)])
-                .presentationDragIndicator(.visible)
             }
+            .presentationDetents([.height(280)])
+            .presentationDragIndicator(.visible)
+        }
         #else
-            // The wheel picker style is unavailable outside iOS; fall back to a native dropdown menu so
-            // the control is still usable.
-            YearMenuPickerView(items: items, currentValue: $currentValue)
+        // The wheel picker style is unavailable outside iOS; fall back to a native dropdown menu so
+        // the control is still usable.
+        YearMenuPickerView(items: items, currentValue: $currentValue)
         #endif
     }
 }

@@ -33,11 +33,11 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/maniramezan/SwiftCommons",
-            .upToNextMajor(from: "0.8.2")
+            .upToNextMajor(from: "0.13.0")
         ),
         .package(
             url: "https://github.com/maniramezan/SwiftUIComponents",
-            .upToNextMajor(from: "0.11.0")
+            .upToNextMajor(from: "0.12.0")
         ),
         .package(
             url: "https://github.com/pointfreeco/swift-snapshot-testing",

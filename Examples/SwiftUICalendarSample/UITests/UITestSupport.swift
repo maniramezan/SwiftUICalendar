@@ -4,14 +4,16 @@ import XCTest
 extension XCUIApplication {
     // MARK: - Calendar queries
 
-    func dayIdentifier(for date: Date) -> String {
+    /// `nonisolated` so the identifier can be built off the main actor — every `XCUIApplication`
+    /// member is main-actor isolated, and a test method is not.
+    nonisolated func dayIdentifier(for date: Date) -> String {
         let components = Calendar(identifier: .gregorian).dateComponents(
             [.year, .month, .day], from: date)
         return CalendarAccessibilityID.day(
             year: components.year!, month: components.month!, day: components.day!)
     }
 
-    func dayButtons(inMonthContaining date: Date) -> XCUIElementQuery {
+    nonisolated func dayButtons(inMonthContaining date: Date) -> XCUIElementQuery {
         let components = Calendar(identifier: .gregorian).dateComponents(
             [.year, .month], from: date)
         return buttons.matching(
@@ -31,25 +33,67 @@ extension XCUIApplication {
         _ mode: CalendarScrollMode, architecture: SampleArchitecture? = nil,
         file: StaticString = #filePath, line: UInt = #line
     ) {
+        openSettings(file: file, line: line)
+        if let architecture {
+            option(
+                architecture.accessibilityIdentifier,
+                in: CalendarSampleAccessibilityID.stateOwnerPicker, file: file, line: line
+            ).tap()
+        }
+        let scroll = option(
+            mode.accessibilityIdentifier, in: CalendarSampleAccessibilityID.scrollModePicker,
+            file: file, line: line)
+        XCTAssertTrue(
+            scroll.exists, "scroll mode '\(mode.accessibilityIdentifier)' not found in settings",
+            file: file, line: line)
+        scroll.tap()
+        dismissSettings(file: file, line: line)
+    }
+
+    /// Resolves a segmented-control option inside the picker `pickerIdentifier`.
+    ///
+    /// Queries stay scoped to the picker's own identifier because an option's label also reads as
+    /// the start of a longer row once that mode is active (the "Horizontal" scroll option next to
+    /// the "Horizontal Height" row), so an app-wide query can resolve to the wrong element.
+    func option(
+        _ optionIdentifier: String, in pickerIdentifier: String,
+        file: StaticString = #filePath, line: UInt = #line
+    ) -> XCUIElement {
+        let picker = descendants(matching: .any)[pickerIdentifier]
+        XCTAssertTrue(
+            picker.waitForExistence(timeout: 5), "picker '\(pickerIdentifier)' not found",
+            file: file,
+            line: line)
+        let option = picker.buttons[optionIdentifier]
+        let form = scrollViews.firstMatch
+        for _ in 0..<4 where !option.waitForExistence(timeout: 1) {
+            form.swipeUp()
+        }
+        return option
+    }
+
+    /// Opens the settings sheet or inspector, whichever the current width presents.
+    func openSettings(file: StaticString = #filePath, line: UInt = #line) {
         let settings = buttons[CalendarSampleAccessibilityID.settings]
         XCTAssertTrue(
             settings.waitForExistence(timeout: 5), "Settings button not found", file: file,
             line: line)
         settings.tap()
-        if let architecture {
-            let picker = segmentedControls[CalendarSampleAccessibilityID.stateOwnerPicker]
-            XCTAssertTrue(picker.waitForExistence(timeout: 5), file: file, line: line)
-            picker.buttons[architecture.accessibilityIdentifier].tap()
+    }
+
+    /// Closes the compact sheet or regular-width inspector.
+    func dismissSettings(file: StaticString = #filePath, line: UInt = #line) {
+        let done = buttons[CalendarSampleAccessibilityID.done]
+        if done.waitForExistence(timeout: 1) {
+            done.tap()
+            return
         }
-        let option = segmentedControls[CalendarSampleAccessibilityID.scrollModePicker]
-            .buttons[mode.accessibilityIdentifier]
-        let form = collectionViews.firstMatch
-        for _ in 0..<4 where !option.waitForExistence(timeout: 1) {
-            form.swipeUp()
-        }
+
+        // The regular-width inspector has no Done — the Settings toolbar button toggles it closed.
+        let settings = buttons[CalendarSampleAccessibilityID.settings]
         XCTAssertTrue(
-            option.exists, "scroll mode '\(mode)' not found in settings", file: file, line: line)
-        option.tap()
-        buttons[CalendarSampleAccessibilityID.done].tap()
+            settings.waitForExistence(timeout: 5), "Settings button not found", file: file,
+            line: line)
+        settings.tap()
     }
 }

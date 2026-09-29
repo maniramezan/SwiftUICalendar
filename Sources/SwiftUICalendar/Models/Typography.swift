@@ -178,9 +178,9 @@ public final class Typography {
     /// - On iOS and related platforms: uses tighter fonts and permits slight downscaling.
     public static var `default`: Typography {
         #if os(macOS)
-            makeDefaultMacOS()
+        makeDefaultMacOS()
         #else
-            makeDefaultiOS()
+        makeDefaultiOS()
         #endif
     }
 
@@ -229,21 +229,21 @@ public final class Typography {
 
         // Square dual day view - needs smaller fonts for the compact layout
         #if os(macOS)
-            setDayViewTypography(
-                DayViewTypography(
-                    primaryFont: .system(.body, weight: .semibold),
-                    secondaryFont: .caption
-                ),
-                for: DayViewType.squareDual
-            )
+        setDayViewTypography(
+            DayViewTypography(
+                primaryFont: .system(.body, weight: .semibold),
+                secondaryFont: .caption
+            ),
+            for: DayViewType.squareDual
+        )
         #else
-            setDayViewTypography(
-                DayViewTypography(
-                    primaryFont: .footnote,
-                    secondaryFont: .caption2
-                ),
-                for: DayViewType.squareDual
-            )
+        setDayViewTypography(
+            DayViewTypography(
+                primaryFont: .footnote,
+                secondaryFont: .caption2
+            ),
+            for: DayViewType.squareDual
+        )
         #endif
     }
 }

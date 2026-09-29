@@ -23,8 +23,6 @@ final class CalendarKeyboardCursor {
     /// The focused day, always snapped to the start of the day so per-cell checks are plain `==`.
     var date: Date?
     var isActive = false
-    /// Observed by the owning view to request native focus after a day activation.
-    private(set) var focusRequest = 0
 
     /// Set only by keyboard-initiated movement.
     ///
@@ -35,28 +33,42 @@ final class CalendarKeyboardCursor {
     private(set) var scrollRequest: ScrollRequest?
     private var generation = 0
 
+    /// Bumped when a tapped day asks the calendar to take keyboard focus. A counter, so a second
+    /// tap on the same day still fires `onChange`.
+    ///
+    /// Tab alone did not keep focus on iPad: the calendar gained it and lost it again ~200ms later,
+    /// before any arrow arrived, while focus set in code held. Tapping a day and then typing is how
+    /// iPad keyboard users reach the grid anyway, so a tap is what hands the grid the keyboard.
+    private(set) var focusRequest = 0
+    /// Where the cursor lands when that focus arrives — the tapped day, not the navigated date.
+    private var pendingFocusDate: Date?
+
+    /// Asks for keyboard focus at a tapped day. Invisible until a key arrives; see
+    /// ``hasSeenKeyInput``. Detecting a keyboard up front is unreliable — `GCKeyboard.coalesced`
+    /// stays nil on the simulator and before the first keystroke on some hardware.
+    func requestFocus(at dayStart: Date) {
+        pendingFocusDate = dayStart
+        focusRequest &+= 1
+    }
+
+    /// The tapped day awaiting focus, cleared as it is read.
+    func takePendingFocusDate() -> Date? {
+        defer { pendingFocusDate = nil }
+        return pendingFocusDate
+    }
+
+    /// Set by the first key press that reaches the calendar. A tap takes focus silently; the ring
+    /// appears only once someone is actually using a keyboard, so touch-only users never see it.
+    var hasSeenKeyInput = false
+
     func isFocused(_ dayStart: Date) -> Bool {
-        isActive && date == dayStart
+        isActive && hasSeenKeyInput && date == dayStart
     }
 
     /// Moves the cursor to track a navigation the calendar performed for some other reason, without
     /// asking any scroll container to move.
     func follow(_ date: Date, calendar: Calendar) {
         self.date = calendar.startOfDay(for: date)
-    }
-
-    /// Establishes the cursor for a day activation before the view requests keyboard focus.
-    /// Does not navigate or request scrolling: the day activation already handles selection.
-    @discardableResult
-    func focus(
-        on date: Date, model: CalendarViewModel,
-        shortcuts: CalendarConfiguration.KeyboardNavigation
-    ) -> Bool {
-        guard !shortcuts.isEmpty, model.engine.containsDay(date) else { return false }
-        follow(date, calendar: model.engine.calendar)
-        isActive = true
-        focusRequest += 1
-        return true
     }
 
     /// Moves the cursor by `days`, navigating the calendar to keep it visible.

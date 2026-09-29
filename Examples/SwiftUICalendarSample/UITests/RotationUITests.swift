@@ -16,6 +16,15 @@ final class RotationUITests: XCTestCase {
 
         // Switch to horizontal scroll mode via the settings sheet.
         app.chooseScrollMode(.horizontal)
+        app.openSettings()
+        // Reopening must show the mode still selected — the sheet and the inspector both keep the
+        // configuration alive rather than resetting it to the launch default.
+        let horizontal = app.option(
+            CalendarScrollMode.horizontal.accessibilityIdentifier,
+            in: CalendarSampleAccessibilityID.scrollModePicker)
+        XCTAssertTrue(
+            horizontal.isSelected, "Inspector reopening must preserve configuration")
+        app.dismissSettings()
 
         XCUIDevice.shared.orientation = .portrait
         Thread.sleep(forTimeInterval: 1.5)

@@ -15,12 +15,12 @@ struct CalendarHeaderView: View {
                 macOSTodayButton
             }
             #if !os(macOS)
-                VStack {
-                    CalendarHeaderMonthView()
-                        .id("stack-month")
-                    CalendarHeaderYearView()
-                        .id("stack-year")
-                }
+            VStack {
+                CalendarHeaderMonthView()
+                    .id("stack-month")
+                CalendarHeaderYearView()
+                    .id("stack-year")
+            }
             #endif
         }
         .font(typography.headerFont)
@@ -29,11 +29,11 @@ struct CalendarHeaderView: View {
     @ViewBuilder
     private var macOSTodayButton: some View {
         #if os(macOS)
-            // Today selects the current day in single-selection mode on both platforms.
-            Button("Calendar.Today".localized) {
-                model.goToToday()
-            }
-            .fixedSize()
+        // Today selects the current day in single-selection mode on both platforms.
+        Button("Calendar.Today".localized) {
+            model.goToToday()
+        }
+        .fixedSize()
         #endif
     }
 }

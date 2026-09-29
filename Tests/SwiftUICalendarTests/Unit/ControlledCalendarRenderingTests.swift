@@ -67,48 +67,48 @@ struct ControlledCalendarRenderingTests {
     }
 
     #if os(macOS)
-        private func mount<V: View>(_ view: V, size: CGSize) {
-            let hosted = hostView(view, size: size)
-            defer { hosted.window.contentView = nil }
-            waitForStableRender(hosted.hosting, timeout: 2)
-            #expect(hosted.hosting.fittingSize.width >= 0)
+    private func mount<V: View>(_ view: V, size: CGSize) {
+        let hosted = hostView(view, size: size)
+        defer { hosted.window.contentView = nil }
+        waitForStableRender(hosted.hosting, timeout: 2)
+        #expect(hosted.hosting.fittingSize.width >= 0)
+    }
+
+    @Test(
+        "TCACalendarView mounts for every scroll mode",
+        arguments: [CalendarConfiguration.ScrollMode.none, .vertical, .horizontal],
+        [Calendar.Identifier.gregorian, .persian])
+    func tcaCalendarViewMounts(
+        mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
+    ) {
+        let store = Store(initialState: CalendarFeature.State(calendar: state(identifier))) {
+            CalendarFeature()
         }
 
-        @Test(
-            "TCACalendarView mounts for every scroll mode",
-            arguments: [CalendarConfiguration.ScrollMode.none, .vertical, .horizontal],
-            [Calendar.Identifier.gregorian, .persian])
-        func tcaCalendarViewMounts(
-            mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
-        ) {
-            let store = Store(initialState: CalendarFeature.State(calendar: state(identifier))) {
-                CalendarFeature()
-            }
+        mount(
+            TCACalendarView(
+                store: store, configuration: CalendarConfiguration(scrollMode: mode)),
+            size: CGSize(width: 390, height: 620))
+    }
 
-            mount(
-                TCACalendarView(
-                    store: store, configuration: CalendarConfiguration(scrollMode: mode)),
-                size: CGSize(width: 390, height: 620))
+    @Test("TCACalendarView keeps rendering as the store drives it through months")
+    func tcaCalendarViewFollowsStoreMutations() throws {
+        let store = Store(initialState: CalendarFeature.State(calendar: state())) {
+            CalendarFeature()
+        }
+        let view = TCACalendarView(
+            store: store, configuration: CalendarConfiguration(scrollMode: .vertical))
+        let hosted = hostView(view, size: CGSize(width: 390, height: 620))
+        defer { hosted.window.contentView = nil }
+        waitForStableRender(hosted.hosting, timeout: 2)
+
+        // Each of these rebuilds the rendering projection, which is the path that regressed.
+        for _ in 0..<6 {
+            store.send(.view(.offsetMonths(1)))
+            hosted.hosting.layoutSubtreeIfNeeded()
         }
 
-        @Test("TCACalendarView keeps rendering as the store drives it through months")
-        func tcaCalendarViewFollowsStoreMutations() throws {
-            let store = Store(initialState: CalendarFeature.State(calendar: state())) {
-                CalendarFeature()
-            }
-            let view = TCACalendarView(
-                store: store, configuration: CalendarConfiguration(scrollMode: .vertical))
-            let hosted = hostView(view, size: CGSize(width: 390, height: 620))
-            defer { hosted.window.contentView = nil }
-            waitForStableRender(hosted.hosting, timeout: 2)
-
-            // Each of these rebuilds the rendering projection, which is the path that regressed.
-            for _ in 0..<6 {
-                store.send(.view(.offsetMonths(1)))
-                hosted.hosting.layoutSubtreeIfNeeded()
-            }
-
-            #expect(CalendarViewModel(state: store.calendar).visibleMonth.month == 12)
-        }
+        #expect(CalendarViewModel(state: store.calendar).visibleMonth.month == 12)
+    }
     #endif
 }

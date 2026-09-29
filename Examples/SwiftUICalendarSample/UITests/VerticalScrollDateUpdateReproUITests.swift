@@ -36,12 +36,12 @@ final class VerticalScrollDateUpdateReproUITests: XCTestCase {
         app.scrollViews.firstMatch.swipeUp(velocity: .slow)
         XCTAssertTrue(waitForHeaderToLeaveViewport(currentHeader, in: app))
 
-        app.buttons[CalendarSampleAccessibilityID.settings].tap()
-        let architecturePicker = app.segmentedControls[
-            CalendarSampleAccessibilityID.stateOwnerPicker]
-        XCTAssertTrue(architecturePicker.waitForExistence(timeout: 5))
-        architecturePicker.buttons[SampleArchitecture.tca.accessibilityIdentifier].tap()
-        app.buttons[CalendarSampleAccessibilityID.done].tap()
+        app.openSettings()
+        app.option(
+            SampleArchitecture.tca.accessibilityIdentifier,
+            in: CalendarSampleAccessibilityID.stateOwnerPicker
+        ).tap()
+        app.dismissSettings()
 
         XCTAssertTrue(app.staticTexts[currentHeader].waitForExistence(timeout: 5))
     }

@@ -11,10 +11,9 @@ struct CalendarKeyboardSnapshotTests {
     func focus(identifier: Calendar.Identifier) throws {
         let model = CalendarViewModel.snapshot(identifier: identifier)
         let cursor = CalendarKeyboardCursor()
-        let tapped = try #require(
-            model.engine.calendar.date(byAdding: .day, value: 1, to: model.currentDate))
-        #expect(cursor.focus(on: tapped, model: model, shortcuts: .all))
-        try model.navigate(to: tapped)
+        cursor.isActive = true
+        cursor.hasSeenKeyInput = true
+        try cursor.move(days: 1, model: model)
         let date = try #require(cursor.date)
         let before =
             "focused=\(cursor.isFocused(date)) selected=\(model.isSelected(date: date))"
