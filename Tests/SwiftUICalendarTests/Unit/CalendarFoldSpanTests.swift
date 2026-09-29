@@ -144,100 +144,100 @@ struct CalendarFoldSpanTests {
 }
 
 #if os(macOS)
-    import AppKit
+import AppKit
 
-    /// Hosted coverage for the displacement itself, not just the band arithmetic. This is only
-    /// reachable because the fold source is injected: were the hinge read from
-    /// `GeometryProxy.reservedRegions`, no test could produce one.
-    @MainActor
-    @Suite("Calendar fold displacement", .serialized)
-    struct CalendarFoldDisplacementTests {
-        private static let size = CGSize(width: 900, height: 800)
+/// Hosted coverage for the displacement itself, not just the band arithmetic. This is only
+/// reachable because the fold source is injected: were the hinge read from
+/// `GeometryProxy.reservedRegions`, no test could produce one.
+@MainActor
+@Suite("Calendar fold displacement", .serialized)
+struct CalendarFoldDisplacementTests {
+    private static let size = CGSize(width: 900, height: 800)
 
-        /// Right-to-left calendars flip leading and trailing padding, which once put the Persian
-        /// grid at 382–878 — straight across a fold at 520–580 that the Gregorian grid cleared.
-        @Test(
-            "Day cells keep clear of a blocked band",
-            arguments: [
-                CalendarConfiguration.ScrollMode.none, .vertical, .horizontal,
-            ], [Calendar.Identifier.gregorian, .persian, .hebrew])
-        func daysAvoidTheBand(
-            mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
-        ) throws {
-            // Hinge past the middle, so the grid belongs in the wider band to its left.
-            let blocked: ClosedRange<CGFloat> = 520...580
-            let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
-            let month = try #require(model.monthIdentifier())
+    /// Right-to-left calendars flip leading and trailing padding, which once put the Persian
+    /// grid at 382–878 — straight across a fold at 520–580 that the Gregorian grid cleared.
+    @Test(
+        "Day cells keep clear of a blocked band",
+        arguments: [
+            CalendarConfiguration.ScrollMode.none, .vertical, .horizontal,
+        ], [Calendar.Identifier.gregorian, .persian, .hebrew])
+    func daysAvoidTheBand(
+        mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
+    ) throws {
+        // Hinge past the middle, so the grid belongs in the wider band to its left.
+        let blocked: ClosedRange<CGFloat> = 520...580
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
+        let month = try #require(model.monthIdentifier())
+        let frames = MeasuredDayFrames(month: month, calendar: model.engine.calendar)
+        let theme = Theme()
+        theme.day.setDayContent { context in
+            MeasuringDayView(context: context, frames: frames)
+        }
+        let hosted = hostView(
+            CalendarView(model: model, theme: theme, configuration: .init(scrollMode: mode))
+                .environment(\.calendarFoldRanges, [blocked]),
+            size: Self.size)
+        defer { hosted.window.contentView = nil }
+        #expect(waitForStableRender(hosted.hosting))
+        expectNonBlankRender(hosted.hosting, size: Self.size, "folded \(mode)")
+        #expect(frames.inMonth.count >= 28)
+
+        for (date, frame) in frames.inMonth {
+            let intersects = frame.maxX > blocked.lowerBound && frame.minX < blocked.upperBound
+            #expect(
+                !intersects,
+                "a day cell overlapped the fold in \(mode) mode: \(frame) vs \(blocked) (\(date))"
+            )
+        }
+        // Cells must not have been shrunk below the touch floor to fit beside the fold.
+        let widest = try #require(frames.widestCell)
+        #expect(widest >= CalendarMetrics.default.minCellSize)
+    }
+
+    /// Proves the displacement actually moved something: at this container width the grid is
+    /// already at its capped natural width, so an unfolded calendar centers it straight across
+    /// the band the hinge would occupy. Folded, the same grid has to clear that band entirely.
+    @Test(
+        "Displacement moves a grid that would otherwise cross the fold",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func displacementMovesTheGrid(identifier: Calendar.Identifier) throws {
+        let blocked: ClosedRange<CGFloat> = 520...580
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
+        let month = try #require(model.monthIdentifier())
+
+        func bounds(foldRanges: [ClosedRange<CGFloat>]) throws -> (
+            minX: CGFloat, maxX: CGFloat
+        ) {
             let frames = MeasuredDayFrames(month: month, calendar: model.engine.calendar)
             let theme = Theme()
             theme.day.setDayContent { context in
                 MeasuringDayView(context: context, frames: frames)
             }
             let hosted = hostView(
-                CalendarView(model: model, theme: theme, configuration: .init(scrollMode: mode))
-                    .environment(\.calendarFoldRanges, [blocked]),
+                CalendarView(model: model, theme: theme, configuration: .init())
+                    .environment(\.calendarFoldRanges, foldRanges),
                 size: Self.size)
             defer { hosted.window.contentView = nil }
             #expect(waitForStableRender(hosted.hosting))
-            expectNonBlankRender(hosted.hosting, size: Self.size, "folded \(mode)")
-            #expect(frames.inMonth.count >= 28)
-
-            for (date, frame) in frames.inMonth {
-                let intersects = frame.maxX > blocked.lowerBound && frame.minX < blocked.upperBound
-                #expect(
-                    !intersects,
-                    "a day cell overlapped the fold in \(mode) mode: \(frame) vs \(blocked) (\(date))"
-                )
-            }
-            // Cells must not have been shrunk below the touch floor to fit beside the fold.
-            let widest = try #require(frames.widestCell)
-            #expect(widest >= CalendarMetrics.default.minCellSize)
+            let minX = try #require(frames.inMonth.values.map(\.minX).min())
+            let maxX = try #require(frames.inMonth.values.map(\.maxX).max())
+            return (minX, maxX)
         }
 
-        /// Proves the displacement actually moved something: at this container width the grid is
-        /// already at its capped natural width, so an unfolded calendar centers it straight across
-        /// the band the hinge would occupy. Folded, the same grid has to clear that band entirely.
-        @Test(
-            "Displacement moves a grid that would otherwise cross the fold",
-            arguments: [Calendar.Identifier.gregorian, .persian])
-        func displacementMovesTheGrid(identifier: Calendar.Identifier) throws {
-            let blocked: ClosedRange<CGFloat> = 520...580
-            let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
-            let month = try #require(model.monthIdentifier())
+        let unfolded = try bounds(foldRanges: [])
+        #expect(
+            unfolded.maxX > blocked.lowerBound && unfolded.minX < blocked.upperBound,
+            "\(identifier): the unfolded grid must cross the band, or this proves nothing")
 
-            func bounds(foldRanges: [ClosedRange<CGFloat>]) throws -> (
-                minX: CGFloat, maxX: CGFloat
-            ) {
-                let frames = MeasuredDayFrames(month: month, calendar: model.engine.calendar)
-                let theme = Theme()
-                theme.day.setDayContent { context in
-                    MeasuringDayView(context: context, frames: frames)
-                }
-                let hosted = hostView(
-                    CalendarView(model: model, theme: theme, configuration: .init())
-                        .environment(\.calendarFoldRanges, foldRanges),
-                    size: Self.size)
-                defer { hosted.window.contentView = nil }
-                #expect(waitForStableRender(hosted.hosting))
-                let minX = try #require(frames.inMonth.values.map(\.minX).min())
-                let maxX = try #require(frames.inMonth.values.map(\.maxX).max())
-                return (minX, maxX)
-            }
-
-            let unfolded = try bounds(foldRanges: [])
-            #expect(
-                unfolded.maxX > blocked.lowerBound && unfolded.minX < blocked.upperBound,
-                "\(identifier): the unfolded grid must cross the band, or this proves nothing")
-
-            let folded = try bounds(foldRanges: [blocked])
-            #expect(
-                folded.maxX <= blocked.lowerBound,
-                "\(identifier): the folded grid must clear the band")
-            #expect(
-                folded.minX < unfolded.minX,
-                "\(identifier): the folded grid must have moved into the wider band")
-            // Same grid, just relocated: displacement must not resize it.
-            #expect(abs((folded.maxX - folded.minX) - (unfolded.maxX - unfolded.minX)) < 0.5)
-        }
+        let folded = try bounds(foldRanges: [blocked])
+        #expect(
+            folded.maxX <= blocked.lowerBound,
+            "\(identifier): the folded grid must clear the band")
+        #expect(
+            folded.minX < unfolded.minX,
+            "\(identifier): the folded grid must have moved into the wider band")
+        // Same grid, just relocated: displacement must not resize it.
+        #expect(abs((folded.maxX - folded.minX) - (unfolded.maxX - unfolded.minX)) < 0.5)
     }
+}
 #endif

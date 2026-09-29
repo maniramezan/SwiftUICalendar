@@ -114,20 +114,20 @@ struct SystemFoldReader: ViewModifier {
     @Binding var ranges: [ClosedRange<CGFloat>]
 
     func body(content: Content) -> some View {
-        #if os(iOS)
-            if #available(iOS 27.1, *) {
-                content.modifier(SystemFoldRegionReader(ranges: $ranges))
-            } else {
-                content
-            }
-        #else
+        #if canImport(SwiftUICore, _version: 8.0.85)
+        if #available(iOS 27.1, macOS 27.1, *) {
+            content.modifier(SystemFoldRegionReader(ranges: $ranges))
+        } else {
             content
+        }
+        #else
+        content
         #endif
     }
 }
 
-#if os(iOS)
-@available(iOS 27.1, *)
+#if canImport(SwiftUICore, _version: 8.0.85)
+@available(iOS 27.1, macOS 27.1, *)
 private struct SystemFoldRegionReader: ViewModifier {
     @Binding var ranges: [ClosedRange<CGFloat>]
 
