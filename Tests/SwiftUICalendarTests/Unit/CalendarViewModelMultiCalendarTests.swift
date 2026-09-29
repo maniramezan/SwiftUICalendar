@@ -14,7 +14,7 @@ struct CalendarViewModelMultiCalendarTests {
             (.hebrew, "תשרי", "א׳"),
             (.islamicUmmAlQura, "محرم", "ح"),
             (.japanese, "1月", "日"),
-            (.persian, "فروردین", "ی"),
+            (.persian, "فروردین", "ش"),
         ]
     )
     func supportedCalendarIdentifiersUseNativePresentationLocales(
