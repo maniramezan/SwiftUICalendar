@@ -1,11 +1,11 @@
+import Components
 import SwiftUI
 import SwiftUICalendarAccessibility
 
 /// A trigger button that presents a sheet containing a wheel-style year picker.
 ///
-/// Unlike `MenuPicker`, this always uses the wheel presentation regardless of how many years are
-/// offered, so `CalendarConfiguration.YearSelection.Style.wheel` behaves consistently even when a developer
-/// restricts the selectable range to a small number of years.
+/// The iOS sheet retains its calendar-specific Done action, which the shared wheel presentation
+/// cannot customize. Outside iOS, the shared wheel preference falls back to a native dropdown.
 struct YearWheelPickerView: View {
     @Environment(\.calendarMetrics) private var metrics
     let items: [YearItem]
@@ -52,7 +52,12 @@ struct YearWheelPickerView: View {
         #else
         // The wheel picker style is unavailable outside iOS; fall back to a native dropdown menu so
         // the control is still usable.
-        YearMenuPickerView(items: items, currentValue: $currentValue)
+        MenuPicker(items: items, currentValue: $currentValue, preferredStyle: .wheel)
+            .accessibilityLabel(
+                "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
+            )
+            .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+            .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
         #endif
     }
 }

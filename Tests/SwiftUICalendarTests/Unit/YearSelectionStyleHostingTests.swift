@@ -69,6 +69,18 @@ struct YearSelectionStyleHostingTests {
         #expect(hosted.hosting.fittingSize.width >= 0)
     }
 
+    @Test("Shared year picker presentations render short and long lists", arguments: [1, 3, 201])
+    func sharedPickerListLengths(count: Int) {
+        let items = (2025..<(2025 + count)).map { YearItem(id: $0, title: "\($0)") }
+        let selection = Binding.constant(items[0])
+        let menu = hostView(YearMenuPickerView(items: items, currentValue: selection))
+        let wheel = hostView(YearWheelPickerView(items: items, currentValue: selection))
+        #expect(menu.hosting.fittingSize.width > 0)
+        #expect(wheel.hosting.fittingSize.width > 0)
+        menu.window.contentView = nil
+        wheel.window.contentView = nil
+    }
+
     @Test("YearMenuPickerView renders directly without crashing")
     func yearMenuPickerViewRendersDirectly() {
         let currentValue = Binding<YearItem>.constant(YearItem(id: 2026, title: "2026"))

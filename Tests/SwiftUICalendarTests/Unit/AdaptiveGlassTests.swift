@@ -6,64 +6,37 @@ import Testing
 @MainActor
 @Suite("Adaptive Glass Tests")
 struct AdaptiveGlassTests {
-
-    @Test("renderingMode chooses the expected implementation")
-    func renderingModeChoosesExpectedImplementation() {
-        #expect(AdaptiveGlassModifier.renderingMode(supportsLiquidGlass: true) == .liquidGlass)
+    @Test("Calendar shapes map to the shared outlines")
+    func sharedOutlines() {
+        #expect(AdaptiveGlassShape.circle.surfaceShape == .circle)
+        #expect(AdaptiveGlassShape.capsule.surfaceShape == .capsule)
         #expect(
-            AdaptiveGlassModifier.renderingMode(supportsLiquidGlass: false) == .materialFallback)
+            AdaptiveGlassShape.roundedRectangle(cornerRadius: 10).surfaceShape == .roundedRectangle)
     }
 
-    @Test("Liquid glass tint is skipped when transparency is reduced")
-    func liquidGlassTintDecisionRespectsTransparency() {
-        #expect(AdaptiveGlassModifier.shouldApplyTint(hasTint: true, reduceTransparency: false))
-        #expect(!AdaptiveGlassModifier.shouldApplyTint(hasTint: true, reduceTransparency: true))
-        #expect(!AdaptiveGlassModifier.shouldApplyTint(hasTint: false, reduceTransparency: false))
-    }
-
-    @Test("Material fallback chooses distinct materials for transparency settings")
-    func materialFallbackChoosesDistinctMaterials() {
-        let reduced = AdaptiveGlassModifier.fallbackMaterialStyle(reduceTransparency: true)
-        let regular = AdaptiveGlassModifier.fallbackMaterialStyle(reduceTransparency: false)
-
-        #expect(reduced == .regular)
-        #expect(regular == .ultraThin)
+    @Test("Only rounded surfaces carry a custom radius and hairline highlight")
+    func calendarHighlightStyle() {
+        #expect(AdaptiveGlassShape.roundedRectangle(cornerRadius: 10).cornerRadius == 10)
+        #expect(AdaptiveGlassShape.roundedRectangle(cornerRadius: 0).cornerRadius == 0)
+        #expect(AdaptiveGlassShape.roundedRectangle(cornerRadius: 10).usesHairlineBorder)
+        #expect(AdaptiveGlassShape.circle.cornerRadius == nil)
+        #expect(AdaptiveGlassShape.capsule.cornerRadius == nil)
+        #expect(!AdaptiveGlassShape.circle.usesHairlineBorder)
+        #expect(!AdaptiveGlassShape.capsule.usesHairlineBorder)
     }
 
     #if os(macOS)
-    @Test("Forced material fallback renders all supported shapes")
-    func forcedMaterialFallbackRendersAllSupportedShapes() {
+    @Test("Shared adaptive surfaces render all calendar outlines")
+    func sharedSurfacesRender() {
         let view = HStack {
-            Text("Circle")
-                .modifier(
-                    AdaptiveGlassModifier(
-                        shape: .circle,
-                        interactive: false,
-                        tint: nil,
-                        supportsLiquidGlassOverride: false
-                    ))
-            Text("Capsule")
-                .modifier(
-                    AdaptiveGlassModifier(
-                        shape: .capsule,
-                        interactive: false,
-                        tint: nil,
-                        supportsLiquidGlassOverride: false
-                    ))
-            Text("Rounded")
-                .modifier(
-                    AdaptiveGlassModifier(
-                        shape: .roundedRectangle(cornerRadius: 10),
-                        interactive: false,
-                        tint: nil,
-                        supportsLiquidGlassOverride: false
-                    ))
+            Text("Circle").adaptiveGlass(shape: .circle, interactive: true)
+            Text("Capsule").adaptiveGlass(shape: .capsule, tint: .blue)
+            Text("Rounded").adaptiveGlass(shape: .roundedRectangle(cornerRadius: 10))
         }
         .frame(width: 320, height: 120)
-
         let hosted = hostView(view, size: CGSize(width: 320, height: 120))
-
         #expect(hosted.hosting.fittingSize.width >= 0)
+        hosted.window.contentView = nil
     }
     #endif
 }

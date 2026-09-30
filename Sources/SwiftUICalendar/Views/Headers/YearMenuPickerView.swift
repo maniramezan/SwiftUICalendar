@@ -1,42 +1,21 @@
+import Components
 import SwiftUI
 import SwiftUICalendarAccessibility
 
 /// A trigger button that presents a native dropdown menu listing every selectable year.
 ///
-/// Built directly with SwiftUI's `Menu` rather than `MenuPicker` so `CalendarConfiguration.YearSelection.Style
-/// .menu` always renders a dropdown regardless of item count, independent of `MenuPicker`'s
-/// internal wheel-fallback threshold.
+/// Uses the shared picker's explicit menu presentation so even a long year list stays a dropdown.
 struct YearMenuPickerView: View {
-    @Environment(\.calendarMetrics) private var metrics
     let items: [YearItem]
     @Binding var currentValue: YearItem
 
     var body: some View {
-        Menu {
-            ForEach(items) { item in
-                Button {
-                    currentValue = item
-                } label: {
-                    if item.id == currentValue.id {
-                        Label(item.title, systemImage: "checkmark")
-                    } else {
-                        Text(item.title)
-                    }
-                }
-            }
-        } label: {
-            Text(currentValue.title)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .allowsTightening(true)
-                .padding(.horizontal, metrics.controlPadding)
-                .padding(.vertical, metrics.tightPadding)
-        }
-        .menuIndicator(.hidden)
-        .fixedSize(horizontal: true, vertical: false)
-        .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
-        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
-        .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
+        MenuPicker(items: items, currentValue: $currentValue, preferredStyle: .menu)
+            .accessibilityLabel(
+                "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
+            )
+            .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+            .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
     }
 }
 
