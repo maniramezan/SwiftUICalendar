@@ -116,7 +116,8 @@ struct YearDecadeGridPopoverContent: View {
             }
 
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible()), count: 3),
+                columns: Array(
+                    repeating: GridItem(.flexible()), count: YearDecadeGrid.columnCount),
                 spacing: metrics.itemSpacing
             ) {
                 ForEach(YearDecadeGrid.years(pageStart: pageStart), id: \.self) { year in

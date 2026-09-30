@@ -163,8 +163,10 @@ final class CalendarKeyboardCursor {
         switch key {
         case .leftArrow: direction == .rightToLeft ? 1 : -1
         case .rightArrow: direction == .rightToLeft ? -1 : 1
-        case .upArrow: -7
-        case .downArrow: 7
+        // A vertical move is one whole row, and a row is one column-count of days. Tied to the grid
+        // so a grid that is not seven days wide still steps by its own row.
+        case .upArrow: -CalendarGrid.columnCount
+        case .downArrow: CalendarGrid.columnCount
         default: nil
         }
     }

@@ -24,7 +24,7 @@ struct MonthSnapshot: Identifiable, Equatable, Sendable {
     let days: [Day]
 
     var rowCount: Int {
-        max(1, (days.count + 6) / 7)
+        max(1, (days.count + CalendarGrid.gapCount) / CalendarGrid.columnCount)
     }
 }
 

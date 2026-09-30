@@ -3,8 +3,6 @@ import SwiftUI
 import SwiftUICalendarAccessibility
 
 struct CalendarBodyView: View {
-    private static let headerHeightRatio: CGFloat = 0.45
-
     @Environment(CalendarViewModel.self) var viewModel
     @Environment(Theme.self) var theme
     @Environment(Typography.self) var typography
@@ -35,7 +33,7 @@ struct CalendarBodyView: View {
     }
 
     private var headerHeight: CGFloat {
-        max(Self.headerHeightRatio * cellSize, metrics.weekdayHeaderMinHeight)
+        metrics.weekdayHeaderHeight(cellSize: cellSize)
     }
 
     private var columns: [GridItem] {
@@ -79,7 +77,7 @@ struct CalendarBodyView: View {
                         Text(day)
                             .font(typography.weekdayHeaderFont)
                             .lineLimit(1)
-                            .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
+                            .minimumScaleFactor(typography.resolvedMinScaleFactor)
                             .frame(height: headerHeight)
                             .frame(maxWidth: .infinity)
                     }

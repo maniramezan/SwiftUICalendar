@@ -102,6 +102,14 @@ public final class Typography {
     /// Set to `nil` to avoid applying a minimum scale factor.
     public var minScaleFactor: CGFloat?
 
+    /// ``minScaleFactor`` resolved to a value a view can pass straight to
+    /// `View.minimumScaleFactor(_:)`.
+    ///
+    /// `1` is the identity scale — text is allowed to shrink to its full size and no further — so a
+    /// `nil` ``minScaleFactor`` resolves to `1` rather than to an optional every call site has to
+    /// unwrap. Use this rather than ``minScaleFactor`` in a view body.
+    public var resolvedMinScaleFactor: CGFloat { minScaleFactor ?? 1 }
+
     // MARK: - Initialization
 
     /// Creates a new typography configuration.

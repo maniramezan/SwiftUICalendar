@@ -5,22 +5,6 @@ import AppKit
 #endif
 
 struct CalendarBodyHorizontalView: View {
-    private static let headerHeightRatio: CGFloat = 0.45
-    private static let heightCeilingPadding: CGFloat = 2
-    private static let swipeThresholdRatio: CGFloat = 0.25
-    private static let minimumSwipeThreshold: CGFloat = 56
-    private static let peekContentFraction: CGFloat = 0.35
-    private static let pagingAnimation = Animation.interactiveSpring(
-        response: 0.32,
-        dampingFraction: 0.88,
-        blendDuration: 0.12
-    )
-    private static let snapBackAnimation = Animation.interactiveSpring(
-        response: 0.24,
-        dampingFraction: 0.9,
-        blendDuration: 0.08
-    )
-
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     private let reduceMotionOverride: Bool?
     private let allowsPaging: Bool
@@ -45,47 +29,23 @@ struct CalendarBodyHorizontalView: View {
     #endif
 
     private var layoutWidth: CGFloat {
-        Self.layoutWidth(
-            containerWidth: containerWidth,
-            minCalendarWidth: metrics.minCalendarWidth
-        )
+        metrics.layoutWidth(containerWidth: containerWidth)
     }
 
     private var peekWidth: CGFloat {
-        Self.peekWidth(
-            containerWidth: layoutWidth,
-            minCalendarWidth: metrics.minCalendarWidth,
-            itemSpacing: metrics.itemSpacing,
-            minCellSize: metrics.minCellSize,
-            maxCellSize: metrics.maxCellSize,
-            minimumPeekWidth: metrics.minimumPeekWidth,
-            maximumPeekWidth: metrics.maximumPeekWidth
-        )
+        metrics.peekWidth(containerWidth: containerWidth)
     }
 
     private var pageWidth: CGFloat {
-        Self.pageWidth(
-            containerWidth: layoutWidth,
-            minCalendarWidth: metrics.minCalendarWidth,
-            itemSpacing: metrics.itemSpacing,
-            minCellSize: metrics.minCellSize,
-            maxCellSize: metrics.maxCellSize,
-            minimumPeekWidth: metrics.minimumPeekWidth,
-            maximumPeekWidth: metrics.maximumPeekWidth
-        )
+        metrics.pageWidth(containerWidth: containerWidth)
     }
 
     private var cellSize: CGFloat {
-        Self.cellSize(
-            layoutWidth: pageWidth,
-            itemSpacing: metrics.itemSpacing,
-            minCellSize: metrics.minCellSize,
-            maxCellSize: metrics.maxCellSize
-        )
+        gridLayout.cellSize
     }
 
     private var weekdayHeaderHeight: CGFloat {
-        Self.weekdayHeaderHeight(cellSize: cellSize, minimumHeight: metrics.weekdayHeaderMinHeight)
+        metrics.weekdayHeaderHeight(cellSize: cellSize)
     }
 
     private var columns: [GridItem] {
@@ -147,84 +107,6 @@ struct CalendarBodyHorizontalView: View {
         self.keyboard = keyboard
     }
 
-    static func layoutWidth(containerWidth: CGFloat, minCalendarWidth: CGFloat) -> CGFloat {
-        max(containerWidth, minCalendarWidth)
-    }
-
-    /// Reserves space for a swipe affordance that reliably reveals real day content, not just
-    /// empty margin. Day cells render as a `cellSize`-capped square *centered* within each grid
-    /// column (see `CalendarBodyView`'s square-cell centering), so on wide layouts the column can
-    /// be much wider than the visible cell — a peek narrower than that centering margin would only
-    /// expose blank space. This reaches past the margin and into a meaningful fraction of the
-    /// actual cell before falling back to whatever space remains above the minimum grid width.
-    static func peekWidth(
-        containerWidth: CGFloat,
-        minCalendarWidth: CGFloat,
-        itemSpacing: CGFloat,
-        minCellSize: CGFloat,
-        maxCellSize: CGFloat,
-        minimumPeekWidth: CGFloat = CalendarMetrics.default.minimumPeekWidth,
-        maximumPeekWidth: CGFloat = CalendarMetrics.default.maximumPeekWidth
-    ) -> CGFloat {
-        let approxCellSize = cellSize(
-            layoutWidth: containerWidth,
-            itemSpacing: itemSpacing,
-            minCellSize: minCellSize,
-            maxCellSize: maxCellSize
-        )
-        let approxColumnWidth = containerWidth / 7
-        let marginToContent = max(0, (approxColumnWidth - approxCellSize) / 2)
-        let desired = min(
-            maximumPeekWidth,
-            max(
-                minimumPeekWidth, marginToContent + (approxCellSize * Self.peekContentFraction)
-            )
-        )
-        return min(desired, max(0, (containerWidth - minCalendarWidth) / 2))
-    }
-
-    /// The month page fits inside the viewport while retaining the configured minimum cell size.
-    static func pageWidth(
-        containerWidth: CGFloat,
-        minCalendarWidth: CGFloat,
-        itemSpacing: CGFloat,
-        minCellSize: CGFloat,
-        maxCellSize: CGFloat,
-        minimumPeekWidth: CGFloat = CalendarMetrics.default.minimumPeekWidth,
-        maximumPeekWidth: CGFloat = CalendarMetrics.default.maximumPeekWidth
-    ) -> CGFloat {
-        containerWidth
-            - (2
-                * peekWidth(
-                    containerWidth: containerWidth,
-                    minCalendarWidth: minCalendarWidth,
-                    itemSpacing: itemSpacing,
-                    minCellSize: minCellSize,
-                    maxCellSize: maxCellSize,
-                    minimumPeekWidth: minimumPeekWidth,
-                    maximumPeekWidth: maximumPeekWidth
-                ))
-    }
-
-    static func cellSize(
-        layoutWidth: CGFloat,
-        itemSpacing: CGFloat,
-        minCellSize: CGFloat,
-        maxCellSize: CGFloat
-    ) -> CGFloat {
-        let totalInteritemSpacing = itemSpacing * 6
-        let widthForCells = max(0, layoutWidth - totalInteritemSpacing)
-        let columnWidth = widthForCells / 7
-        return min(maxCellSize, max(minCellSize, columnWidth))
-    }
-
-    static func weekdayHeaderHeight(
-        cellSize: CGFloat,
-        minimumHeight: CGFloat = CalendarMetrics.default.weekdayHeaderMinHeight
-    ) -> CGFloat {
-        max(Self.headerHeightRatio * cellSize, minimumHeight)
-    }
-
     static func previousMonthBaseOffset(layoutWidth: CGFloat, layoutDirectionMultiplier: CGFloat)
         -> CGFloat
     {
@@ -235,29 +117,6 @@ struct CalendarBodyHorizontalView: View {
         -> CGFloat
     {
         layoutWidth * layoutDirectionMultiplier
-    }
-
-    static func resolvedHeight(
-        rowCount: Int,
-        layoutWidth: CGFloat,
-        itemSpacing: CGFloat,
-        rowSpacing: CGFloat,
-        minCellSize: CGFloat,
-        maxCellSize: CGFloat
-    ) -> CGFloat {
-        let cs = cellSize(
-            layoutWidth: layoutWidth,
-            itemSpacing: itemSpacing,
-            minCellSize: minCellSize,
-            maxCellSize: maxCellSize
-        )
-        let totalRowSpacing = rowSpacing * CGFloat(rowCount - 1)
-        let h = (CGFloat(rowCount) * cs) + totalRowSpacing
-        return ceil(h) + Self.heightCeilingPadding
-    }
-
-    static func swipeThreshold(layoutWidth: CGFloat) -> CGFloat {
-        max(layoutWidth * Self.swipeThresholdRatio, Self.minimumSwipeThreshold)
     }
 
     static func nextDragOffset(
@@ -274,16 +133,18 @@ struct CalendarBodyHorizontalView: View {
         translationWidth: CGFloat,
         predictedEndTranslationWidth: CGFloat,
         layoutDirectionMultiplier: CGFloat,
-        layoutWidth: CGFloat
+        layoutWidth: CGFloat,
+        pager: CalendarMetrics.Pager
     ) -> Int? {
         let resolvedTranslation = HorizontalMonthSwipeResolver.resolvedTranslation(
             translation: translationWidth * layoutDirectionMultiplier,
             predictedEndTranslation: predictedEndTranslationWidth * layoutDirectionMultiplier,
-            limit: layoutWidth
+            limit: layoutWidth,
+            momentumWeight: pager.momentumWeight
         )
         return HorizontalMonthSwipeResolver.monthDelta(
             for: resolvedTranslation,
-            threshold: swipeThreshold(layoutWidth: layoutWidth)
+            threshold: pager.swipeThreshold(layoutWidth: layoutWidth)
         )
     }
 
@@ -334,7 +195,7 @@ struct CalendarBodyHorizontalView: View {
                     Text(day)
                         .font(typography.weekdayHeaderFont)
                         .lineLimit(1)
-                        .minimumScaleFactor(typography.minScaleFactor ?? 1.0)
+                        .minimumScaleFactor(typography.resolvedMinScaleFactor)
                         .frame(height: weekdayHeaderHeight)
                         .frame(maxWidth: .infinity)
                 }
@@ -441,7 +302,8 @@ struct CalendarBodyHorizontalView: View {
                             translationWidth: value.translation.width,
                             predictedEndTranslationWidth: value.predictedEndTranslation.width,
                             layoutDirectionMultiplier: layoutDirectionMultiplier,
-                            layoutWidth: pageWidth
+                            layoutWidth: pageWidth,
+                            pager: metrics.pager
                         )
 
                         switch Self.pagerAction(for: monthDelta) {
@@ -450,7 +312,9 @@ struct CalendarBodyHorizontalView: View {
                         case .previous:
                             goToPrevious(width: pageWidth)
                         case .snapBack:
-                            withAnimation(reduceMotion ? nil : Self.snapBackAnimation) {
+                            withAnimation(
+                                reduceMotion ? nil : metrics.pager.snapBackSpring.animation
+                            ) {
                                 dragOffset = 0
                             }
                         }
@@ -504,7 +368,9 @@ struct CalendarBodyHorizontalView: View {
     private var rowCountForHeight: Int {
         switch configuration.horizontalHeightMode {
         case .hugContent:
-            let current = viewModel.monthSnapshot(for: currentMonth)?.rowCount ?? 6
+            let current =
+                viewModel.monthSnapshot(for: currentMonth)?.rowCount
+                ?? CalendarGrid.maximumRowCount
             let previous = viewModel.monthSnapshot(for: previousMonth)?.rowCount ?? current
             let next = viewModel.monthSnapshot(for: nextMonth)?.rowCount ?? current
             return Self.rowCount(
@@ -527,19 +393,12 @@ struct CalendarBodyHorizontalView: View {
         case .hugContent:
             max(currentRows, max(previousRows, nextRows))
         case .sixRows:
-            6
+            CalendarGrid.maximumRowCount
         }
     }
 
     private func height(forRowCount rowCount: Int) -> CGFloat {
-        Self.resolvedHeight(
-            rowCount: rowCount,
-            layoutWidth: pageWidth,
-            itemSpacing: metrics.itemSpacing,
-            rowSpacing: metrics.rowSpacing,
-            minCellSize: metrics.minCellSize,
-            maxCellSize: metrics.maxCellSize
-        )
+        metrics.resolvedHeight(rowCount: rowCount, layoutWidth: pageWidth)
     }
 
     /// Swipe LEFT: next month slides in from the right.
@@ -550,7 +409,8 @@ struct CalendarBodyHorizontalView: View {
 
         isNavigating = true
         withAnimation(
-            reduceMotion ? nil : Self.pagingAnimation, completionCriteria: .logicallyComplete
+            reduceMotion ? nil : metrics.pager.pagingSpring.animation,
+            completionCriteria: .logicallyComplete
         ) {
             // Move until the parked next month reaches center.
             offset = Self.nextOffset(
@@ -572,7 +432,8 @@ struct CalendarBodyHorizontalView: View {
 
         isNavigating = true
         withAnimation(
-            reduceMotion ? nil : Self.pagingAnimation, completionCriteria: .logicallyComplete
+            reduceMotion ? nil : metrics.pager.pagingSpring.animation,
+            completionCriteria: .logicallyComplete
         ) {
             // Move until the parked previous month reaches center.
             offset = Self.previousOffset(
@@ -605,11 +466,9 @@ struct CalendarBodyHorizontalView: View {
     #if os(macOS)
     // MARK: - Trackpad / scroll-wheel paging (macOS)
 
-    private static let scrollPageThreshold: CGFloat = 30
-
     private func installScrollMonitor() {
         guard scrollMonitor == nil else { return }
-        let monitor = HorizontalScrollWheelMonitor(threshold: Self.scrollPageThreshold) {
+        let monitor = HorizontalScrollWheelMonitor(threshold: metrics.pager.scrollPageThreshold) {
             delta in
             guard Self.shouldHandleScrollPage(delta: delta, isNavigating: isNavigating) else {
                 return
@@ -742,20 +601,24 @@ enum HorizontalScrollPagingResolver {
 }
 
 enum HorizontalMonthSwipeResolver {
-    private static let momentumWeight: CGFloat = 0.65
-
     static func clampedTranslation(_ translation: CGFloat, limit: CGFloat) -> CGFloat {
         let clampedLimit = max(limit, 0)
         return min(max(translation, -clampedLimit), clampedLimit)
     }
 
+    /// Blends a drag's current translation with its predicted end translation.
+    ///
+    /// - Parameter momentumWeight: How much of the prediction counts, from
+    ///   `CalendarMetrics.Pager.momentumWeight`. `0` ignores the prediction entirely and a swipe
+    ///   must be dragged all the way past the threshold; `1` commits on predicted intent alone.
     static func resolvedTranslation(
         translation: CGFloat,
         predictedEndTranslation: CGFloat,
-        limit: CGFloat
+        limit: CGFloat,
+        momentumWeight: CGFloat
     ) -> CGFloat {
-        let weighted =
-            (translation * (1 - momentumWeight)) + (predictedEndTranslation * momentumWeight)
+        let weight = min(max(momentumWeight, 0), 1)
+        let weighted = (translation * (1 - weight)) + (predictedEndTranslation * weight)
         return clampedTranslation(weighted, limit: limit)
     }
 

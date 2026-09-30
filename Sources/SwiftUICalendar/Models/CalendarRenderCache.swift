@@ -24,10 +24,21 @@ final class CalendarRenderCache {
     /// The process-wide cache. Shared so rendering projections rebuilt per frame stay warm.
     static let shared = CalendarRenderCache()
 
+    // MARK: - Cache limits
+    //
+    // Each cache is capped independently, and the caps are not interchangeable: they trade memory
+    // against how much work a miss costs. Geometry entries are large (a day cell per grid position)
+    // and expensive to rebuild, so they are capped tight and cover a long but bounded scrollback.
+    // Offset and title entries are a few numbers and a short string each, so they are capped far
+    // higher and effectively never evict in practice. They share a cap so a sweep that evicts one
+    // evicts the other, and the two stay consistent about how far back the cache reaches.
+
     /// Upper bound on retained month grids. Twelve years of scrollback at ~36KB per entry.
     private static let monthGeometryLimit = 144
     /// Upper bound on retained month-offset resolutions.
     private static let monthOffsetLimit = 4_096
+    /// Upper bound on retained month titles.
+    private static let monthTitleLimit = 4_096
 
     private let logger = Logger.swiftUICalendar(for: CalendarRenderCache.self)
 
@@ -85,8 +96,6 @@ final class CalendarRenderCache {
     private var monthOffsetOrder: [OffsetKey] = []
     private var monthTitles: [TitleKey: String] = [:]
     private var monthTitlesOrder: [TitleKey] = []
-    /// Upper bound on retained month titles.
-    private static let monthTitleLimit = 4_096
 
     // MARK: - Signature
 
@@ -216,8 +225,12 @@ final class CalendarRenderCache {
             // Columns start on the locale's first weekday — Saturday for Persian, Monday across
             // most of Europe — not always Sunday.
             let leading =
-                (calendar.component(.weekday, from: start) - calendar.firstWeekday + 7) % 7
-            let total = ((leading + count + 6) / 7) * 7
+                (calendar.component(.weekday, from: start) - calendar.firstWeekday
+                    + CalendarGrid.columnCount)
+                % CalendarGrid.columnCount
+            let total =
+                ((leading + count + CalendarGrid.gapCount) / CalendarGrid.columnCount)
+                * CalendarGrid.columnCount
             let days = (0..<total).compactMap { index -> MonthGeometry.Day? in
                 guard let date = calendar.date(byAdding: .day, value: index - leading, to: start)
                 else {

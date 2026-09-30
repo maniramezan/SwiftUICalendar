@@ -5,10 +5,11 @@ struct CalendarHeaderView: View {
 
     @Environment(CalendarViewModel.self) var model
     @Environment(Typography.self) var typography
+    @Environment(\.calendarMetrics) private var metrics
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 3) {
+            HStack(spacing: metrics.headerControlSpacing) {
                 CalendarHeaderMonthView()
                     .id("row-month")
                 CalendarHeaderYearView()

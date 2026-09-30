@@ -319,7 +319,10 @@ private final class MonthPrefetchCoordinator {
     /// How many months to warm ahead of the scroll direction. Large enough to stay ahead of a fast
     /// fling without the sweep exhausting itself mid-gesture; small enough not to spend CPU/battery
     /// warming months that may never be viewed.
-    private static let prefetchDistance = 30
+    ///
+    /// An eighth of the realized window: the sweep never aims to fill the window, only the stretch
+    /// of it a single gesture can travel into, so the rest stays cold until the scroll approaches.
+    private static let prefetchDistance = VerticalMonthWindow.radius / 8
 
     private let logger = Logger.swiftUICalendar(for: MonthPrefetchCoordinator.self)
     private var task: Task<Void, Never>?
@@ -467,7 +470,11 @@ enum VerticalMonthWindow {
     /// Months realized on each side of the anchor.
     static let radius = 240
     /// How far from the anchor a settled scroll must rest before the window re-centers.
-    static let recenterDistance = 60
+    ///
+    /// A quarter of ``radius``: recentering that late keeps a settled scroll from re-centering on
+    /// every month boundary, and that early guarantees a whole quarter-window of room in the
+    /// direction of travel before the next re-center.
+    static let recenterDistance = radius / 4
     /// Materialized once. A `ForEach` over a `ClosedRange` walks it through unspecialized generic
     /// `Collection` witnesses (instantiating metadata as it goes) on every list update.
     static let offsets = Array(-radius...radius)

@@ -112,6 +112,7 @@ private struct LiquidGlassModifier: ViewModifier {
 private struct MaterialFallbackModifier: ViewModifier {
     let shape: AdaptiveGlassShape
     let reduceTransparency: Bool
+    @Environment(\.calendarMetrics) private var metrics
 
     static func material(style: AdaptiveGlassMaterialStyle) -> Material {
         switch style {
@@ -129,18 +130,22 @@ private struct MaterialFallbackModifier: ViewModifier {
     }
 
     func body(content: Content) -> some View {
+        // A thinner, fainter edge on the rounded rectangle: its corner radius already draws the
+        // shape, so a full-weight outline on top of it would read as a border around a border.
+        let highlight = Color.white.opacity(metrics.glassBorderOpacity)
+        let hairlineHighlight = Color.white.opacity(metrics.glassHairlineBorderOpacity)
         switch shape {
         case .circle:
             content.background(Circle().fill(material))
-                .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                .overlay(Circle().stroke(highlight, lineWidth: metrics.thinStroke))
         case .capsule:
             content.background(Capsule().fill(material))
-                .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                .overlay(Capsule().stroke(highlight, lineWidth: metrics.thinStroke))
         case .roundedRectangle(let r):
             content.background(RoundedRectangle(cornerRadius: r).fill(material))
                 .overlay(
                     RoundedRectangle(cornerRadius: r).stroke(
-                        Color.white.opacity(0.15), lineWidth: 0.5))
+                        hairlineHighlight, lineWidth: metrics.hairlineStroke))
         }
     }
 }

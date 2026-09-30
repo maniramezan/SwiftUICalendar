@@ -13,7 +13,7 @@ struct CalendarWeekHeaderView: View {
                     Text(day)
                         .font(.caption)
                         .fontWeight(.bold)
-                        .minimumScaleFactor(0.03)
+                        .minimumScaleFactor(0.3)
                         .scaledToFit()
                         .frame(maxWidth: .infinity)
                 }
