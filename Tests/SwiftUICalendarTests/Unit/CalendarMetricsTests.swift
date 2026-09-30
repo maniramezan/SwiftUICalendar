@@ -130,8 +130,8 @@ struct CalendarMetricsTests {
         // threeUnits (24) + half of oneAndHalfUnits (12)
         #expect(pager.scrollPageThreshold == 30)
         #expect(pager.momentumWeight == 0.65)
-        #expect(pager.pagingSpring == DesignSystem.Spring.paging)
-        #expect(pager.snapBackSpring == DesignSystem.Spring.snapBack)
+        #expect(pager.pagingSpring == DesignSystem.MotionSpring.paging)
+        #expect(pager.snapBackSpring == DesignSystem.MotionSpring.snapBack)
     }
 
     @Test("A narrow page falls back to the swipe floor, a wide one uses the ratio")

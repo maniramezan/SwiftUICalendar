@@ -180,10 +180,9 @@ extension CalendarMetrics {
         /// How much of a drag's *predicted* end translation counts toward committing the swipe.
         let momentumWeight: CGFloat
         /// Spring that completes a committed page transition.
-        /// Qualified: `SwiftUI` also declares a `Spring`.
-        let pagingSpring: DesignSystem.Spring
+        let pagingSpring: DesignSystem.MotionSpring
         /// Spring that returns the carousel to rest after a swipe that did not commit.
-        let snapBackSpring: DesignSystem.Spring
+        let snapBackSpring: DesignSystem.MotionSpring
 
         init(theme: any DesignSystem.Theme) {
             let spacing = theme.spacing
