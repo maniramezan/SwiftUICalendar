@@ -12,6 +12,17 @@ alias for source compatibility. Selection transitions are independent of view re
 `CalendarConfiguration` contains presentation options. `Theme` and `Typography` contain visual
 configuration. Drag offsets, measured sizes, and scroll positions belong to the view layer.
 
+## Shared UI Components
+
+SwiftUIComponents 0.16.0 supplies adaptive glass/material surfaces and explicit picker presentations.
+The calendar maps its outlines and fallback highlight metrics into `AdaptiveSurface`, while the shared
+component handles platform availability, compatibility mode, and Reduce Transparency. A menu-style
+year picker uses `MenuPicker` with `.menu` so long lists remain menus.
+
+On macOS, the wheel-style year picker delegates to the shared `.wheel` preference's native dropdown
+fallback. The iOS wheel sheet remains calendar-owned to preserve its localized Done action and
+accessibility identifier; the shared sheet does not yet expose toolbar customization.
+
 ## Month Identity and Navigation
 
 A `MonthIdentifier` includes the calendar identifier, era, year, month, and leap-month flag.

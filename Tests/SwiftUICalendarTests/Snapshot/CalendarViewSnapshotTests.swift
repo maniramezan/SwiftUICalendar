@@ -32,6 +32,17 @@ struct CalendarViewSnapshotTests {
             width: snapshotWidth, named: "fixed-calendar-with-header")
     }
 
+    @Test(
+        "Shared menu header preserves month structure",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func sharedMenuHeader(identifier: Calendar.Identifier) {
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
+        assertCalendarStructure(
+            model: model,
+            configuration: .init(showsHeader: true, yearSelection: .init(style: .menu)),
+            width: snapshotWidth, named: "shared-menu-header-\(identifier)")
+    }
+
     @Test("Fixed calendar without header")
     func fixedCalendarWithoutHeader() {
         let vm = CalendarViewModel.snapshot(selection: .single(nil))

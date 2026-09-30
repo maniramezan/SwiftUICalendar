@@ -1,5 +1,5 @@
 {
-  "originHash" : "57f5e9ad56a8291794cecaae56a66ebec7bcc87aa9f273f05adc38d354bd7247",
+  "originHash" : "46d5b442c45e57b2dda89dd1726c714988a5257bcbd405716772fd102040c206",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -150,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftUIComponents",
       "state" : {
-        "revision" : "b33d692adbe3fee5d0b454f950ccc0e890394df6",
-        "version" : "0.14.0"
+        "revision" : "6d314d543bcc6985d13f4afaf554c1bd9c3ca4ce",
+        "version" : "0.16.0"
       }
     }
   ],
