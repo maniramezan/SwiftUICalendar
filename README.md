@@ -146,11 +146,14 @@ any other narrow window.
 Nothing to configure. The displacement needs nothing newer than the package's own iOS 18 / macOS 15
 minimum.
 
-Reading the hinge from the system uses `GeometryProxy.reservedRegions(kind:)`, which lands in the iOS
-27.1 SDK — and because Swift cannot compile conditionally on SDK version, referencing it would make
-Xcode 27.1 mandatory just to build. So the blocked bands are injected through the `calendarFoldRanges`
-environment value instead, and wiring them to the system is a one-line, availability-gated follow-up
-once the toolchain moves.
+Build with Xcode 27.1 or later to read the hinge automatically on iOS 27.1 or later. The system
+reader uses `GeometryProxy.reservedRegions(kind: .division)` behind a SwiftUICore module-version gate
+and a runtime availability check. Older SDKs and operating systems keep the ordinary resizable
+layout. Tests inject blocked bands through the internal `calendarFoldRanges` environment value.
+
+Fixed-month and horizontal calendars also scroll their rows vertically when the window is too short
+to show the whole month. Resizing preserves the displayed month and selection, and keyboard movement
+scrolls the focused day into view without shrinking day cells.
 
 ## Keyboard Navigation
 
@@ -247,11 +250,13 @@ MINIMUM_COVERAGE=80 bash ./scripts/check-coverage.sh
 bash ./scripts/build-docs.sh
 ```
 
-`swift test` compares image snapshots by default. On machines used only for logic work,
+`swift test` compares structural text snapshots by default. On machines used only for logic work,
 `SNAPSHOT_ASSERTIONS=false swift test` explicitly skips snapshot suites. Release and PR checks
-must run with assertions enabled. Use the same macOS and Xcode versions as CI when recording.
+must run with assertions enabled. Hosted view tests separately verify live resizing and scrolling.
 
-Snapshot references live in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__`. When recording snapshots, set `globalRecordMode = .all`, run the snapshot tests, then revert to `.missing` before committing.
+Snapshot references live in `Tests/SwiftUICalendarTests/Snapshot/__Snapshots__`. Record with
+`SNAPSHOT_RECORD_MODE=all swift test --filter Snapshot`, then run again without the environment
+variable to verify the baselines.
 
 ## License
 

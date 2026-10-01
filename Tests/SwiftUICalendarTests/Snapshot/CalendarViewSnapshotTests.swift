@@ -81,6 +81,16 @@ struct CalendarViewSnapshotTests {
             width: 844, monthSpan: 1, named: "horizontal-calendar-short-landscape")
     }
 
+    @Test(
+        "Fixed month retains its rows in a landscape window",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func fixedCalendarInLandscapeWindow(identifier: Calendar.Identifier) {
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
+        assertCalendarStructure(
+            model: model, configuration: .init(scrollMode: .none),
+            width: 844, named: "fixed-calendar-landscape-\(identifier)")
+    }
+
     @Test("Flexible grid fills a landscape horizontal calendar")
     func flexibleHorizontalCalendarInLandscapeViewport() {
         let vm = CalendarViewModel.snapshot(selection: .single(nil))
