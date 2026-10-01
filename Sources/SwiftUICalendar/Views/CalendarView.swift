@@ -239,12 +239,16 @@ private struct CalendarBodyContent: View {
     var body: some View {
         switch scrollMode {
         case .none:
-            CalendarBodyView(keyboard: keyboard)
+            CalendarMonthScrollContainer(keyboard: keyboard) {
+                CalendarBodyView(keyboard: keyboard)
+            }
         case .vertical:
             CalendarBodyVerticalContainer(keyboard: keyboard)
         case .horizontal:
-            CalendarBodyHorizontalContainer(
-                viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
+            CalendarMonthScrollContainer(keyboard: keyboard) {
+                CalendarBodyHorizontalView(
+                    viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
+            }
         }
     }
 }
@@ -317,23 +321,22 @@ private struct CalendarBodyVerticalContainer: View {
     }
 }
 
-private struct CalendarBodyHorizontalContainer: View {
-    let viewModel: CalendarViewModel
-    let allowsPaging: Bool
+/// Keeps the fixed month and horizontal pager reachable in short, resizable windows.
+private struct CalendarMonthScrollContainer<Content: View>: View {
     let keyboard: CalendarKeyboardCursor
+    @ViewBuilder let content: () -> Content
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
     var body: some View {
-        // A six-row month can exceed a short landscape viewport. Keep the pager horizontally
-        // interactive while allowing its rows to overflow vertically instead of compressing.
+        // A month can exceed a landscape or Stage Manager viewport. Scroll its rows rather than
+        // compressing touch targets, without changing the displayed month or selection.
         ScrollViewReader { proxy in
             ScrollView(.vertical) {
-                CalendarBodyHorizontalView(
-                    viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard
-                )
-                .frame(maxWidth: .infinity, alignment: .top)
+                content()
+                    .frame(maxWidth: .infinity, alignment: .top)
             }
             .scrollPosition($scrollPosition)
+            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
             // `scrollRequest`, not `date`: swiping to another month or tapping Today moves the
             // cursor to follow, and scrolling on that would move this list with no key pressed.
             .onChange(of: keyboard.scrollRequest) { _, request in
