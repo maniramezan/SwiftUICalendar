@@ -1,5 +1,5 @@
 {
-  "originHash" : "46d5b442c45e57b2dda89dd1726c714988a5257bcbd405716772fd102040c206",
+  "originHash" : "40ca32ac849b7ce402cb95ca5ec6bbd2eea79df97042cdd9753f9d77d488b723",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -143,6 +143,15 @@
       "state" : {
         "revision" : "b8a614cd60090404f61d4096dd33eac8a3d399bf",
         "version" : "0.13.0"
+      }
+    },
+    {
+      "identity" : "swifttestcommons",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/maniramezan/SwiftTestCommons.git",
+      "state" : {
+        "revision" : "7fc0751b4cd6aa9ed2da13769f9b65cebcf21fc3",
+        "version" : "0.2.0"
       }
     },
     {
