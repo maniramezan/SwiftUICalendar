@@ -112,6 +112,29 @@ public struct CalendarState: Equatable, Sendable {
         self.supportedDates = supported
     }
 
+    /// Replaces the allowed dates without rebuilding the state, keeping the selection and the
+    /// visible month.
+    ///
+    /// Use this to move a bound over time, for example rolling a past-only range forward when the
+    /// day changes: `try state.setDateRange(.onOrBefore(.now))`. The selection isn't altered; a
+    /// selected day that falls outside the new range renders disabled until it is changed.
+    ///
+    /// - Parameter dateRange: The dates the calendar allows (see ``dateRange``). `nil` allows the
+    ///   whole supported interval.
+    /// - Throws: `Calendar.CalendarError.cannotCalculateDate` when `dateRange` lies entirely outside
+    ///   the supported interval or ``currentDate`` falls outside it. A rejected call leaves state
+    ///   unchanged.
+    public mutating func setDateRange(_ dateRange: ClosedRange<Date>?) throws {
+        guard
+            let supported = CalendarEngine.supportedDates(
+                limitedTo: dateRange, in: calendar.timeZone),
+            supported.contains(currentDate)
+        else {
+            throw Calendar.CalendarError.cannotCalculateDate
+        }
+        supportedDates = supported
+    }
+
     /// Applies an interaction atomically. A rejected action leaves state unchanged.
     /// Supply `now` for deterministic handling of the Today action.
     public mutating func apply(_ action: CalendarAction, now: Date = Date()) throws {
