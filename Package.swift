@@ -31,7 +31,7 @@ let package = Package(
         .library(name: "SwiftUICalendarTCA", targets: ["SwiftUICalendarTCA"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/maniramezan/SwiftTestCommons.git", from: "0.2.0"),
+        .package(url: "https://github.com/maniramezan/SwiftTestCommons.git", from: "0.1.0"),
         .package(
             url: "https://github.com/maniramezan/SwiftCommons",
             .upToNextMajor(from: "0.13.0")
