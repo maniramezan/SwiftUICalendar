@@ -293,9 +293,11 @@ struct CalendarDateRangeTests {
         #expect(state == before)
     }
 
-    @Test("setDateRange(nil) restores the full supported interval", arguments: [
-        Calendar.Identifier.gregorian, .persian,
-    ])
+    @Test(
+        "setDateRange(nil) restores the full supported interval",
+        arguments: [
+            Calendar.Identifier.gregorian, .persian,
+        ])
     func setDateRangeNilRestoresFullInterval(identifier: Calendar.Identifier) throws {
         let calendar = try utcCalendar(identifier)
         // Absolute date built in Gregorian so it is the same instant for every calendar system.
@@ -305,6 +307,8 @@ struct CalendarDateRangeTests {
 
         try state.setDateRange(nil)
 
-        #expect(state.dateRange == (try CalendarState(calendar: calendar, currentDate: current)).dateRange)
+        #expect(
+            state.dateRange
+                == (try CalendarState(calendar: calendar, currentDate: current)).dateRange)
     }
 }
