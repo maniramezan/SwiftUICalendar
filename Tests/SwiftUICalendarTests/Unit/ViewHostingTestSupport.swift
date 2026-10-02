@@ -3,6 +3,7 @@
 import AppKit
 import SwiftUI
 import Testing
+import TestCommonsUI
 
 @testable import SwiftUICalendar
 
@@ -11,23 +12,9 @@ func hostView<V: View>(
     _ view: V,
     size: CGSize = CGSize(width: 390, height: 420)
 ) -> (window: NSWindow, hosting: NSHostingView<V>) {
-    let hosting = NSHostingView(rootView: view)
-    hosting.frame = CGRect(origin: .zero, size: size)
-    let window = NSWindow(
-        contentRect: hosting.frame,
-        styleMask: [],
-        backing: .buffered,
-        defer: false
-    )
-    window.contentView = hosting
-    window.layoutIfNeeded()
-    hosting.layoutSubtreeIfNeeded()
-    if let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) {
-        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
-    } else {
-        hosting.displayIfNeeded()
-    }
-    return (window, hosting)
+    let hosted = HostedView(view, size: size, visible: false)
+    _ = hosted.renderPNG()
+    return (window: hosted.window, hosting: hosted.hosting)
 }
 
 /// Forces a full layout pass and renders the view to PNG data. Used to compare actual
@@ -35,10 +22,7 @@ func hostView<V: View>(
 /// an existing view resized to that size, as happens during a live device rotation).
 @MainActor
 func renderPNGData(_ view: NSView) -> Data? {
-    view.layoutSubtreeIfNeeded()
-    guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
-    view.cacheDisplay(in: view.bounds, to: bitmap)
-    return bitmap.representation(using: .png, properties: [:])
+    ViewRendering.pngData(of: view)
 }
 
 /// Pumps the main run loop until `view` renders `requiredStableFrames` consecutive identical
@@ -70,19 +54,9 @@ func waitForStableRender(
     requiredStableFrames: Int = 4,
     pollInterval: TimeInterval = 1.0 / 60.0
 ) -> Bool {
-    let deadline = Date().addingTimeInterval(timeout)
-    var previous: Data?
-    var identicalRun = 1
-    var pumped = 0
-    while Date() < deadline {
-        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(pollInterval))
-        pumped += 1
-        let frame = renderPNGData(view)
-        identicalRun = (frame != nil && frame == previous) ? identicalRun + 1 : 1
-        previous = frame
-        if pumped >= minimumFrames && identicalRun >= requiredStableFrames { return true }
-    }
-    return false
+    ViewRendering.waitForStableRender(
+        view, timeout: timeout, minimumFrames: minimumFrames,
+        requiredStableFrames: requiredStableFrames, pollInterval: pollInterval)
 }
 
 // MARK: - Blank-render Detection

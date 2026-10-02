@@ -3,6 +3,7 @@ import AppKit
 import Foundation
 import SwiftUI
 import Testing
+import TestCommons
 
 @testable import SwiftUICalendar
 
@@ -45,17 +46,12 @@ struct CalendarWritingDirectionTests {
         var comparedPairs = 0
         for (current, next) in zip(days, days.dropFirst()) {
             // Only neighbours within one week share a row.
-            guard abs(current.value.midY - next.value.midY) < 1 else { continue }
+            guard ReadingOrder.sharesRow(current.value, next.value) else { continue }
             comparedPairs += 1
-            if rightToLeft {
-                #expect(
-                    next.value.midX < current.value.midX,
-                    "\(mode)/\(identifier): \(next.key) should sit left of \(current.key)")
-            } else {
-                #expect(
-                    next.value.midX > current.value.midX,
-                    "\(mode)/\(identifier): \(next.key) should sit right of \(current.key)")
-            }
+            #expect(
+                ReadingOrder.follows(
+                    next.value, current.value, in: rightToLeft ? .rightToLeft : .leftToRight),
+                "\(mode)/\(identifier): \(next.key) should advance from \(current.key)")
         }
         #expect(comparedPairs >= 20)
 
