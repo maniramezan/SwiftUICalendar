@@ -258,4 +258,53 @@ struct CalendarDateRangeTests {
         #expect(
             !VerticalMonthWindow.shouldRecenter(offsetFromAnchor: 200, hasMonthsBeyondEdge: false))
     }
+
+    // MARK: - setDateRange
+
+    @Test("setDateRange rolls a past-only range forward, keeping selection and month")
+    func setDateRangeRollsForward() throws {
+        let calendar = try utcCalendar()
+        let today = try date(2025, 6, 15, in: calendar)
+        let tomorrow = try date(2025, 6, 16, in: calendar)
+        var state = try CalendarState(
+            calendar: calendar, currentDate: today, selection: .single(today),
+            dateRange: .onOrBefore(today))
+
+        #expect(throws: Calendar.CalendarError.self) { try state.apply(.select(tomorrow)) }
+
+        try state.setDateRange(.onOrBefore(tomorrow))
+        try state.apply(.select(tomorrow))
+
+        #expect(state.selection == .single(tomorrow))
+        #expect(state.currentDate == today)
+    }
+
+    @Test("setDateRange rejects a range excluding the visible date and leaves state unchanged")
+    func setDateRangeRejectsExcludingRange() throws {
+        let calendar = try utcCalendar()
+        let current = try date(2025, 6, 15, in: calendar)
+        var state = try CalendarState(
+            calendar: calendar, currentDate: current, dateRange: .onOrBefore(current))
+        let before = state
+
+        #expect(throws: Calendar.CalendarError.self) {
+            try state.setDateRange(.onOrAfter(try date(2025, 7, 1, in: calendar)))
+        }
+        #expect(state == before)
+    }
+
+    @Test("setDateRange(nil) restores the full supported interval", arguments: [
+        Calendar.Identifier.gregorian, .persian,
+    ])
+    func setDateRangeNilRestoresFullInterval(identifier: Calendar.Identifier) throws {
+        let calendar = try utcCalendar(identifier)
+        // Absolute date built in Gregorian so it is the same instant for every calendar system.
+        let current = try date(2025, 6, 15, in: try utcCalendar())
+        var state = try CalendarState(
+            calendar: calendar, currentDate: current, dateRange: .onOrBefore(current))
+
+        try state.setDateRange(nil)
+
+        #expect(state.dateRange == (try CalendarState(calendar: calendar, currentDate: current)).dateRange)
+    }
 }

@@ -39,7 +39,9 @@ zone. Pass a `dateRange` to `CalendarState` or `CalendarViewModel` to narrow tha
 state stores the intersection. A partially allowed month remains reachable; month/year navigation
 clamps to allowed dates, and days outside the range render disabled and reject selection.
 Availability is judged per day, so a range starting mid-day still allows that day. Invalid month
-components fail instead of silently rolling into another month.
+components fail instead of silently rolling into another month. A range that follows time, such as
+past-only dates, is fixed when state is created; call ``CalendarState/setDateRange(_:)`` when the
+day changes to roll it forward without losing the selection or visible month.
 
 ## Shared State and Controlled Rendering
 
