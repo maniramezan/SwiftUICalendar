@@ -31,6 +31,7 @@ let package = Package(
         .library(name: "SwiftUICalendarTCA", targets: ["SwiftUICalendarTCA"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/maniramezan/SwiftTestCommons.git", from: "0.2.0"),
         .package(
             url: "https://github.com/maniramezan/SwiftCommons",
             .upToNextMajor(from: "0.13.0")
@@ -80,6 +81,8 @@ let package = Package(
         .testTarget(
             name: "SwiftUICalendarTests",
             dependencies: [
+                .product(name: "TestCommons", package: "SwiftTestCommons"),
+                .product(name: "TestCommonsUI", package: "SwiftTestCommons"),
                 "SwiftUICalendarTCA",
                 .product(
                     name: "ComposableArchitecture", package: "swift-composable-architecture"),
