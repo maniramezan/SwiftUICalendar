@@ -14,6 +14,12 @@
     {
       "kind": "local",
       "path": "../../../SwiftUICalendar",
+    }, {
+      "kind": "remote",
+      "repository": "https://github.com/maniramezan/SwiftTestCommons.git",
+      "version": {
+        "up-to-next-major-version": "0.1.0",
+      },
     },
   ],
   "files": [
@@ -63,6 +69,7 @@
     { "path": "UITests/VerticalLandscapeUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/UITestSupport.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/HeaderControlUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
+    { "path": "UITests/LocaleDirectionUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
   ],
   "targets": [
     {
@@ -77,13 +84,15 @@
       ],
       "package-product-members": [
         {
-          "product-name": "SwiftUICalendarAccessibility",
-          "build-phase": { "build-phase": "frameworks" },
-        },
-        {
+          "package": "SwiftUICalendar",
           "product-name": "SwiftUICalendar",
           "build-phase": { "build-phase": "frameworks" },
         }, {
+          "package": "SwiftUICalendar",
+          "product-name": "SwiftUICalendarAccessibility",
+          "build-phase": { "build-phase": "frameworks" },
+        }, {
+          "package": "SwiftUICalendar",
           "product-name": "SwiftUICalendarTCA",
           "build-phase": { "build-phase": "frameworks" },
         },
@@ -129,6 +138,14 @@
       "package-product-members": [
         {
           "product-name": "SwiftUICalendarAccessibility",
+          "build-phase": { "build-phase": "frameworks" },
+        }, {
+          "package": "SwiftTestCommons",
+          "product-name": "TestCommons",
+          "build-phase": { "build-phase": "frameworks" },
+        }, {
+          "package": "SwiftTestCommons",
+          "product-name": "TestCommonsXCUI",
           "build-phase": { "build-phase": "frameworks" },
         },
       ],
