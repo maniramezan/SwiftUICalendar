@@ -13,11 +13,7 @@ import XCTest
 /// right to left.
 ///
 /// Run with `xcodebuild test -testPlan SwiftUICalendarSampleLocales`.
-final class LocaleDirectionUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class LocaleDirectionUITests: SampleUITestCase {
     // MARK: Helpers
 
     private func launchApp() -> XCUIApplication {

@@ -1,11 +1,7 @@
 import SwiftUICalendarAccessibility
 import XCTest
 
-final class VerticalScrollDateUpdateReproUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
     func testVerticalScrollMovesInBothDirectionsForMVVM() throws {
         let app = XCUIApplication()
         app.launch()

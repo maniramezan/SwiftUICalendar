@@ -5,15 +5,7 @@ import XCTest
 /// jumps to it. A `LazyVStack` can drop a jump made before its rows have laid out, and when it did
 /// the calendar opened at the start of the window — twenty years in the past. Landscape, where the
 /// first layout pass is already final, is where it happened.
-final class VerticalLandscapeUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
-    override func tearDownWithError() throws {
-        XCUIDevice.shared.orientation = .portrait
-    }
-
+final class VerticalLandscapeUITests: SampleUITestCase {
     func testVerticalCalendarOpensOnTheCurrentMonthInLandscape() throws {
         XCUIDevice.shared.orientation = .landscapeLeft
         let app = XCUIApplication()
