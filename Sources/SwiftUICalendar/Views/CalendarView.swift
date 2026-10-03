@@ -235,12 +235,13 @@ private struct CalendarBodyContent: View {
     let scrollMode: CalendarConfiguration.ScrollMode
     let allowsPaging: Bool
     let keyboard: CalendarKeyboardCursor
+    @Environment(\.calendarContentWidth) private var contentWidth
 
     var body: some View {
         switch scrollMode {
         case .none:
             CalendarMonthScrollContainer(keyboard: keyboard) {
-                CalendarBodyView(keyboard: keyboard)
+                CalendarBodyView(layoutWidth: contentWidth, keyboard: keyboard)
             }
         case .vertical:
             CalendarBodyVerticalContainer(keyboard: keyboard)
