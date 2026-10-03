@@ -1,0 +1,34 @@
+calendar: persian
+locale: fa_IR@calendar=persian;numbers=arabext
+layoutDirection: rightToLeft
+scrollMode: horizontal
+gridSizing: adaptive
+horizontalHeightMode: sixRows
+showsHeader: true
+dayRenderer: circle
+secondaryLabel: none
+selection: single(none)
+layout(width=390): cell=48.86 gridWidth=390 compactWidth=false
+weekdayHeader: ش ی د س چ پ ج
+
+month: اردیبهشت [persian y1404 m2 era0] rows=5
+  ۳۰(·)        ۳۱(·)        ۱            ۲            ۳            ۴            ۵
+  ۶            ۷            ۸            ۹            ۱۰           ۱۱           ۱۲
+  ۱۳           ۱۴           ۱۵           ۱۶           ۱۷           ۱۸           ۱۹
+  ۲۰           ۲۱           ۲۲           ۲۳           ۲۴           ۲۵           ۲۶
+  ۲۷           ۲۸           ۲۹           ۳۰           ۳۱           ۱(·)         ۲(·)
+
+month: خرداد [persian y1404 m3 era0] rows=6
+  ۲۷(·)        ۲۸(·)        ۲۹(·)        ۳۰(·)        ۳۱(·)        ۱            ۲
+  ۳            ۴            ۵            ۶            ۷            ۸            ۹
+  ۱۰           ۱۱           ۱۲           ۱۳           ۱۴           ۱۵           ۱۶
+  ۱۷           ۱۸           ۱۹           ۲۰           ۲۱           ۲۲           ۲۳
+  ۲۴           ۲۵           ۲۶           ۲۷           ۲۸           ۲۹           ۳۰
+  ۳۱           ۱(·)         ۲(·)         ۳(·)         ۴(·)         ۵(·)         ۶(·)
+
+month: تیر [persian y1404 m4 era0] rows=5
+  ۳۱(·)        ۱            ۲            ۳            ۴            ۵            ۶
+  ۷            ۸            ۹            ۱۰           ۱۱           ۱۲           ۱۳
+  ۱۴           ۱۵           ۱۶           ۱۷           ۱۸           ۱۹           ۲۰
+  ۲۱           ۲۲           ۲۳           ۲۴           ۲۵           ۲۶           ۲۷
+  ۲۸           ۲۹           ۳۰           ۳۱           ۱(·)         ۲(·)         ۳(·)
