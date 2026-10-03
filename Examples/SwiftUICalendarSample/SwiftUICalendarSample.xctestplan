@@ -1,0 +1,31 @@
+{
+  "configurations": [
+    {
+      "id": "E1F5EC8C-D367-457F-B763-DB13A6A8E728",
+      "name": "Default",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "targetForVariableExpansion": {
+      "containerPath": "container:SwiftUICalendarSample.xcodeproj",
+      "identifier": "B1B1B1B1B1B1B1B1B1B1B1B1",
+      "name": "SwiftUICalendarSample"
+    },
+    "testExecutionOrdering": "random"
+  },
+  "testTargets": [
+    {
+      "target": {
+        "containerPath": "container:SwiftUICalendarSample.xcodeproj",
+        "identifier": "4E5035AAD0743496AE63CB4B",
+        "name": "SwiftUICalendarSampleUITests"
+      },
+      "parallelizable": true,
+      "skippedTests": [
+        "LocaleDirectionUITests"
+      ]
+    }
+  ],
+  "version": 1
+}

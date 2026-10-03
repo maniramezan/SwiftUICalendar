@@ -54,10 +54,8 @@ jobs:
       - name: Build package
         run: swift build -c debug
 
-      - name: Check structural snapshots
-        run: swift test --filter Snapshot --no-parallel
-
-      - name: Check test coverage
+      # Runs every package test, in parallel, with coverage enabled, then enforces the minimum.
+      - name: Run all tests and check coverage
         env:
           MINIMUM_COVERAGE: 80
         run: bash ./scripts/check-coverage.sh
@@ -114,10 +112,8 @@ jobs:
       - name: Build package
         run: swift build -c debug
 
-      - name: Run full tests
-        run: swift test --no-parallel
-
-      - name: Check test coverage
+      # Runs every package test, in parallel, with coverage enabled, then enforces the minimum.
+      - name: Run all tests and check coverage
         env:
           MINIMUM_COVERAGE: 80
         run: bash ./scripts/check-coverage.sh
