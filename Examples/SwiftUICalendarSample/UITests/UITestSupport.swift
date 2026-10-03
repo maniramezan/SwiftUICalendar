@@ -1,6 +1,26 @@
 import SwiftUICalendarAccessibility
 import XCTest
 
+/// Base class for every sample UI test. Each test starts and ends in the same known state, so a
+/// failure in one test (which `continueAfterFailure = false` cuts short mid-body) cannot leave the
+/// device rotated or the app running for the next one — on any device, in any run order.
+class SampleUITestCase: XCTestCase {
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        Self.resetDeviceAndApp()
+    }
+
+    override func tearDownWithError() throws {
+        Self.resetDeviceAndApp()
+    }
+
+    /// Terminates any running instance of the app and returns the device to portrait.
+    private static func resetDeviceAndApp() {
+        XCUIApplication().terminate()
+        XCUIDevice.shared.orientation = .portrait
+    }
+}
+
 extension XCUIApplication {
     // MARK: - Calendar queries
 

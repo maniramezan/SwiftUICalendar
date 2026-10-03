@@ -3,11 +3,7 @@ import XCTest
 
 /// Drives the header with the shared identifiers instead of localized labels, so the same query
 /// works in any locale and stays in step with the identifiers the views actually apply.
-final class HeaderControlUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class HeaderControlUITests: SampleUITestCase {
     func testNextMonthButtonAdvancesTheGrid() throws {
         let app = XCUIApplication()
         app.launch()

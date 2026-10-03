@@ -1,11 +1,7 @@
 import SwiftUICalendarAccessibility
 import XCTest
 
-final class RotationScrollUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class RotationScrollUITests: SampleUITestCase {
     func testHorizontalCalendarResetsScrollPositionAfterRotatingFromScrolledLandscape() throws {
         let app = XCUIApplication()
         app.launch()
