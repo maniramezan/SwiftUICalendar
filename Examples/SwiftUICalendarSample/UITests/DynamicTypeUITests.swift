@@ -15,13 +15,34 @@ final class DynamicTypeUITests: SampleUITestCase {
         try super.setUpWithError()
     }
 
+    @MainActor
     func testNormalTextYearControlHasAccessibleHeight() {
         let app = launch(size: "UICTContentSizeCategoryL")
         let year = app.descendants(matching: .any)[CalendarAccessibilityID.yearButton].firstMatch
         XCTAssertTrue(year.waitForExistence(timeout: Self.dayCellTimeout))
         XCTAssertGreaterThanOrEqual(year.frame.height, 44)
+        let settings = app.buttons[CalendarSampleAccessibilityID.settings]
+        XCTAssertTrue(settings.exists)
+        XCTAssertGreaterThanOrEqual(settings.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(settings.frame.height, 44)
     }
 
+    @MainActor
+    func testSettingsRemainDismissibleAfterRotation() {
+        let app = launch(size: "UICTContentSizeCategoryAccessibilityXXXL")
+        app.openSettings()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCUIDevice.shared.orientation = .portrait
+        let done = app.buttons[CalendarSampleAccessibilityID.done]
+        XCTAssertTrue(done.waitForExistence(timeout: Self.dayCellTimeout))
+        done.tap()
+        let month = app.descendants(matching: .any)[CalendarAccessibilityID.monthButton].firstMatch
+        XCTAssertTrue(month.waitForExistence(timeout: Self.dayCellTimeout))
+        XCTAssertTrue(month.isHittable)
+        XCTAssertTrue(done.waitForNonExistence(timeout: Self.dayCellTimeout))
+    }
+
+    @MainActor
     func testAccessibilityTextKeepsEdgeColumnsReachable() throws {
         let app = launch(size: "UICTContentSizeCategoryAccessibilityXXXL")
         for mode in CalendarScrollMode.allCases {
@@ -36,8 +57,16 @@ final class DynamicTypeUITests: SampleUITestCase {
             let trailing = try XCTUnwrap(row.max { $0.frame.maxX < $1.frame.maxX })
             XCTAssertTrue(leading.isHittable)
             let window = app.windows.firstMatch.frame
-            if trailing.frame.maxX > window.maxX {
-                leading.swipeLeft()
+            // Maximum text can require more than one viewport of horizontal travel.
+            // Swipe inside the visible row, not on a leading cell that is now offscreen.
+            for _ in 0..<4 where trailing.frame.maxX > window.maxX + Self.frameTolerance {
+                let visibleY = max(window.minY + 1, min(window.maxY - 1, leading.frame.midY))
+                let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+                let start = origin.withOffset(
+                    CGVector(dx: window.width * 0.85, dy: visibleY - window.minY))
+                let end = origin.withOffset(
+                    CGVector(dx: window.width * 0.15, dy: visibleY - window.minY))
+                start.press(forDuration: 0.05, thenDragTo: end)
             }
             XCTAssertTrue(
                 trailing.isHittable, "The trailing date must be reachable without changing months")
@@ -45,6 +74,7 @@ final class DynamicTypeUITests: SampleUITestCase {
         }
     }
 
+    @MainActor
     func testAccessibilityTextKeepsTheHeaderAboveTheFirstWeek() throws {
         let app = launch(size: "UICTContentSizeCategoryAccessibilityXXXL")
         // The vertical calendar scrolls its months under the header, so only the modes that lay the
@@ -75,6 +105,7 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     // MARK: - Helpers
 
+    @MainActor
     private func launch(size: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += [Self.sizeFlag, size]
@@ -82,6 +113,7 @@ final class DynamicTypeUITests: SampleUITestCase {
         return app
     }
 
+    @MainActor
     private func columnPositionsInsideWindow(of app: XCUIApplication) -> Set<Int> {
         let days = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))

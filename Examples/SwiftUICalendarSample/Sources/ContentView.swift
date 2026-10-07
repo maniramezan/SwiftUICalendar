@@ -17,7 +17,6 @@ struct ContentView: View {
     @State private var theme = Theme()
     @State private var typography = Typography.default
     @State private var isSettingsPresented = false
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         NavigationStack {
@@ -38,8 +37,9 @@ struct ContentView: View {
             .navigationTitle("Calendar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack {
+                    Spacer()
                     // A toggle: in regular width the inspector sits beside the calendar, and the
                     // same button is how it closes.
                     Button {
@@ -48,15 +48,19 @@ struct ContentView: View {
                         Label("Settings", systemImage: "gearshape")
                             .labelStyle(.iconOnly)
                             .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     .accessibilityHint("Choose calendar display settings")
                     .accessibilityIdentifier(CalendarSampleAccessibilityID.settings)
                 }
+                .padding(.horizontal)
             }
             .modifier(
                 SettingsPresentation(
                     isPresented: $isSettingsPresented,
-                    usesSheet: horizontalSizeClass == .compact
+                    // Keep the presentation kind stable when a phone rotates to regular width.
+                    usesSheet: UIDevice.current.userInterfaceIdiom == .phone
                 ) { showsDone in
                     ConfigurationView(
                         architecture: $architecture,
@@ -236,14 +240,19 @@ private struct SettingsPresentation<Settings: View>: ViewModifier {
     @ViewBuilder let settings: (_ showsDone: Bool) -> Settings
 
     func body(content: Content) -> some View {
-        content
-            .inspector(isPresented: usesSheet ? .constant(false) : $isPresented) {
-                settings(false)
-                    .inspectorColumnWidth(min: 320, ideal: 360, max: 420)
-            }
-            .sheet(isPresented: usesSheet ? $isPresented : .constant(false)) {
+        if usesSheet {
+            // Do not install an inactive inspector on phones. Its compact adaptation can
+            // re-present stale content during rotation even with a constant false binding.
+            content.sheet(isPresented: $isPresented) {
                 settings(true)
             }
+        } else {
+            content.inspector(isPresented: $isPresented) {
+                // An iPad inspector can adapt to a sheet in narrow multitasking widths.
+                settings(true)
+                    .inspectorColumnWidth(min: 320, ideal: 360, max: 420)
+            }
+        }
     }
 }
 
@@ -332,18 +341,23 @@ private struct ConfigurationView: View {
                 }
             }
             .navigationTitle("Settings")
-            .toolbar {
-                // Only the compact sheet needs a way out. In regular width the inspector's toolbar
-                // merges into the calendar's navigation bar, where a Done would linger after close.
-                // The caller decides: inside the inspector the size class does not report compact
-                // even when it is presented as a sheet.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                // Keep dismissal inside the presentation instead of merging an inspector toolbar
+                // into the calendar's navigation bar, where it can linger after dismissal.
                 if showsDone {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") {
+                    HStack {
+                        Spacer()
+                        Button {
                             isPresented = false
+                        } label: {
+                            Text("Done")
+                                .frame(minWidth: 44, minHeight: 44)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier(CalendarSampleAccessibilityID.done)
                     }
+                    .padding(.horizontal)
                 }
             }
         }
