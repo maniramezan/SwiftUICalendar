@@ -66,13 +66,15 @@ public struct CalendarDayContext {
     public let secondaryLabel: String?
     /// Calendar, locale, and time zone used for spoken date labels.
     public let calendar: Calendar
-    /// Side length, in points, of the square the calendar gives this day view.
+    /// The size, in points, the calendar gives this day view.
     ///
-    /// The calendar proposes exactly this square to every day view and never less than the platform's
-    /// 44pt touch target. Size your content from it instead of hardcoding a frame or measuring with a
-    /// `GeometryReader`, which costs a layout pass per cell: for example, scale an emoji to
-    /// `cellSize * 0.4`, or drop a secondary label when `cellSize` is at its minimum.
-    public let cellSize: CGFloat
+    /// The calendar proposes exactly this size to every day view, and neither side is ever less than
+    /// the platform's 44pt touch target. The width is set by the grid; the height equals the width at
+    /// the default text size and grows a little with Dynamic Type. Size your content from it instead
+    /// of hardcoding a frame or measuring with a `GeometryReader`, which costs a layout pass per cell:
+    /// for example, scale an emoji to `cellSize.width * 0.4`, or drop a secondary label when
+    /// `cellSize` is at its minimum.
+    public let cellSize: CGSize
 
     /// Creates a day context with the provided values.
     ///
@@ -92,7 +94,7 @@ public struct CalendarDayContext {
     ///   - onSelect: Callback invoked when the date is selected.
     ///   - secondaryLabel: Optional secondary label text.
     ///   - calendar: Calendar context for accessible date descriptions.
-    ///   - cellSize: Side length of the square given to the day view. Defaults to the 44pt minimum.
+    ///   - cellSize: Size given to the day view. Defaults to the 44pt minimum touch target square.
     public init(
         date: Date,
         day: Int,
@@ -106,7 +108,7 @@ public struct CalendarDayContext {
         onSelect: @escaping (Date) -> Void,
         secondaryLabel: String? = nil,
         calendar: Calendar = .current,
-        cellSize: CGFloat? = nil
+        cellSize: CGSize? = nil
     ) {
         self.date = date
         self.day = day
@@ -120,7 +122,8 @@ public struct CalendarDayContext {
         self.onSelect = onSelect
         self.secondaryLabel = secondaryLabel
         self.calendar = calendar
-        self.cellSize = cellSize ?? CalendarMetrics.default.minCellSize
+        let minimum = CalendarMetrics.default.minCellSize
+        self.cellSize = cellSize ?? CGSize(width: minimum, height: minimum)
     }
 
     /// A localized date and state description for built-in and custom accessible controls.

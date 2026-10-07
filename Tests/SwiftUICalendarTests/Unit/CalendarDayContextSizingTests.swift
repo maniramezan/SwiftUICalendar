@@ -19,7 +19,7 @@ struct CalendarDayContextSizingTests {
 
     nonisolated static let widths: [CGFloat] = [343, 375, 428, 900]
 
-    private func context(cellSize: CGFloat? = nil) -> CalendarDayContext {
+    private func context(cellSize: CGSize? = nil) -> CalendarDayContext {
         CalendarDayContext(
             date: .now, day: 1, dayLabel: "1", isToday: false, isSelected: false,
             isInCurrentMonth: true, theme: Theme.default.day, typography: Typography.default,
@@ -30,12 +30,15 @@ struct CalendarDayContextSizingTests {
 
     @Test("A hand-built context defaults to the minimum touch target")
     func defaultCellSizeIsTheTouchTarget() {
-        #expect(context().cellSize == CalendarMetrics.default.minCellSize)
+        let minimum = CalendarMetrics.default.minCellSize
+        #expect(context().cellSize == CGSize(width: minimum, height: minimum))
     }
 
     @Test("A hand-built context keeps the size it is given")
     func explicitCellSizeIsKept() {
-        #expect(context(cellSize: 57).cellSize == 57)
+        #expect(
+            context(cellSize: CGSize(width: 57, height: 60)).cellSize
+                == CGSize(width: 57, height: 60))
     }
 
     // MARK: Hosted
@@ -43,7 +46,7 @@ struct CalendarDayContextSizingTests {
     /// Records, per day, the size the cell was given next to the size its context claims.
     @MainActor
     final class SizeLog {
-        var entries: [Date: (claimed: CGFloat, actual: CGSize)] = [:]
+        var entries: [Date: (claimed: CGSize, actual: CGSize)] = [:]
     }
 
     struct SizeProbeDayView: CalendarDayView {
@@ -91,11 +94,12 @@ struct CalendarDayContextSizingTests {
             log.entries.count >= 28, "\(mode) at \(width): only \(log.entries.count) days laid out")
         for (date, entry) in log.entries {
             #expect(
-                abs(entry.actual.width - entry.claimed) < 0.5
-                    && abs(entry.actual.height - entry.claimed) < 0.5,
+                abs(entry.actual.width - entry.claimed.width) < 0.5
+                    && abs(entry.actual.height - entry.claimed.height) < 0.5,
                 "\(mode) at \(width): \(date) claims \(entry.claimed) but is given \(entry.actual)")
             #expect(
-                entry.claimed >= CalendarMetrics.default.minCellSize - 0.5,
+                min(entry.claimed.width, entry.claimed.height)
+                    >= CalendarMetrics.default.minCellSize - 0.5,
                 "\(mode) at \(width): cellSize \(entry.claimed) is below the touch target")
         }
     }

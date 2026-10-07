@@ -160,8 +160,8 @@ scrolls. They hold for built-in views and are what custom day views are written 
   fallback; it never causes horizontal overflow. (Row-height scaling is tracked as a follow-up;
   until it lands, rows are fixed and text is contained by `minimumScaleFactor`.)
 - **Touch targets do not scale down.** The 44pt floor holds at every text size and width.
-- **Custom day views are proposed one square.** `CalendarDayContext.cellSize` is its side, at least
-  44pt. A day view fills the proposal (`.frame(maxWidth: .infinity, maxHeight: .infinity)`), reads
+- **Custom day views are proposed one rectangle.** `CalendarDayContext.cellSize` is its size, neither
+  side under 44pt; the height grows with Dynamic Type, the width does not. A day view fills the proposal (`.frame(maxWidth: .infinity, maxHeight: .infinity)`), reads
   `cellSize` to scale marks instead of hardcoding frames or using a `GeometryReader`, sheds detail
   rather than overflowing at the minimum size, and contains whatever it draws. The calendar owns
   row and column sizing; a day view never asks for more room. See `CustomizingDayViews.md`.

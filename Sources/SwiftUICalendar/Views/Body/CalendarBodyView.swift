@@ -112,7 +112,7 @@ struct CalendarBodyView: View {
                             },
                             secondaryLabel: resolveSecondaryLabel(for: date),
                             calendar: viewModel.engine.calendar,
-                            cellSize: cellSize
+                            cellSize: CGSize(width: cellSize, height: cellSize)
                         )
 
                         CalendarDayCell(context: context, renderer: theme.day.renderer)
