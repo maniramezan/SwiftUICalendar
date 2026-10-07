@@ -66,6 +66,15 @@ public struct CalendarDayContext {
     public let secondaryLabel: String?
     /// Calendar, locale, and time zone used for spoken date labels.
     public let calendar: Calendar
+    /// The size, in points, the calendar gives this day view.
+    ///
+    /// The calendar proposes exactly this size to every day view, and neither side is ever less than
+    /// the platform's 44pt touch target. The width is set by the grid; the height equals the width at
+    /// the default text size and grows a little with Dynamic Type. Size your content from it instead
+    /// of hardcoding a frame or measuring with a `GeometryReader`, which costs a layout pass per cell:
+    /// for example, scale an emoji to `cellSize.width * 0.4`, or drop a secondary label when
+    /// `cellSize` is at its minimum.
+    public let cellSize: CGSize
 
     /// Creates a day context with the provided values.
     ///
@@ -85,6 +94,7 @@ public struct CalendarDayContext {
     ///   - onSelect: Callback invoked when the date is selected.
     ///   - secondaryLabel: Optional secondary label text.
     ///   - calendar: Calendar context for accessible date descriptions.
+    ///   - cellSize: Size given to the day view. Defaults to the 44pt minimum touch target square.
     public init(
         date: Date,
         day: Int,
@@ -97,7 +107,8 @@ public struct CalendarDayContext {
         typography: Typography,
         onSelect: @escaping (Date) -> Void,
         secondaryLabel: String? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        cellSize: CGSize? = nil
     ) {
         self.date = date
         self.day = day
@@ -111,6 +122,8 @@ public struct CalendarDayContext {
         self.onSelect = onSelect
         self.secondaryLabel = secondaryLabel
         self.calendar = calendar
+        let minimum = CalendarMetrics.default.minCellSize
+        self.cellSize = cellSize ?? CGSize(width: minimum, height: minimum)
     }
 
     /// A localized date and state description for built-in and custom accessible controls.
@@ -153,7 +166,7 @@ public struct CalendarDayContext {
 ///     var body: some View {
 ///         Button { context.onSelect(context.date) } label: {
 ///           Text(context.dayLabel)
-///             .frame(width: 44, height: 44)
+///             .frame(maxWidth: .infinity, maxHeight: .infinity)
 ///             .overlay(Circle().stroke(context.isToday ? .orange : .clear))
 ///         }
 ///         .buttonStyle(.plain)
