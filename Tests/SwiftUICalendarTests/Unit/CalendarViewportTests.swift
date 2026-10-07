@@ -28,6 +28,30 @@ struct CalendarViewportTests {
         #expect(squeezed.contentWidth == 370)
     }
 
+    @Test("Soft margins shrink in proportion to the width left over the grid minimum")
+    func marginScaleTracksSlack() {
+        // 3pt over the minimum against 16pt of margins: only 3/16 of the margins fit.
+        let tight = CalendarViewportLayout(width: 359, minimumWidth: 356, margins: 16)
+        #expect(!tight.overflows)
+        #expect(abs(tight.marginScale - 3.0 / 16.0) < 0.0001)
+
+        // Exactly the minimum leaves nothing for margins.
+        let exact = CalendarViewportLayout(width: 356, minimumWidth: 356, margins: 16)
+        #expect(exact.marginScale == 0)
+
+        // Room for every margin keeps them whole, and so does having none to give.
+        #expect(CalendarViewportLayout(width: 372, minimumWidth: 356, margins: 16).marginScale == 1)
+        #expect(CalendarViewportLayout(width: 900, minimumWidth: 356, margins: 16).marginScale == 1)
+        #expect(CalendarViewportLayout(width: 359, minimumWidth: 356).marginScale == 1)
+    }
+
+    @Test("An overflowing grid restores its margins in full")
+    func overflowKeepsFullMarginScale() {
+        let narrow = CalendarViewportLayout(width: 320, minimumWidth: 356, margins: 16)
+        #expect(narrow.overflows)
+        #expect(narrow.marginScale == 1)
+    }
+
     @Test("An overflowing grid carries its full margins so the outer columns stay reachable")
     func overflowRestoresMargins() {
         let narrow = CalendarViewportLayout(width: 320, minimumWidth: 356, margins: 52)

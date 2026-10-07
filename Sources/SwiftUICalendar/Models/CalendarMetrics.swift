@@ -25,9 +25,9 @@ struct CalendarMetrics: Equatable, Sendable {
     /// Vertical gap between months in the vertically scrolling calendar.
     let monthSpacing: CGFloat
     /// Horizontal inset applied to each month in the vertically scrolling calendar.
-    let monthInset: CGFloat
+    private(set) var monthInset: CGFloat
     /// Margin between the calendar and the edges of its container.
-    let calendarMargin: CGFloat
+    private(set) var calendarMargin: CGFloat
     /// Corner radius of the keyboard focus ring drawn around a day cell.
     let focusRingRadius: CGFloat
     /// Height of the navigation header row.
@@ -220,6 +220,17 @@ extension CalendarMetrics {
 // MARK: - Geometry
 
 extension CalendarMetrics {
+    /// Metrics with the soft horizontal margins (`calendarMargin` and `monthInset`) scaled by `factor`.
+    ///
+    /// The viewport hands its content these when the grid fits with less than its full margins to
+    /// spare, so the margins give way instead of squeezing the grid below ``minCalendarWidth``.
+    func scalingSoftMargins(by factor: CGFloat) -> CalendarMetrics {
+        var scaled = self
+        scaled.calendarMargin *= factor
+        scaled.monthInset *= factor
+        return scaled
+    }
+
     /// The width the grid is actually laid out at, never narrower than ``minCalendarWidth``.
     func layoutWidth(containerWidth: CGFloat) -> CGFloat {
         max(containerWidth, minCalendarWidth)
