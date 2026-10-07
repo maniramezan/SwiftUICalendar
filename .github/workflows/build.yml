@@ -87,6 +87,14 @@ jobs:
     env:
       PROJECT: Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
       DESTINATION: platform=iOS Simulator,name=iPhone 17
+      # A cold simulator clone can take minutes to launch an app in landscape, and an app that is
+      # starved that long answers no accessibility query (build 37137076097 spent 10 minutes in one
+      # test). Run serially so clones do not starve each other, fail a stuck test in minutes rather
+      # than the default, and retry once in a fresh process before calling it a regression.
+      UI_TEST_FLAGS: >-
+        -parallel-testing-enabled NO -test-timeouts-enabled YES
+        -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 300
+        -retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES
     steps:
       - name: Checkout SwiftUICalendar
         uses: actions/checkout@v7.0.1
@@ -107,13 +115,13 @@ jobs:
         run: |
           mkdir -p .build/results
           xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts \
-            -testPlan SwiftUICalendarSample -destination "$DESTINATION" \
+            -testPlan SwiftUICalendarSample -destination "$DESTINATION" $UI_TEST_FLAGS \
             -resultBundlePath .build/results/default.xcresult
 
       - name: Run per-language UI test plan
         run: >-
           xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts
-          -testPlan SwiftUICalendarSampleLocales -destination "$DESTINATION"
+          -testPlan SwiftUICalendarSampleLocales -destination "$DESTINATION" $UI_TEST_FLAGS
           -resultBundlePath .build/results/locales.xcresult
 
       - name: Upload test results
