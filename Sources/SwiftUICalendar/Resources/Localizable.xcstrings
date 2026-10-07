@@ -1,6 +1,30 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Calendar.Navigation.PreviousYear": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Previous year" } } }
+    },
+    "Calendar.Navigation.NextYear": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Next year" } } }
+    },
+    "Calendar.Navigation.PreviousMonth": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Previous month" } } }
+    },
+    "Calendar.Navigation.NextMonth": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Next month" } } }
+    },
+    "Calendar.Selection.RangeStart": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Range starts on %@. Choose an end date." } } }
+    },
+    "Calendar.Selection.RangeComplete": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Selected range, %@ to %@." } } }
+    },
     "Calendar.Day.Secondary": {
       "comment": "VoiceOver description of a day cell's secondary (alternate calendar) label. %@ is the secondary label.",
       "extractionState": "manual",

@@ -1,5 +1,6 @@
 dayRenderer: square
 dayLabel: 15
+cellSize: 44x44
 secondaryLabel: ۲۵
 isToday: false
 isSelected: false

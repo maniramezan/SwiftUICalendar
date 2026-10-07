@@ -22,6 +22,7 @@ struct CalendarBodyHorizontalView: View {
     @State private var containerWidth: CGFloat = 0
     @State private var measuredHeight: CGFloat = 0
     @State private var isNavigating = false
+    @GestureState private var isDraggingMonth = false
     @State private var deferredContainerWidth: CGFloat?
 
     #if os(macOS)
@@ -229,6 +230,7 @@ struct CalendarBodyHorizontalView: View {
                 .background(heightReporter(for: .previous))
                 .clipped()
                 .offset(x: previousMonthBaseOffset + offset + dragOffset)
+                .accessibilityHidden(true)
 
                 // Current month (centered by default)
                 CalendarBodyView(
@@ -263,6 +265,7 @@ struct CalendarBodyHorizontalView: View {
                 .background(heightReporter(for: .next))
                 .clipped()
                 .offset(x: nextMonthBaseOffset + offset + dragOffset)
+                .accessibilityHidden(true)
             }
             .environment(\.layoutDirection, .leftToRight)
             // The carousel fills whatever width the parent proposes. Month pages are centered within
@@ -276,13 +279,18 @@ struct CalendarBodyHorizontalView: View {
             .onPreferenceChange(HorizontalMonthHeightPreferenceKey.self) { heights in
                 updateMeasuredHeight(heights.values.max() ?? 0)
             }
-            // The day cells are Buttons. A simultaneous drag lets a Button finish its press when a
-            // swipe starts on a cell, which changes the month and selects that day. Give the pager
-            // priority so a moving touch belongs to paging; stationary touches still reach the Button.
-            .highPriorityGesture(
+            // Let vertical gestures reach the enclosing row scroller. Disable day activation while
+            // a horizontal gesture is recognized so a swipe cannot also select its starting day.
+            .environment(\.calendarPagingGestureActive, isDraggingMonth)
+            .simultaneousGesture(
                 DragGesture()
+                    .updating($isDraggingMonth) { value, active, _ in
+                        active = abs(value.translation.width) > abs(value.translation.height)
+                    }
                     .onChanged { value in
-                        guard !isNavigating else {
+                        guard !isNavigating,
+                            abs(value.translation.width) > abs(value.translation.height)
+                        else {
                             return
                         }
 
@@ -294,7 +302,11 @@ struct CalendarBodyHorizontalView: View {
                         )
                     }
                     .onEnded { value in
-                        guard !isNavigating else {
+                        guard !isNavigating else { return }
+                        guard abs(value.translation.width) > abs(value.translation.height) else {
+                            // A diagonal drag may start horizontally and finish vertically.
+                            // Clear any partial page offset when yielding to vertical scrolling.
+                            dragOffset = 0
                             return
                         }
 
@@ -488,6 +500,10 @@ struct CalendarBodyHorizontalView: View {
         scrollMonitor = nil
     }
     #endif
+}
+
+extension EnvironmentValues {
+    @Entry var calendarPagingGestureActive = false
 }
 
 private enum HorizontalMonthPosition: Hashable {

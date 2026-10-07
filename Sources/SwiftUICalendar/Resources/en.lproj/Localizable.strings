@@ -4,7 +4,13 @@
 "Calendar.Day.Today" = "Today";
 "Calendar.Done" = "Done";
 "Calendar.Navigation.Next" = "Next";
+"Calendar.Navigation.NextMonth" = "Next month";
+"Calendar.Navigation.NextYear" = "Next year";
 "Calendar.Navigation.Previous" = "Previous";
+"Calendar.Navigation.PreviousMonth" = "Previous month";
+"Calendar.Navigation.PreviousYear" = "Previous year";
 "Calendar.Navigation.Year.ChangeHint" = "Double tap to change the selected year";
 "Calendar.Navigation.Year.Selected" = "Selected year, %@";
+"Calendar.Selection.RangeComplete" = "Selected range, %@ to %@.";
+"Calendar.Selection.RangeStart" = "Range starts on %@. Choose an end date.";
 "Calendar.Today" = "Today";

@@ -8,7 +8,9 @@ showsHeader: true
 dayRenderer: circle
 secondaryLabel: none
 selection: single(none)
-layout(width=390): cell=48.86 gridWidth=390 compactWidth=false
+viewport: minimum=332 overflow=false gap=8 marginScale=1
+cell: 44x44 weekdayHeight=24
+layout(width=390): cell=44 gridWidth=356 compactWidth=false
 weekdayHeader: ش ی د س چ پ ج
 
 month: اردیبهشت [persian y1404 m2 era0] rows=5

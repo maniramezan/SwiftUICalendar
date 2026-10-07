@@ -108,7 +108,7 @@ public final class Typography {
     /// `1` is the identity scale — text is allowed to shrink to its full size and no further — so a
     /// `nil` ``minScaleFactor`` resolves to `1` rather than to an optional every call site has to
     /// unwrap. Use this rather than ``minScaleFactor`` in a view body.
-    public var resolvedMinScaleFactor: CGFloat { minScaleFactor ?? 1 }
+    public var resolvedMinScaleFactor: CGFloat { allowsScaling ? (minScaleFactor ?? 1) : 1 }
 
     // MARK: - Initialization
 
@@ -218,7 +218,7 @@ public final class Typography {
             weekdayHeaderFont: .subheadline,
             dayFont: .body,
             allowsScaling: true,
-            minScaleFactor: 0.85
+            minScaleFactor: nil
         )
         typography.registerDefaultDayViewTypography()
         return typography

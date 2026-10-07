@@ -113,22 +113,9 @@ public struct CalendarView: View {
     /// standard `View` lifecycle.
     public var body: some View {
         CalendarViewport(keyboard: keyboard) { allowsPaging in
-            VStack {
-                #if os(iOS)
-                CalendarTodayControl(viewModel: viewModel)
-                #endif
-                if configuration.showsHeader {
-                    CalendarHeaderControl()
-                }
-                CalendarBodyContent(
-                    viewModel: viewModel,
-                    scrollMode: configuration.scrollMode,
-                    allowsPaging: allowsPaging,
-                    keyboard: keyboard
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .layoutPriority(1)
-            }
+            CalendarSurface(
+                viewModel: viewModel, configuration: configuration,
+                allowsPaging: allowsPaging, keyboard: keyboard)
         }
         // Not focusable at all when the host declined every shortcut, so the calendar stops
         // being a tab stop it would do nothing with.
@@ -172,6 +159,8 @@ public struct CalendarView: View {
             )
             return result
         }
+        .modifier(CalendarAccessibility())
+        .modifier(CalendarContentSizing())
         .environment(viewModel)
         .environment(theme)
         .environment(typography)
@@ -225,30 +214,106 @@ public struct CalendarView: View {
     }
 }
 
-/// Resolves the body for the configured scroll mode.
-///
-/// Its own `View` type rather than a `@ViewBuilder` member of ``CalendarView``: a `@ViewBuilder`
-/// property or method is inlined into the owning `body` and re-evaluated whenever that body is, so
-/// SwiftUI has nothing to diff and cannot skip the subtree.
-private struct CalendarBodyContent: View {
+private struct CalendarSurface: View {
     let viewModel: CalendarViewModel
-    let scrollMode: CalendarConfiguration.ScrollMode
+    let configuration: CalendarConfiguration
     let allowsPaging: Bool
     let keyboard: CalendarKeyboardCursor
+    @Environment(\.calendarMetrics) private var metrics
+    @Environment(\.calendarViewportWidth) private var viewportWidth
+    @State private var headerHeight: CGFloat = 0
+
+    var body: some View {
+        if configuration.scrollMode != .vertical {
+            CalendarFixedSurface(
+                viewModel: viewModel, configuration: configuration,
+                allowsPaging: allowsPaging, keyboard: keyboard)
+        } else {
+            GeometryReader { geometry in
+                // The outer surface only scrolls when the header and one readable row cannot fit.
+                // The body retains its own month scrolling and identity across that boundary.
+                ScrollView(
+                    headerHeight + metrics.rowSpacing + metrics.minRowHeight
+                        + metrics.weekdayHeaderMinHeight > geometry.size.height
+                        ? .vertical : [], showsIndicators: false
+                ) {
+                    VStack(spacing: metrics.rowSpacing) {
+                        VStack(spacing: metrics.rowSpacing) {
+                            #if os(iOS)
+                            CalendarTodayControl(viewModel: viewModel)
+                            #endif
+                            if configuration.showsHeader { CalendarHeaderControl() }
+                        }
+                        .frame(width: viewportWidth)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .visualEffect { content, geometry in
+                            content.offset(
+                                x: !allowsPaging && configuration.layout.overflow == .automatic
+                                    ? -geometry.frame(in: .scrollView(axis: .horizontal)).minX : 0)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .onGeometryChange(for: CGFloat.self) {
+                            $0.size.height
+                        } action: {
+                            headerHeight = $0
+                        }
+
+                        CalendarBodyVerticalContainer(keyboard: keyboard)
+                            .frame(
+                                height: max(
+                                    metrics.minRowHeight + metrics.weekdayHeaderMinHeight,
+                                    geometry.size.height - headerHeight - metrics.rowSpacing))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+            }
+        }
+    }
+}
+
+/// A single vertical owner for fixed/paged months: headers and every week remain reachable.
+private struct CalendarFixedSurface: View {
+    let viewModel: CalendarViewModel
+    let configuration: CalendarConfiguration
+    let allowsPaging: Bool
+    let keyboard: CalendarKeyboardCursor
+    @Environment(\.calendarMetrics) private var metrics
+    @Environment(\.calendarViewportWidth) private var viewportWidth
     @Environment(\.calendarContentWidth) private var contentWidth
 
     var body: some View {
-        switch scrollMode {
-        case .none:
-            CalendarMonthScrollContainer(keyboard: keyboard) {
-                CalendarBodyView(layoutWidth: contentWidth, keyboard: keyboard)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: metrics.rowSpacing) {
+                    VStack(spacing: metrics.rowSpacing) {
+                        #if os(iOS)
+                        CalendarTodayControl(viewModel: viewModel)
+                        #endif
+                        if configuration.showsHeader { CalendarHeaderControl() }
+                    }
+                    .frame(width: viewportWidth)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .visualEffect { content, geometry in
+                        content.offset(
+                            x: !allowsPaging && configuration.layout.overflow == .automatic
+                                ? -geometry.frame(in: .scrollView(axis: .horizontal)).minX : 0)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if configuration.scrollMode == .none {
+                        CalendarBodyView(layoutWidth: contentWidth, keyboard: keyboard)
+                    } else {
+                        CalendarBodyHorizontalView(
+                            viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
+                    }
+                }
+                .frame(maxWidth: .infinity)
             }
-        case .vertical:
-            CalendarBodyVerticalContainer(keyboard: keyboard)
-        case .horizontal:
-            CalendarMonthScrollContainer(keyboard: keyboard) {
-                CalendarBodyHorizontalView(
-                    viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
+            .scrollBounceBehavior(.basedOnSize)
+            .onChange(of: keyboard.scrollRequest) { _, request in
+                guard keyboard.isActive, let request else { return }
+                proxy.scrollTo(request.identity)
             }
         }
     }
@@ -257,23 +322,14 @@ private struct CalendarBodyContent: View {
 private struct CalendarHeaderControl: View {
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
+    @Environment(\.calendarViewportWidth) private var viewportWidth
 
     var body: some View {
-        GeometryReader { geometry in
-            CalendarHeaderView()
-                .frame(
-                    width: CalendarGridLayout(
-                        containerWidth: geometry.size.width,
-                        metrics: metrics,
-                        sizing: configuration.gridSizing
-                    ).gridWidth
-                )
-                .frame(maxWidth: .infinity)
-        }
-        // Pinned because a `GeometryReader` is greedy in both axes. Applied here rather than by
-        // `CalendarView`: metrics resolve from the design theme below `CalendarView`'s own body, so
-        // reading them there always got the defaults and ignored a custom theme.
-        .frame(height: metrics.headerRowHeight)
+        CalendarHeaderView()
+            .frame(width: viewportWidth)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minHeight: metrics.headerRowHeight)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -282,29 +338,27 @@ private struct CalendarTodayControl: View {
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
     let viewModel: CalendarViewModel
+    @Environment(\.calendarViewportWidth) private var viewportWidth
 
     var body: some View {
-        GeometryReader { geometry in
-            HStack {
-                Spacer()
-                Button("Calendar.Today".localized) {
-                    viewModel.goToToday()
-                }
-                // Today can fall outside `dateRange` (for example, a past-only calendar).
-                .disabled(!viewModel.canGoToToday)
+        HStack {
+            Spacer()
+            Button {
+                viewModel.goToToday()
+            } label: {
+                Text("Calendar.Today".localized)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
-            .frame(
-                width: CalendarGridLayout(
-                    containerWidth: geometry.size.width,
-                    metrics: metrics,
-                    sizing: configuration.gridSizing
-                ).gridWidth,
-                alignment: .trailing
-            )
-            .frame(maxWidth: .infinity)
+            // Today can fall outside `dateRange` (for example, a past-only calendar).
+            .disabled(!viewModel.canGoToToday)
         }
-        // See `CalendarHeaderControl`: resolved here so a custom theme applies.
-        .frame(height: metrics.todayRowHeight)
+        .frame(
+            width: viewportWidth,
+            alignment: .trailing
+        )
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 #endif
@@ -319,31 +373,5 @@ private struct CalendarBodyVerticalContainer: View {
 
     var body: some View {
         CalendarBodyVerticalView(keyboard: keyboard)
-    }
-}
-
-/// Keeps the fixed month and horizontal pager reachable in short, resizable windows.
-private struct CalendarMonthScrollContainer<Content: View>: View {
-    let keyboard: CalendarKeyboardCursor
-    @ViewBuilder let content: () -> Content
-    @State private var scrollPosition = ScrollPosition(edge: .top)
-
-    var body: some View {
-        // A month can exceed a landscape or Stage Manager viewport. Scroll its rows rather than
-        // compressing touch targets, without changing the displayed month or selection.
-        ScrollViewReader { proxy in
-            ScrollView(.vertical) {
-                content()
-                    .frame(maxWidth: .infinity, alignment: .top)
-            }
-            .scrollPosition($scrollPosition)
-            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-            // `scrollRequest`, not `date`: swiping to another month or tapping Today moves the
-            // cursor to follow, and scrolling on that would move this list with no key pressed.
-            .onChange(of: keyboard.scrollRequest) { _, request in
-                guard keyboard.isActive, let request else { return }
-                proxy.scrollTo(request.identity)
-            }
-        }
     }
 }

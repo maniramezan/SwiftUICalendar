@@ -27,7 +27,8 @@ struct CalendarBodyVerticalView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: true) {
+            // Reserve no horizontal gutter: the shared viewport owns width and overflow.
+            ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: metrics.monthSpacing) {
                     if let anchor {
                         // Offsets outside `dateRange` resolve to `nil` and render nothing, so a

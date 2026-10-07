@@ -16,14 +16,13 @@ struct CalendarHeaderView: View {
                     .id("row-year")
                 macOSTodayButton
             }
-            #if !os(macOS)
             VStack {
                 CalendarHeaderMonthView()
                     .id("stack-month")
                 CalendarHeaderYearView()
                     .id("stack-year")
+                macOSTodayButton
             }
-            #endif
         }
         .font(typography.headerFont)
     }

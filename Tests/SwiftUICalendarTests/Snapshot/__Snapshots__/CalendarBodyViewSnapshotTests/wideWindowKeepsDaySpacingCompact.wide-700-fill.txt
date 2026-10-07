@@ -8,6 +8,8 @@ showsHeader: true
 dayRenderer: circle
 secondaryLabel: none
 selection: single(none)
+viewport: minimum=332 overflow=false gap=8 marginScale=1
+cell: 64x64 weekdayHeight=28.80
 layout(width=700): cell=64 gridWidth=496 compactWidth=true
 weekdayHeader: S M T W T F S
 

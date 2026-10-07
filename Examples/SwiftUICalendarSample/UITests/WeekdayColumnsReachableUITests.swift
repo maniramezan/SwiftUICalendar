@@ -8,19 +8,18 @@ import XCTest
 ///
 /// Only horizontal extents are judged. Vertical position depends on scroll offset, and a vertical
 /// calendar legitimately keeps its rows below the fold of a landscape phone.
-final class WeekdayColumnsReachableUITests: XCTestCase {
+final class WeekdayColumnsReachableUITests: SampleUITestCase {
     private static let weekdayColumnCount = 7
     private static let rotationTimeout: TimeInterval = 10
     private static let dayCellTimeout: TimeInterval = 10
     private static let frameTolerance: CGFloat = 0.5
 
     override func setUpWithError() throws {
-        continueAfterFailure = false
-        XCUIDevice.shared.orientation = .portrait
+        try super.setUpWithError()
     }
 
     override func tearDownWithError() throws {
-        XCUIDevice.shared.orientation = .portrait
+        try super.tearDownWithError()
     }
 
     func testEveryScrollModeLaysOutAllWeekdayColumnsInPortrait() throws {

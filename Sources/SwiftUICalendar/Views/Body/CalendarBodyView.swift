@@ -8,6 +8,7 @@ struct CalendarBodyView: View {
     @Environment(Typography.self) var typography
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
+    @Environment(\.calendarPagingGestureActive) private var pagingGestureActive
     @State private var containerWidth: CGFloat = 0
     private let layoutWidth: CGFloat?
     private let keyboard: CalendarKeyboardCursor?
@@ -28,8 +29,14 @@ struct CalendarBodyView: View {
         )
     }
 
+    /// Width of a day cell, set by the grid.
     private var cellSize: CGFloat {
         gridLayout.cellSize
+    }
+
+    /// Height of a day row: the cell width, grown by Dynamic Type within its cap.
+    private var rowHeight: CGFloat {
+        gridLayout.rowHeight
     }
 
     private var headerHeight: CGFloat {
@@ -61,10 +68,10 @@ struct CalendarBodyView: View {
         if showWeekdayHeader {
             // Row spacings: 1 between header and days + (rowCount - 1) between day rows
             let totalRowSpacing = metrics.rowSpacing * CGFloat(rowCount)
-            return headerHeight + (CGFloat(rowCount) * cellSize) + totalRowSpacing
+            return headerHeight + (CGFloat(rowCount) * rowHeight) + totalRowSpacing
         } else {
             // Grid only: (rowCount - 1) spacings between rows
-            return CGFloat(rowCount) * cellSize + CGFloat(rowCount - 1) * metrics.rowSpacing
+            return CGFloat(rowCount) * rowHeight + CGFloat(rowCount - 1) * metrics.rowSpacing
         }
     }
 
@@ -112,18 +119,20 @@ struct CalendarBodyView: View {
                             },
                             secondaryLabel: resolveSecondaryLabel(for: date),
                             calendar: viewModel.engine.calendar,
-                            cellSize: CGSize(width: cellSize, height: cellSize)
+                            cellSize: CGSize(width: cellSize, height: rowHeight)
                         )
 
                         CalendarDayCell(context: context, renderer: theme.day.renderer)
                             .id(item.id)
+                            .modifier(CalendarDayAccessibilityFocus(id: item.id))
                             .accessibilityIdentifier(
                                 CalendarAccessibilityID.day(
                                     year: item.year, month: item.month, day: item.day)
                             )
-                            // Keep the cell a square (cellSize × cellSize) and center it in the wider column so
-                            // square day views stay square when the grid fills a wide window.
-                            .frame(width: cellSize, height: cellSize)
+                            // Give the cell exactly its width by row height (a square at the default text
+                            // size) and center it in the wider column, so day views keep their shape when
+                            // the grid fills a wide window.
+                            .frame(width: cellSize, height: rowHeight)
                             .overlay {
                                 // `item.dayStart`, never `item.date`: the cursor stores a
                                 // start-of-day date, and `date` keeps whatever time-of-day the month
@@ -148,13 +157,13 @@ struct CalendarBodyView: View {
                                 item.isInDisplayedMonth && item.isEnabled
                                     ? Color.primary : Color.gray
                             )
-                            .disabled(!item.isEnabled)
+                            .disabled(!item.isEnabled || pagingGestureActive)
                             .contentShape(Rectangle())
                     } else {
                         // Hidden overflow day, or a date that could not be resolved.
                         Color.clear
                             .frame(maxWidth: .infinity)
-                            .frame(height: cellSize)
+                            .frame(height: rowHeight)
                     }
                 }
             }

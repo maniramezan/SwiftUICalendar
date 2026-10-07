@@ -8,7 +8,9 @@ showsHeader: true
 dayRenderer: circle
 secondaryLabel: none
 selection: single(none)
-layout(width=320): cell=44 gridWidth=356 compactWidth=false
+viewport: minimum=332 overflow=true gap=4 marginScale=0
+cell: 44x44 weekdayHeight=24
+layout(width=320): cell=44 gridWidth=332 compactWidth=false
 weekdayHeader: S M T W T F S
 
 month: June [gregorian y2025 m6 era1] rows=5

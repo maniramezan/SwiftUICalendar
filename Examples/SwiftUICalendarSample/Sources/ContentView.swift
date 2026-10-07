@@ -31,13 +31,23 @@ struct ContentView: View {
                 horizontalHeightMode: horizontalHeightMode
             )
             .id(architecture)
+            // Launch-only fixture for validating the calendar inside an inset host.
+            .padding(
+                .horizontal, max(0, UserDefaults.standard.double(forKey: "calendar-host-inset"))
+            )
             .navigationTitle("Calendar")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     // A toggle: in regular width the inspector sits beside the calendar, and the
                     // same button is how it closes.
-                    Button("Settings", systemImage: "gearshape") {
+                    Button {
                         isSettingsPresented.toggle()
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                            .labelStyle(.iconOnly)
+                            .frame(minWidth: 44, minHeight: 44)
                     }
                     .accessibilityHint("Choose calendar display settings")
                     .accessibilityIdentifier(CalendarSampleAccessibilityID.settings)

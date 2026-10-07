@@ -21,7 +21,9 @@ struct CalendarConstrainedHostTests {
     /// An iPhone SE (375) minus a typical host inset, just either side of the 356pt grid minimum,
     /// then full-width phones. The vertical body pads each month by a further 16pt per side, so every
     /// width below 356 + 48 = 404 leaves the grid less room than its minimum unless margins give way.
-    nonisolated static let hostInsetWidths: [CGFloat] = [343, 355, 359, 375, 393, 402, 404, 430]
+    nonisolated static let hostInsetWidths: [CGFloat] = [
+        320, 332, 343, 355, 359, 375, 393, 402, 404, 430,
+    ]
 
     nonisolated static let modes: [CalendarConfiguration.ScrollMode] = [
         .none, .vertical, .horizontal,
@@ -79,7 +81,8 @@ struct CalendarConstrainedHostTests {
             widest >= metrics.minCellSize,
             "\(mode) at \(width): cells shrank below the minimum touch target (\(widest))")
 
-        if width >= metrics.minCalendarWidth {
+        if width >= 7 * metrics.minCellSize + 6 * CalendarLayoutConfiguration().minimumColumnSpacing
+        {
             // Fits: no scrolling needed, so nothing may be clipped by the viewport edge.
             for frame in mounted.frames.inMonth.values {
                 #expect(

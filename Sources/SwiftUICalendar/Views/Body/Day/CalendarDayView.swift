@@ -69,8 +69,8 @@ public struct CalendarDayContext {
     /// The size, in points, the calendar gives this day view.
     ///
     /// The calendar proposes exactly this size to every day view, and neither side is ever less than
-    /// the platform's 44pt touch target. The width is set by the grid; the height equals the width at
-    /// the default text size and grows a little with Dynamic Type. Size your content from it instead
+    /// the platform's 44pt touch target. Width and height accommodate readable content at the
+    /// effective text size. The rectangle need not be square. Size your content from it instead
     /// of hardcoding a frame or measuring with a `GeometryReader`, which costs a layout pass per cell:
     /// for example, scale an emoji to `cellSize.width * 0.4`, or drop a secondary label when
     /// `cellSize` is at its minimum.

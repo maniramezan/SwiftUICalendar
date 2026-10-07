@@ -18,10 +18,10 @@ struct YearWheelPickerView: View {
         Button(action: { isPresented = true }) {
             Text(currentValue.title)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .allowsTightening(true)
                 .padding(.horizontal, metrics.controlPadding)
                 .padding(.vertical, metrics.tightPadding)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
