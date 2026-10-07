@@ -17,6 +17,20 @@ struct CalendarMetricsTests {
         #expect(layout.columns.count == 7)
     }
 
+    @Test("scaling the soft margins leaves every other metric alone")
+    func scalingSoftMarginsOnlyChangesMargins() {
+        let metrics = CalendarMetrics.default
+        let scaled = metrics.scalingSoftMargins(by: 0.25)
+
+        #expect(scaled.calendarMargin == metrics.calendarMargin * 0.25)
+        #expect(scaled.monthInset == metrics.monthInset * 0.25)
+        #expect(scaled.minCellSize == metrics.minCellSize)
+        #expect(scaled.itemSpacing == metrics.itemSpacing)
+        #expect(scaled.minCalendarWidth == metrics.minCalendarWidth)
+        #expect(metrics.scalingSoftMargins(by: 1) == metrics)
+        #expect(metrics.scalingSoftMargins(by: 0).calendarMargin == 0)
+    }
+
     @Test("wide grids retain compact cell spacing")
     func wideGridRetainsCompactCellSpacing() {
         let metrics = CalendarMetrics.default

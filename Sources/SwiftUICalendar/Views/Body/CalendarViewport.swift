@@ -28,6 +28,11 @@ struct CalendarViewport<Content: View>: View {
             + (configuration.scrollMode == .vertical ? 2 * metrics.monthInset : 0)
     }
 
+    /// The side margin actually applied: the full margin, or less while the grid has little room to spare.
+    private var horizontalMargin: CGFloat {
+        metrics.calendarMargin * layout.marginScale
+    }
+
     /// Width surrendered to an iPhone Duo fold, measured in this viewport's own coordinate space —
     /// already inside the safe area, so a fold is weighed against the space actually available.
     private var fold: CalendarFoldSpan {
@@ -58,9 +63,12 @@ struct CalendarViewport<Content: View>: View {
                     // a horizontal swipe scrolls to the clipped columns instead of flipping the month.
                     content(!layout.overflows)
                         .environment(
-                            \.calendarContentWidth, layout.contentWidth - 2 * metrics.calendarMargin
+                            \.calendarMetrics, metrics.scalingSoftMargins(by: layout.marginScale)
                         )
-                        .padding(.horizontal, metrics.calendarMargin)
+                        .environment(
+                            \.calendarContentWidth, layout.contentWidth - 2 * horizontalMargin
+                        )
+                        .padding(.horizontal, horizontalMargin)
                         .frame(width: layout.contentWidth)
                 }
             }
