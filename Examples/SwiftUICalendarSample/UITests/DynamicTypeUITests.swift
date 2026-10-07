@@ -21,6 +21,9 @@ final class DynamicTypeUITests: SampleUITestCase {
         let year = app.descendants(matching: .any)[CalendarAccessibilityID.yearButton].firstMatch
         XCTAssertTrue(year.waitForExistence(timeout: Self.dayCellTimeout))
         XCTAssertGreaterThanOrEqual(year.frame.height, 44)
+        let month = app.descendants(matching: .any)[CalendarAccessibilityID.monthButton].firstMatch
+        XCTAssertGreaterThanOrEqual(month.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(month.frame.height, 44)
         let settings = app.buttons[CalendarSampleAccessibilityID.settings]
         XCTAssertTrue(settings.exists)
         XCTAssertGreaterThanOrEqual(settings.frame.width, 44)
@@ -44,17 +47,13 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     @MainActor
     func testAccessibilityTextKeepsEdgeColumnsReachable() throws {
-        let app = launch(size: "UICTContentSizeCategoryAccessibilityXXXL")
         for mode in CalendarScrollMode.allCases {
+            // Each mode starts at the leading edge; retained overflow offsets are valid UI state.
+            let app = launch(size: "UICTContentSizeCategoryAccessibilityXXXL")
             app.chooseScrollMode(mode)
-            let days = app.buttons.matching(
-                NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))
-            XCTAssertTrue(days.firstMatch.waitForExistence(timeout: Self.dayCellTimeout))
-            let populated = days.allElementsBoundByIndex.filter { $0.frame.width > 0 }
-            let firstRowY = try XCTUnwrap(populated.map { $0.frame.minY }.min())
-            let row = populated.filter { abs($0.frame.minY - firstRowY) < 1 }
-            let leading = try XCTUnwrap(row.min { $0.frame.minX < $1.frame.minX })
-            let trailing = try XCTUnwrap(row.max { $0.frame.maxX < $1.frame.maxX })
+            let row = try visibleFullRow(in: app)
+            let leading = try XCTUnwrap(row.first)
+            let trailing = try XCTUnwrap(row.last)
             XCTAssertTrue(leading.isHittable)
             let window = app.windows.firstMatch.frame
             // Maximum text can require more than one viewport of horizontal travel.
@@ -104,6 +103,31 @@ final class DynamicTypeUITests: SampleUITestCase {
     }
 
     // MARK: - Helpers
+
+    @MainActor
+    private func visibleFullRow(in app: XCUIApplication) throws -> [XCUIElement] {
+        let days = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))
+        XCTAssertTrue(days.firstMatch.waitForExistence(timeout: Self.dayCellTimeout))
+        for attempt in 0..<4 {
+            let window = app.windows.firstMatch.frame
+            let populated = days.allElementsBoundByIndex.map { (element: $0, frame: $0.frame) }
+                .filter { $0.frame.width > 0 && $0.frame.height > 0 }
+            let rows = Dictionary(grouping: populated) { Int($0.frame.minY.rounded()) }
+            for y in rows.keys.sorted() {
+                let row = rows[y, default: []].sorted { $0.frame.minX < $1.frame.minX }
+                guard row.count == Self.weekdayColumnCount, let first = row.first,
+                    window.contains(first.frame), first.element.isHittable
+                else { continue }
+                return row.map(\.element)
+            }
+            // Full Dynamic Type may put the first full week below the viewport. Reveal it;
+            // never confuse an offscreen cached row with a clipped or unreachable date.
+            if attempt < 3 { app.swipeUp(velocity: .slow) }
+        }
+        XCTFail("No complete week could be revealed at maximum text size")
+        return []
+    }
 
     @MainActor
     private func launch(size: String) -> XCUIApplication {
