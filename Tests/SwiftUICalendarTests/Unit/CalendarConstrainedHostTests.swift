@@ -66,6 +66,21 @@ struct CalendarConstrainedHostTests {
 
     // MARK: Width
 
+    @Test("Vertical scrolling does not reserve a legacy scrollbar gutter")
+    func verticalScrollHasNoGutter() throws {
+        let mounted = try mount(mode: .vertical, size: CGSize(width: 359, height: 900))
+        defer { mounted.hosted.window.contentView = nil }
+        let scroll = try #require(scrollViews(in: mounted.hosted.hosting).last)
+        scroll.scrollerStyle = .legacy
+        scroll.tile()
+        #expect(waitForStableRender(mounted.hosted.hosting))
+        #expect(!scroll.hasVerticalScroller)
+        let clip = scroll.contentView.convert(scroll.contentView.bounds, to: mounted.hosted.hosting)
+        for frame in mounted.frames.inMonth.values {
+            #expect(frame.minX >= clip.minX - 0.5 && frame.maxX <= clip.maxX + 0.5)
+        }
+    }
+
     @Test(
         "Every weekday column is on screen, or reachable by scrolling, at host-inset widths",
         arguments: modes, hostInsetWidths)

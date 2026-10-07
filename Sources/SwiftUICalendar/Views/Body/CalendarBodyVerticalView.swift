@@ -27,7 +27,8 @@ struct CalendarBodyVerticalView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            // Reserve no horizontal gutter: the shared viewport owns width and overflow.
+            // A legacy macOS scroller consumes width after the viewport resolves its grid.
+            // Keep the content width independent of the user's scrollbar preference.
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: metrics.monthSpacing) {
                     if let anchor {
