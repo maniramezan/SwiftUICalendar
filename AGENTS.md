@@ -139,6 +139,47 @@ all of their bodies, so uncached grids put ~2,500 calendar operations inside a s
   calendar keeps its scroll-settle counter in a reference type (`ScrollSettleCoordinator`) for that
   reason.
 
+## Layout, Dynamic Type & Custom Day Views
+
+The calendar lives inside hosts that give it less than a full screen: a card inset, a split-view
+column, an inline editor below it, a landscape phone. These rules decide what always fits and what
+scrolls. They hold for built-in views and are what custom day views are written against.
+
+- **Seven columns always fit the width.** Text size never widens the grid. The width floor is seven
+  minimum cells (`CalendarMetrics.minCalendarWidth`, 356pt at the 44pt touch target) — and a
+  viewport narrower than that scrolls horizontally with its first column reachable, never clips.
+- **Soft margins give way first.** `calendarMargin` and `monthInset` shrink (`marginScale`) before
+  the grid overflows or is clipped. Never pad the grid with a fixed margin that can push it below
+  its floor; a hosted test must measure cells against the innermost scroll view's clip, not just the
+  viewport width.
+- **Dynamic Type scales height, within a cap.** Like the system Calendar, rows grow a little with
+  text size and stop growing well before accessibility sizes; the seven columns stay put. Target
+  row-height factor: up to `large` 1.0, `xLarge` 1.05, `xxLarge` 1.10, `xxxLarge` 1.15, any
+  accessibility size 1.20. Day-number fonts are capped so numerals fit the cell width, with
+  `minimumScaleFactor` as the backstop. Extra height is absorbed by the existing vertical scroll
+  fallback; it never causes horizontal overflow. (Row-height scaling is tracked as a follow-up;
+  until it lands, rows are fixed and text is contained by `minimumScaleFactor`.)
+- **Touch targets do not scale down.** The 44pt floor holds at every text size and width.
+- **Custom day views are proposed one square.** `CalendarDayContext.cellSize` is its side, at least
+  44pt. A day view fills the proposal (`.frame(maxWidth: .infinity, maxHeight: .infinity)`), reads
+  `cellSize` to scale marks instead of hardcoding frames or using a `GeometryReader`, sheds detail
+  rather than overflowing at the minimum size, and contains whatever it draws. The calendar owns
+  row and column sizing; a day view never asks for more room. See `CustomizingDayViews.md`.
+
+### Layout test matrix
+
+A change to anything that sizes or pads the grid needs a hosted unit test at each of these, in every
+scroll mode, asserting all seven columns are inside the viewport **and** its scroll view's clip:
+
+| Dimension | Values |
+|-----------|--------|
+| Viewport width | 343, 355, 359, 375, 393, 402, 404, 430pt (SE minus a host inset, either side of the 356pt floor, full-width phones) |
+| Viewport height | 132, 180, 240pt (rows reachable by scrolling) |
+| Dynamic Type | `xSmall`, `xxxLarge`, `accessibility5` (once row scaling lands) |
+| Device (sample UI test) | iPhone SE (3rd gen), a Pro Max in landscape, an iPad |
+
+`CalendarConstrainedHostTests` is the reference for the width and height rows.
+
 ## Planning Workflow
 
 Read and follow `DEVELOPMENT.md` before starting any task. It contains the planning checklist and required test-run matrix.

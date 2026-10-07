@@ -111,7 +111,8 @@ struct CalendarBodyView: View {
                                 handleSelection(for: item, selectedDate: selectedDate)
                             },
                             secondaryLabel: resolveSecondaryLabel(for: date),
-                            calendar: viewModel.engine.calendar
+                            calendar: viewModel.engine.calendar,
+                            cellSize: cellSize
                         )
 
                         CalendarDayCell(context: context, renderer: theme.day.renderer)

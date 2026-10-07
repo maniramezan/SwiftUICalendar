@@ -26,7 +26,7 @@ struct EventDayView: CalendarDayView {
                     .frame(width: 5, height: 5)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 44)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -35,6 +35,32 @@ struct EventDayView: CalendarDayView {
     }
 }
 ```
+
+## Fit Your Cell
+
+The calendar gives every day view one square, ``CalendarDayContext/cellSize`` points on a side, and
+proposes exactly that size. The square is never smaller than the 44pt touch target, grows with the
+grid on wide windows, and is the same for every cell on screen. A day view that ignores it overflows
+into its neighbors or leaves a gap, and on a narrow phone every point counts: seven columns of 44pt
+cells already fill an iPhone SE.
+
+- **Fill the proposal.** Use `.frame(maxWidth: .infinity, maxHeight: .infinity)` and let the calendar
+  size the cell. Never hardcode `.frame(width: 44, height: 44)`, and do not add your own minimum
+  height; the cell is already at the touch-target floor.
+- **Read `cellSize`, not a `GeometryReader`.** Scale emoji, dots, and padding from it
+  (`context.cellSize * 0.4`). A `GeometryReader` adds a layout pass to every cell and a month holds
+  up to 42 of them.
+- **Shed detail before you overflow.** At the minimum size there is room for a number and one small
+  mark. Show extra marks, secondary labels, or a second row only when `cellSize` allows, and cap what
+  you show (`lineLimit(1)`, `minimumScaleFactor`, a maximum of a few glyphs).
+- **Keep the cell the hit target.** Make the whole square tappable with `.contentShape(Rectangle())`
+  rather than growing the visible content.
+- **Let text scale, but contain it.** Use semantic fonts (`context.typography.dayFont`) so text
+  follows Dynamic Type, and give the label `minimumScaleFactor` so a large setting shrinks it back
+  into the cell instead of clipping. Do not scale the frame itself with Dynamic Type; the calendar
+  owns row sizing.
+- **Clip what you draw outside the square.** Shadows and badges that spill past the cell overlap
+  the next day; apply `.clipped()` or keep them inside.
 
 ## Register the View
 

@@ -66,6 +66,13 @@ public struct CalendarDayContext {
     public let secondaryLabel: String?
     /// Calendar, locale, and time zone used for spoken date labels.
     public let calendar: Calendar
+    /// Side length, in points, of the square the calendar gives this day view.
+    ///
+    /// The calendar proposes exactly this square to every day view and never less than the platform's
+    /// 44pt touch target. Size your content from it instead of hardcoding a frame or measuring with a
+    /// `GeometryReader`, which costs a layout pass per cell: for example, scale an emoji to
+    /// `cellSize * 0.4`, or drop a secondary label when `cellSize` is at its minimum.
+    public let cellSize: CGFloat
 
     /// Creates a day context with the provided values.
     ///
@@ -85,6 +92,7 @@ public struct CalendarDayContext {
     ///   - onSelect: Callback invoked when the date is selected.
     ///   - secondaryLabel: Optional secondary label text.
     ///   - calendar: Calendar context for accessible date descriptions.
+    ///   - cellSize: Side length of the square given to the day view. Defaults to the 44pt minimum.
     public init(
         date: Date,
         day: Int,
@@ -97,7 +105,8 @@ public struct CalendarDayContext {
         typography: Typography,
         onSelect: @escaping (Date) -> Void,
         secondaryLabel: String? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        cellSize: CGFloat? = nil
     ) {
         self.date = date
         self.day = day
@@ -111,6 +120,7 @@ public struct CalendarDayContext {
         self.onSelect = onSelect
         self.secondaryLabel = secondaryLabel
         self.calendar = calendar
+        self.cellSize = cellSize ?? CalendarMetrics.default.minCellSize
     }
 
     /// A localized date and state description for built-in and custom accessible controls.
@@ -153,7 +163,7 @@ public struct CalendarDayContext {
 ///     var body: some View {
 ///         Button { context.onSelect(context.date) } label: {
 ///           Text(context.dayLabel)
-///             .frame(width: 44, height: 44)
+///             .frame(maxWidth: .infinity, maxHeight: .infinity)
 ///             .overlay(Circle().stroke(context.isToday ? .orange : .clear))
 ///         }
 ///         .buttonStyle(.plain)
