@@ -57,6 +57,9 @@ struct CalendarViewport<Content: View>: View {
                     // Paging is handed back to the viewport only while the grid genuinely overflows, so
                     // a horizontal swipe scrolls to the clipped columns instead of flipping the month.
                     content(!layout.overflows)
+                        .environment(
+                            \.calendarContentWidth, layout.contentWidth - 2 * metrics.calendarMargin
+                        )
                         .padding(.horizontal, metrics.calendarMargin)
                         .frame(width: layout.contentWidth)
                 }
@@ -84,4 +87,12 @@ struct CalendarViewport<Content: View>: View {
         // vertically scrolling body can still scroll content beneath them.
         .safeAreaPadding(.vertical, metrics.calendarMargin)
     }
+}
+
+extension EnvironmentValues {
+    /// The width the viewport gives the calendar's content, inside its soft margins; `nil` outside a
+    /// viewport. A body that measured this itself could not settle: a grid wider than the space it
+    /// was offered inflated the scroll view around it, which reported that width back and held the
+    /// grid at its landscape size after rotating to portrait.
+    @Entry var calendarContentWidth: CGFloat? = nil
 }

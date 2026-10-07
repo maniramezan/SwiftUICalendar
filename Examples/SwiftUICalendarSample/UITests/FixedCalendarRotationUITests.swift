@@ -5,11 +5,7 @@ import XCTest
 /// landscape -> portrait, the fixed (`.none` scroll mode) calendar grid rendered at a stale,
 /// wider-than-viewport size, symmetrically clipping the Sunday and Saturday columns off both
 /// edges of the screen and showing only 5 of 7 weekday columns.
-final class FixedCalendarRotationUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class FixedCalendarRotationUITests: SampleUITestCase {
     func testFixedCalendarShowsAllWeekdayColumnsAfterLandscapeToPortraitRotation() throws {
         let app = XCUIApplication()
         app.launch()

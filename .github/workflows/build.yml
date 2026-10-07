@@ -74,6 +74,64 @@ jobs:
       - name: Build DocC documentation
         run: bash ./scripts/build-docs.sh
 
+  # Builds the sample once, then runs every UI test plan from that build. Parallelism and ordering
+  # come from the plans themselves; Xcode clones the simulators it needs.
+  ui-tests:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: xcode-27
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: SwiftUICalendar
+    env:
+      PROJECT: Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
+      DESTINATION: platform=iOS Simulator,name=iPhone 17
+      # A cold simulator clone can take minutes to launch an app in landscape, and an app that is
+      # starved that long answers no accessibility query (build 37137076097 spent 10 minutes in one
+      # test). Run serially so clones do not starve each other, fail a stuck test in minutes rather
+      # than the default, and retry once in a fresh process before calling it a regression.
+      UI_TEST_FLAGS: >-
+        -parallel-testing-enabled NO -test-timeouts-enabled YES
+        -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 300
+        -retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES
+    steps:
+      - name: Checkout SwiftUICalendar
+        uses: actions/checkout@v7.0.1
+        with:
+          path: SwiftUICalendar
+
+      - name: Select Swift toolchain
+        run: bash ./scripts/select-swift-toolchain.sh
+
+      - name: Build sample UI tests once
+        # Allow the locked TCA dependency macros on fresh, noninteractive CI runners.
+        run: >-
+          xcodebuild build-for-testing -project "$PROJECT" -scheme SwiftUICalendarSample
+          -destination "$DESTINATION" -skipMacroValidation
+          -testProductsPath .build/SampleUITests.xctestproducts
+
+      - name: Run default UI test plan
+        run: |
+          mkdir -p .build/results
+          xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts \
+            -testPlan SwiftUICalendarSample -destination "$DESTINATION" $UI_TEST_FLAGS \
+            -resultBundlePath .build/results/default.xcresult
+
+      - name: Run per-language UI test plan
+        run: >-
+          xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts
+          -testPlan SwiftUICalendarSampleLocales -destination "$DESTINATION" $UI_TEST_FLAGS
+          -resultBundlePath .build/results/locales.xcresult
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ui-test-results
+          path: SwiftUICalendar/.build/results
+          if-no-files-found: ignore
+
   main-validation:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: xcode-27

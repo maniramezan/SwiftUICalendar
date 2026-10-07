@@ -5,11 +5,7 @@ import XCTest
 /// accessibility frame tree of a real device orientation change (via `XCUIDevice`), not a
 /// simulated/forced resize — this is the only way to catch layout bugs that only manifest
 /// during a genuine live rotation.
-final class RotationUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class RotationUITests: SampleUITestCase {
     func testHorizontalCalendarAdaptsAfterLandscapeToPortraitRotation() throws {
         let app = XCUIApplication()
         app.launch()
