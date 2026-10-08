@@ -41,4 +41,28 @@ struct CalendarViewportSnapshotTests {
         }
     }
 
+    @Test("Live geometry resolves each fold transition without a previous measurement")
+    func liveGeometry() {
+        let metrics = CalendarMetrics.default
+        let folds: [[ClosedRange<CGFloat>]] = [[], [520...580], [300...600], [], [300...400], []]
+        let lines = [LayoutDirection.leftToRight, .rightToLeft].flatMap { direction in
+            folds.map { blocked in
+                let span = CalendarFoldSpan.resolve(
+                    containerWidth: 900,
+                    blocked: CalendarFoldSpan.leadingOrigin(
+                        blocked, containerWidth: 900, layoutDirection: direction))
+                let available = 900 - span.total
+                let layout = CalendarViewportLayout(
+                    width: available, cellWidth: metrics.minCellSize,
+                    margins: 2 * metrics.calendarMargin,
+                    preferredSpacing: metrics.itemSpacing, minimumSpacing: 4)
+                return
+                    "direction=\(direction) viewport=\(available) leading=\(span.leading) trailing=\(span.trailing) content=\(layout.contentWidth) overflow=\(layout.overflows)"
+            }
+        }
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(of: lines.joined(separator: "\n"), as: .lines)
+        }
+    }
+
 }
