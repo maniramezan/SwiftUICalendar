@@ -76,6 +76,8 @@ struct CalendarBodyView: View {
     }
 
     var body: some View {
+        let rangePosition = viewModel.state.selection.rangePositionMatcher(
+            in: viewModel.engine.calendar)
         VStack(spacing: metrics.rowSpacing) {
             // Weekday headers
             if showWeekdayHeader {
@@ -119,7 +121,11 @@ struct CalendarBodyView: View {
                             },
                             secondaryLabel: resolveSecondaryLabel(for: date),
                             calendar: viewModel.engine.calendar,
-                            cellSize: CGSize(width: cellSize, height: rowHeight)
+                            cellSize: CGSize(width: cellSize, height: rowHeight),
+                            rangePosition: item.dayStart.flatMap(rangePosition),
+                            secondaryAccessibilityLabel: theme.day.secondaryLabelMode
+                                .accessibilityLabel(
+                                    for: date, primaryCalendar: viewModel.engine.calendar)
                         )
 
                         CalendarDayCell(context: context, renderer: theme.day.renderer)

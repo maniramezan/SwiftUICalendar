@@ -82,7 +82,7 @@ struct SquareDualCalendarDayView: CalendarDayView {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(context.accessibilityLabel)
+        .accessibilityLabel(context.nativeAccessibilityLabel)
         .accessibilityAddTraits(accessibilityTraits)
     }
 

@@ -4,6 +4,7 @@ cellSize: 44x44
 secondaryLabel: ۲۵
 isToday: false
 isSelected: false
+builtInSelectionAnnouncement: traitOnly
 isInCurrentMonth: true
 emptyDayBorderColor: clear
 emptyDayBorderColorWidth: 0

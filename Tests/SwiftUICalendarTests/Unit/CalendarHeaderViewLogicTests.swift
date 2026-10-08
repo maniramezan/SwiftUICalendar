@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import SwiftUICalendar
@@ -6,6 +7,18 @@ import Testing
 @MainActor
 @Suite("Calendar Header View Logic Tests")
 struct CalendarHeaderViewLogicTests {
+    @Test("Month controls name the displayed month and hints describe outcomes, not gestures")
+    func accessibleMonthControl() {
+        let item = MonthItem(id: 6, title: "June")
+        let header = CalendarNavigationHeaderView(
+            items: [item], selectedItem: .constant(item), onPrevious: {}, onNext: {})
+        #expect(header.monthAccessibilityLabel == "Month, June")
+        #expect(header.monthAccessibilityHint == "Choose another month")
+        let yearHint = "Calendar.Navigation.Year.ChangeHint".localized(
+            locale: Locale(identifier: "en_US"))
+        #expect(yearHint == "Choose another year")
+        #expect(yearHint.lowercased().contains("tap") == false)
+    }
 
     @Test("Month header items use localized month symbols for the current year")
     func monthHeaderItemsUseLocalizedMonthSymbols() {

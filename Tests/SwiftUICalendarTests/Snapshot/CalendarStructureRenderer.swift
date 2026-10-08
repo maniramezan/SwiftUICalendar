@@ -212,6 +212,7 @@ enum CalendarStructure {
         lines.append("secondaryLabel: \(context.secondaryLabel ?? "none")")
         lines.append("isToday: \(context.isToday)")
         lines.append("isSelected: \(context.isSelected)")
+        lines.append("builtInSelectionAnnouncement: traitOnly")
         lines.append("isInCurrentMonth: \(context.isInCurrentMonth)")
         // `accessibilityLabel` is intentionally omitted: it resolves localized strings, which differ
         // between a local toolchain and CI. `CalendarDayAccessibilityTests` covers it directly.

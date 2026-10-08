@@ -441,6 +441,7 @@ private struct VerticalMonthView: View {
             .frame(width: gridWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier(
                 CalendarAccessibilityID.verticalMonthHeader(
                     year: item.id.year, month: item.id.month)

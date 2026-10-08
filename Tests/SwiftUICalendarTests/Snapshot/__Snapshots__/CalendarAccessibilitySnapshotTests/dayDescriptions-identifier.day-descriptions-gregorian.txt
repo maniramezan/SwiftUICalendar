@@ -1,0 +1,4 @@
+Thursday, January 1, 1970 AD, Range start, Persian Calendar, Dey 11, 1348 AP
+Thursday, January 1, 1970 AD, Within selected range, Persian Calendar, Dey 11, 1348 AP
+Thursday, January 1, 1970 AD, Range end, Persian Calendar, Dey 11, 1348 AP
+Thursday, January 1, 1970 AD, Range start and end, Persian Calendar, Dey 11, 1348 AP

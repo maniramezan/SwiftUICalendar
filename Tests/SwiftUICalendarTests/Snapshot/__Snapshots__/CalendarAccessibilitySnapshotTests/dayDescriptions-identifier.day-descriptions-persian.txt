@@ -1,0 +1,4 @@
+Thursday, Dey 11, 1348 AP, Range start
+Thursday, Dey 11, 1348 AP, Within selected range
+Thursday, Dey 11, 1348 AP, Range end
+Thursday, Dey 11, 1348 AP, Range start and end
