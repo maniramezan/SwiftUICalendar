@@ -22,6 +22,10 @@ class SampleUITestCase: XCTestCase {
 }
 
 extension XCUIApplication {
+    /// Longest the settings panel is given to appear before the toggle is tapped again.
+    fileprivate static let settingsPresentationTimeout: TimeInterval = 6
+    fileprivate static let settingsRetryTaps = 2
+
     // MARK: - Calendar queries
 
     /// `nonisolated` so the identifier can be built off the main actor — every `XCUIApplication`
@@ -67,11 +71,14 @@ extension XCUIApplication {
         dismissSettings(file: file, line: line)
     }
 
-    /// Resolves a segmented-control option inside the picker `pickerIdentifier`.
+    /// Resolves a segmented-control option by its own accessibility identifier.
     ///
-    /// Queries stay scoped to the picker's own identifier because an option's label also reads as
-    /// the start of a longer row once that mode is active (the "Horizontal" scroll option next to
-    /// the "Horizontal Height" row), so an app-wide query can resolve to the wrong element.
+    /// The lookup is by identifier, not scoped to the picker: iPhone exposes a segmented control's
+    /// options as children of the picker, but iPad exposes them as sibling buttons next to a childless
+    /// picker, so a picker-scoped query only ever worked on iPhone. Option identifiers are unique
+    /// (`scroll-mode-horizontal` is not the "Horizontal Height" row), and `matching(identifier:)`
+    /// never falls back to a label, so the query cannot resolve to a longer row that merely starts
+    /// with the same text. `pickerIdentifier` only names the picker in a failure message.
     ///
     /// The form is scrolled first and the picker is never awaited on its own: the picker's
     /// identifier rides a lazily-rendered row that only enters the hierarchy once the section
@@ -80,24 +87,68 @@ extension XCUIApplication {
         _ optionIdentifier: String, in pickerIdentifier: String,
         file: StaticString = #filePath, line: UInt = #line
     ) -> XCUIElement {
-        let option = descendants(matching: .any)[pickerIdentifier].buttons[optionIdentifier]
+        let option = buttons.matching(identifier: optionIdentifier).firstMatch
         let form = scrollViews.firstMatch
         for _ in 0..<4 where !option.waitForExistence(timeout: 1) {
             form.swipeUp()
         }
+        // `openSettings` has already confirmed the panel is up; give a slow form time to render.
+        _ = option.waitForExistence(timeout: Self.settingsPresentationTimeout)
+        if !option.exists { attachHierarchy(named: "\(optionIdentifier) missing") }
         XCTAssertTrue(
-            option.exists, "'\(optionIdentifier)' not found in '\(pickerIdentifier)'", file: file,
+            option.exists, "'\(optionIdentifier)' not found for '\(pickerIdentifier)'", file: file,
             line: line)
         return option
     }
 
-    /// Opens the settings sheet or inspector, whichever the current width presents.
+    /// Keeps the hierarchy and a screenshot with the failure, so a missing control can be diagnosed
+    /// from the result bundle instead of by rerunning on the same device.
+    private func attachHierarchy(named name: String) {
+        XCTContext.runActivity(named: name) { activity in
+            let hierarchy = XCTAttachment(string: debugDescription)
+            hierarchy.name = "\(name) hierarchy"
+            hierarchy.lifetime = .keepAlways
+            activity.add(hierarchy)
+            let screenshot = XCTAttachment(screenshot: self.screenshot())
+            screenshot.name = "\(name) screenshot"
+            screenshot.lifetime = .keepAlways
+            activity.add(screenshot)
+        }
+    }
+
+    /// Opens the settings sheet or inspector, whichever the current width presents, and waits until
+    /// it is actually up.
+    ///
+    /// On iPad the first tap after a launch is sometimes lost: the inspector's navigation bar reads
+    /// "Settings" but its form never renders, and it does not appear on its own (about one launch in
+    /// three in a 13-launch measurement, at every text size). One more tap opens it every time. So the
+    /// toggle is tapped again after a wait — once per attempt and only while nothing has appeared,
+    /// because a tap on an open inspector closes it.
     func openSettings(file: StaticString = #filePath, line: UInt = #line) {
         let settings = buttons[CalendarSampleAccessibilityID.settings]
         XCTAssertTrue(
             settings.waitForExistence(timeout: 5), "Settings button not found", file: file,
             line: line)
         settings.tap()
+        for _ in 0..<Self.settingsRetryTaps
+        where !settingsAreShowing(timeout: Self.settingsPresentationTimeout) {
+            settings.tap()
+        }
+        if !settingsAreShowing(timeout: Self.settingsPresentationTimeout) {
+            attachHierarchy(named: "settings did not open")
+        }
+    }
+
+    /// Whether the settings panel is up: the sheet's Done button, or the first row of the form.
+    private func settingsAreShowing(timeout: TimeInterval) -> Bool {
+        let done = buttons[CalendarSampleAccessibilityID.done]
+        let firstRow = descendants(matching: .any)[CalendarSampleAccessibilityID.stateOwnerPicker]
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if done.exists || firstRow.exists { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        return done.exists || firstRow.exists
     }
 
     /// Closes the compact sheet or regular-width inspector.
