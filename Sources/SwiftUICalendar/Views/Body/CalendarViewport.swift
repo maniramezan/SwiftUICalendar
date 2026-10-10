@@ -12,6 +12,7 @@ struct CalendarViewport<Content: View>: View {
 
     var body: some View {
         CalendarViewportSize(
+            idealWidth: metrics.minCalendarWidth,
             idealHeight:
                 metrics.resolvedHeight(rowCount: 6, layoutWidth: metrics.minCalendarWidth)
                 + metrics.weekdayHeaderMinHeight + 3 * metrics.headerRowHeight

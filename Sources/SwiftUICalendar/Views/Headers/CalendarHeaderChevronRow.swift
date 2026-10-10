@@ -23,7 +23,7 @@ struct CalendarHeaderChevronRow<Content: View>: View {
             Button(action: onPrevious) {
                 Image(systemName: "chevron.backward")
                     .font(.body.weight(.semibold))
-                    .frame(minWidth: 44, minHeight: 44)
+                    .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
                     .adaptiveGlass(shape: .circle, interactive: true)
             }
             // Plain style so the glass circle is the only chrome; macOS otherwise draws a bordered
@@ -43,7 +43,7 @@ struct CalendarHeaderChevronRow<Content: View>: View {
             Button(action: onNext) {
                 Image(systemName: "chevron.forward")
                     .font(.body.weight(.semibold))
-                    .frame(minWidth: 44, minHeight: 44)
+                    .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
                     .adaptiveGlass(shape: .circle, interactive: true)
             }
             // Plain style so the glass circle is the only chrome; macOS otherwise draws a bordered

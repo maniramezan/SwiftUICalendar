@@ -121,4 +121,22 @@ struct CalendarDayAccessibilityTests {
         #expect(context.accessibilityLabel.contains("Secondary") == false)
         #expect(context.nativeAccessibilityLabel == context.accessibilityLabel)
     }
+
+    @Test("A resolver built once speaks every day of a grid the same as per-date resolution")
+    func resolverMatchesPerDateResolution() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US")
+        let mode = Theme.Day.SecondaryLabelMode.persian
+        let resolver = mode.accessibilityResolver(primaryCalendar: calendar)
+        for day in 0..<31 {
+            let date = try #require(
+                calendar.date(from: DateComponents(year: 2025, month: 3, day: 1 + day)))
+            #expect(
+                resolver.label(for: date)
+                    == mode.accessibilityLabel(for: date, primaryCalendar: calendar))
+        }
+        #expect(
+            Theme.Day.SecondaryLabelMode.none.accessibilityResolver(primaryCalendar: calendar)
+                .label(for: Date(timeIntervalSince1970: 0)) == nil)
+    }
 }

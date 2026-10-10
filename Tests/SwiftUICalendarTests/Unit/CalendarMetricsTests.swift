@@ -244,4 +244,15 @@ struct CalendarMetricsTests {
     func maximumExceedsMinimum() {
         #expect(CalendarMetrics.default.maxCellSize >= CalendarMetrics.default.minCellSize)
     }
+
+    @Test("the touch floor comes from the design theme and seeds the minimum row height")
+    func hitTargetComesFromTheme() {
+        let metrics = CalendarMetrics.default
+        #expect(metrics.minimumHitTarget == DesignSystem.DefaultTheme().motion.minimumHitTarget)
+        #expect(metrics.minRowHeight == metrics.minimumHitTarget)
+        // Growing the content never lowers the floor.
+        let resolved = metrics.resolvingContent(cell: .zero, weekday: .zero)
+        #expect(resolved.minimumHitTarget == metrics.minimumHitTarget)
+        #expect(resolved.minRowHeight == metrics.minimumHitTarget)
+    }
 }

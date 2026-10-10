@@ -12,7 +12,8 @@ struct CalendarViewportSnapshotTests {
         let metrics = CalendarMetrics.default
         let lines = [240.0, 320.0, 600.0, 1024.0].map { width in
             let viewport = CalendarViewportLayout(
-                width: width, minimumWidth: metrics.minCalendarWidth)
+                width: width, cellWidth: metrics.minCellSize, margins: 0,
+                preferredSpacing: metrics.itemSpacing, minimumSpacing: metrics.itemSpacing)
             let grid = CalendarGridLayout(containerWidth: viewport.contentWidth, metrics: metrics)
             return
                 "viewport=\(width) content=\(viewport.contentWidth) overflow=\(viewport.overflows) cell=\(grid.cellSize)"
@@ -31,8 +32,9 @@ struct CalendarViewportSnapshotTests {
                     [300...400], containerWidth: 700, layoutDirection: direction))
             let width = 700 - span.total
             let viewport = CalendarViewportLayout(
-                width: width, minimumWidth: metrics.minCalendarWidth,
-                margins: 2 * metrics.calendarMargin)
+                width: width, cellWidth: metrics.minCellSize,
+                margins: 2 * metrics.calendarMargin,
+                preferredSpacing: metrics.itemSpacing, minimumSpacing: metrics.itemSpacing)
             return
                 "direction=\(direction) viewport=\(width) leading=\(span.leading) trailing=\(span.trailing) content=\(viewport.contentWidth) overflow=\(viewport.overflows)"
         }

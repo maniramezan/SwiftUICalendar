@@ -23,4 +23,18 @@ struct CalendarNavigationAnnouncementTests {
         #expect(
             CalendarAccessibility.rangeAnnouncement(.range(nil, nil), calendar: calendar) == nil)
     }
+
+    @Test func monthAnnouncementSkipsTheFirstMonthSeen() {
+        let tracker = MonthAnnouncementTracker()
+        let june = MonthIdentifier(month: 6, year: 2025)
+        let july = MonthIdentifier(month: 7, year: 2025)
+        // The month on screen when the calendar appears is context, not navigation.
+        #expect(!tracker.shouldAnnounce(june))
+        #expect(!tracker.shouldAnnounce(june))
+        #expect(tracker.shouldAnnounce(july))
+        tracker.markAnnounced(july)
+        #expect(!tracker.shouldAnnounce(july))
+        // Returning to a previous month is a change again.
+        #expect(tracker.shouldAnnounce(june))
+    }
 }

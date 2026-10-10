@@ -13,11 +13,15 @@ struct CalendarLayoutContractTests {
         #expect(layout.minimumWidth == 332)
         #expect(layout.overflows == (width < 332))
         #expect(layout.columnSpacing >= 4 && layout.columnSpacing <= 8)
-        #expect(layout.contentWidth == max(width, 332))
+        // Below the floor the content scrolls and carries its margins in full; above it the
+        // content is exactly the viewport.
+        #expect(layout.contentWidth == (width < 332 ? 332 + 48 : width))
+        if width < 332 { #expect(layout.marginScale == 1) }
+        // The grid plus the margins that survive always fill the content, up to the preferred width.
         #expect(
             abs(
                 7 * 44 + 6 * layout.columnSpacing + 48 * layout.marginScale
-                    - min(max(width, 332), 404)) < 0.001)
+                    - min(layout.contentWidth, 404)) < 0.001)
     }
 
     @Test func readableContentRaisesMinimum() {

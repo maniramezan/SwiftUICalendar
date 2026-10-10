@@ -22,7 +22,11 @@ struct CalendarMetrics: Equatable, Sendable {
     private(set) var minCellSize: CGFloat
     /// Upper bound for a day cell's row height; stops cells ballooning on wide (macOS) windows.
     private(set) var maxCellSize: CGFloat
-    private(set) var minRowHeight: CGFloat = 44
+    /// Lower bound for a day row's height; grows with Dynamic Type but never drops below the touch floor.
+    private(set) var minRowHeight: CGFloat
+    /// The platform touch floor, from `motion.minimumHitTarget`. Controls that must stay tappable
+    /// at every text size and width take this rather than a literal.
+    let minimumHitTarget: CGFloat
     /// Vertical gap between months in the vertically scrolling calendar.
     let monthSpacing: CGFloat
     /// Horizontal inset applied to each month in the vertically scrolling calendar.
@@ -94,7 +98,9 @@ struct CalendarMetrics: Equatable, Sendable {
         let motion = theme.motion
         itemSpacing = spacing.oneUnit
         rowSpacing = spacing.oneUnit
+        minimumHitTarget = motion.minimumHitTarget
         minCellSize = motion.minimumHitTarget
+        minRowHeight = motion.minimumHitTarget
         // Derived ceiling: the minimum hit target plus a roomy spacing step. See the type doc for why
         // this is computed here instead of being a global design token.
         maxCellSize = motion.minimumHitTarget + spacing.twoAndHalfUnits
@@ -252,9 +258,9 @@ extension CalendarMetrics {
         max(containerWidth, minCalendarWidth)
     }
 
-    /// Height of the weekday header row for a given day cell size, scaled with the day rows.
-    func weekdayHeaderHeight(cellSize: CGFloat, rowScale: CGFloat = 1) -> CGFloat {
-        max(pager.headerHeightRatio * cellSize, weekdayHeaderMinHeight) * rowScale
+    /// Height of the weekday header row for a given day cell size.
+    func weekdayHeaderHeight(cellSize: CGFloat) -> CGFloat {
+        max(pager.headerHeightRatio * cellSize, weekdayHeaderMinHeight)
     }
 
     /// How much of the adjacent months the pager reveals at each edge.
@@ -285,10 +291,10 @@ extension CalendarMetrics {
     }
 
     /// Height of a parked month of `rowCount` rows, ceiled so a fractional cell size cannot clip.
-    func resolvedHeight(rowCount: Int, layoutWidth: CGFloat, rowScale: CGFloat = 1) -> CGFloat {
+    func resolvedHeight(rowCount: Int, layoutWidth: CGFloat) -> CGFloat {
         let cellSize = CalendarGridLayout.cellSize(containerWidth: layoutWidth, metrics: self)
         let totalRowSpacing = rowSpacing * CGFloat(rowCount - 1)
-        let height = (CGFloat(rowCount) * max(minRowHeight, cellSize * rowScale)) + totalRowSpacing
+        let height = (CGFloat(rowCount) * max(minRowHeight, cellSize)) + totalRowSpacing
         return ceil(height) + pager.heightCeilingPadding
     }
 }

@@ -8,7 +8,7 @@ struct CalendarGridLayout: Equatable {
     let width: CGFloat
     /// Width of a day cell, which is also the height at the default text size.
     let cellSize: CGFloat
-    /// Height of a day row: `cellSize` scaled by `rowScale`, so Dynamic Type grows rows, not columns.
+    /// Height of a day row: the cell width, grown to `minRowHeight` so Dynamic Type grows rows, not columns.
     let rowHeight: CGFloat
     let gridWidth: CGFloat
     let columns: [GridItem]
@@ -16,8 +16,7 @@ struct CalendarGridLayout: Equatable {
     init(
         containerWidth: CGFloat,
         metrics: CalendarMetrics,
-        sizing: CalendarConfiguration.GridSizing = .adaptive,
-        rowScale: CGFloat = 1
+        sizing: CalendarConfiguration.GridSizing = .adaptive
     ) {
         width = max(containerWidth, metrics.minCalendarWidth)
         let cellSize = Self.cellSize(containerWidth: containerWidth, metrics: metrics)
@@ -35,7 +34,7 @@ struct CalendarGridLayout: Equatable {
             }
         gridWidth = usesCompactWidth ? naturalGridWidth : width
         self.cellSize = cellSize
-        rowHeight = max(metrics.minRowHeight, cellSize * rowScale)
+        rowHeight = max(metrics.minRowHeight, cellSize)
         columns = Array(
             repeating: GridItem(
                 usesCompactWidth ? .fixed(cellSize) : .flexible(minimum: metrics.minCellSize),

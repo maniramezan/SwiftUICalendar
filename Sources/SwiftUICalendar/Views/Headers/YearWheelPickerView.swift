@@ -18,9 +18,12 @@ struct YearWheelPickerView: View {
         Button(action: { isPresented = true }) {
             Text(currentValue.title)
                 .lineLimit(1)
+                // A year never wraps; it asks for its natural width so the header reflows or
+                // overflows instead of truncating it.
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, metrics.controlPadding)
                 .padding(.vertical, metrics.tightPadding)
-                .frame(minWidth: 44, minHeight: 44)
+                .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

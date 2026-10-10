@@ -6,16 +6,23 @@ import Testing
 @MainActor
 @Suite("Calendar viewport")
 struct CalendarViewportTests {
+    /// A layout whose gaps cannot compress, so the minimum width is the fixed 356pt of seven
+    /// 44pt cells and six 8pt gaps.
+    private func layout(width: CGFloat, margins: CGFloat = 0) -> CalendarViewportLayout {
+        CalendarViewportLayout(
+            width: width, cellWidth: 44, margins: margins, preferredSpacing: 8, minimumSpacing: 8)
+    }
+
     @Test("Narrow windows preserve the minimum width", arguments: [0.0, 240.0, 320.0])
     func narrow(width: CGFloat) {
-        let layout = CalendarViewportLayout(width: width, minimumWidth: 356)
+        let layout = layout(width: width)
         #expect(layout.contentWidth == 356)
         #expect(layout.overflows)
     }
 
     @Test("Fitting windows do not overflow", arguments: [356.0, 600.0, 1024.0])
     func fitting(width: CGFloat) {
-        let layout = CalendarViewportLayout(width: width, minimumWidth: 356)
+        let layout = layout(width: width)
         #expect(layout.contentWidth == width)
         #expect(!layout.overflows)
     }
@@ -23,7 +30,7 @@ struct CalendarViewportTests {
     @Test("Soft margins give way before the grid overflows")
     func softMarginsCollapseFirst() {
         // 370pt fits the 356pt grid, just not its 52pt of margins: no scrolling, margins shrink.
-        let squeezed = CalendarViewportLayout(width: 370, minimumWidth: 356, margins: 52)
+        let squeezed = layout(width: 370, margins: 52)
         #expect(!squeezed.overflows)
         #expect(squeezed.contentWidth == 370)
     }
@@ -31,34 +38,35 @@ struct CalendarViewportTests {
     @Test("Soft margins shrink in proportion to the width left over the grid minimum")
     func marginScaleTracksSlack() {
         // 3pt over the minimum against 16pt of margins: only 3/16 of the margins fit.
-        let tight = CalendarViewportLayout(width: 359, minimumWidth: 356, margins: 16)
+        let tight = layout(width: 359, margins: 16)
         #expect(!tight.overflows)
         #expect(abs(tight.marginScale - 3.0 / 16.0) < 0.0001)
 
         // Exactly the minimum leaves nothing for margins.
-        let exact = CalendarViewportLayout(width: 356, minimumWidth: 356, margins: 16)
-        #expect(exact.marginScale == 0)
+        #expect(layout(width: 356, margins: 16).marginScale == 0)
 
         // Room for every margin keeps them whole, and so does having none to give.
-        #expect(CalendarViewportLayout(width: 372, minimumWidth: 356, margins: 16).marginScale == 1)
-        #expect(CalendarViewportLayout(width: 900, minimumWidth: 356, margins: 16).marginScale == 1)
-        #expect(CalendarViewportLayout(width: 359, minimumWidth: 356).marginScale == 1)
+        #expect(layout(width: 372, margins: 16).marginScale == 1)
+        #expect(layout(width: 900, margins: 16).marginScale == 1)
+        #expect(layout(width: 359).marginScale == 1)
     }
 
     @Test("An overflowing grid restores its margins in full")
     func overflowKeepsFullMarginScale() {
-        let narrow = CalendarViewportLayout(width: 320, minimumWidth: 356, margins: 16)
+        let narrow = layout(width: 320, margins: 16)
         #expect(narrow.overflows)
         #expect(narrow.marginScale == 1)
     }
 
-    @Test("An overflowing grid carries its full margins so the outer columns stay reachable")
+    @Test("An overflowing grid carries its full margins so the outer columns keep their inset")
     func overflowRestoresMargins() {
-        let narrow = CalendarViewportLayout(width: 320, minimumWidth: 356, margins: 52)
+        let narrow = layout(width: 320, margins: 52)
         #expect(narrow.overflows)
         // Typed explicitly: `#expect` evaluates each operand on its own, so a bare `356 + 52` is
         // inferred as `Int` and compares unequal to the `CGFloat` 408 it matches.
         #expect(narrow.contentWidth == CGFloat(356 + 52))
+        // The grid itself keeps exactly the readable minimum inside those margins.
+        #expect(narrow.contentWidth - 52 * narrow.marginScale == 356)
     }
 
     #if os(macOS)

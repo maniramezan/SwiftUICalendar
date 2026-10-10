@@ -220,7 +220,6 @@ private struct CalendarSurface: View {
     let allowsPaging: Bool
     let keyboard: CalendarKeyboardCursor
     @Environment(\.calendarMetrics) private var metrics
-    @Environment(\.calendarViewportWidth) private var viewportWidth
     @State private var headerHeight: CGFloat = 0
 
     var body: some View {
@@ -235,28 +234,13 @@ private struct CalendarSurface: View {
                 ScrollView(
                     headerHeight + metrics.rowSpacing + metrics.minRowHeight
                         + metrics.weekdayHeaderMinHeight > geometry.size.height
-                        ? .vertical : [], showsIndicators: false
+                        ? .vertical : []
                 ) {
                     VStack(spacing: metrics.rowSpacing) {
-                        VStack(spacing: metrics.rowSpacing) {
-                            #if os(iOS)
-                            CalendarTodayControl(viewModel: viewModel)
-                            #endif
-                            if configuration.showsHeader { CalendarHeaderControl() }
-                        }
-                        .frame(width: viewportWidth)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .visualEffect { content, geometry in
-                            content.offset(
-                                x: !allowsPaging && configuration.layout.overflow == .automatic
-                                    ? -geometry.frame(in: .scrollView(axis: .horizontal)).minX : 0)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .onGeometryChange(for: CGFloat.self) {
-                            $0.size.height
-                        } action: {
-                            headerHeight = $0
-                        }
+                        CalendarPinnedHeader(
+                            viewModel: viewModel, configuration: configuration,
+                            allowsPaging: allowsPaging
+                        ) { headerHeight = $0 }
 
                         CalendarBodyVerticalContainer(keyboard: keyboard)
                             .frame(
@@ -267,6 +251,7 @@ private struct CalendarSurface: View {
                     .frame(maxWidth: .infinity)
                 }
                 .scrollBounceBehavior(.basedOnSize)
+                .scrollIndicators(CalendarScrollChrome.indicators)
             }
         }
     }
@@ -279,27 +264,15 @@ private struct CalendarFixedSurface: View {
     let allowsPaging: Bool
     let keyboard: CalendarKeyboardCursor
     @Environment(\.calendarMetrics) private var metrics
-    @Environment(\.calendarViewportWidth) private var viewportWidth
     @Environment(\.calendarContentWidth) private var contentWidth
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: false) {
+            ScrollView(.vertical) {
                 VStack(spacing: metrics.rowSpacing) {
-                    VStack(spacing: metrics.rowSpacing) {
-                        #if os(iOS)
-                        CalendarTodayControl(viewModel: viewModel)
-                        #endif
-                        if configuration.showsHeader { CalendarHeaderControl() }
-                    }
-                    .frame(width: viewportWidth)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .visualEffect { content, geometry in
-                        content.offset(
-                            x: !allowsPaging && configuration.layout.overflow == .automatic
-                                ? -geometry.frame(in: .scrollView(axis: .horizontal)).minX : 0)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    CalendarPinnedHeader(
+                        viewModel: viewModel, configuration: configuration,
+                        allowsPaging: allowsPaging)
 
                     if configuration.scrollMode == .none {
                         CalendarBodyView(layoutWidth: contentWidth, keyboard: keyboard)
@@ -311,10 +284,45 @@ private struct CalendarFixedSurface: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
+            .scrollIndicators(CalendarScrollChrome.indicators)
             .onChange(of: keyboard.scrollRequest) { _, request in
                 guard keyboard.isActive, let request else { return }
                 proxy.scrollTo(request.identity)
             }
+        }
+    }
+}
+
+/// The Today control and navigation header, held at the viewport's leading edge while the grid
+/// beneath scrolls horizontally.
+private struct CalendarPinnedHeader: View {
+    let viewModel: CalendarViewModel
+    let configuration: CalendarConfiguration
+    let allowsPaging: Bool
+    /// Reports the header's height, for a host that sizes the body beneath it.
+    var onHeightChange: ((CGFloat) -> Void)? = nil
+    @Environment(\.calendarMetrics) private var metrics
+    @Environment(\.calendarViewportWidth) private var viewportWidth
+
+    var body: some View {
+        VStack(spacing: metrics.rowSpacing) {
+            #if os(iOS)
+            CalendarTodayControl(viewModel: viewModel)
+            #endif
+            if configuration.showsHeader { CalendarHeaderControl() }
+        }
+        .frame(width: viewportWidth)
+        .fixedSize(horizontal: false, vertical: true)
+        .visualEffect { content, geometry in
+            content.offset(
+                x: !allowsPaging && configuration.layout.overflow == .automatic
+                    ? -geometry.frame(in: .scrollView(axis: .horizontal)).minX : 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.height
+        } action: {
+            onHeightChange?($0)
         }
     }
 }
@@ -347,7 +355,7 @@ private struct CalendarTodayControl: View {
                 viewModel.goToToday()
             } label: {
                 Text("Calendar.Today".localized)
-                    .frame(minWidth: 44, minHeight: 44)
+                    .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
                     .contentShape(Rectangle())
             }
             // Today can fall outside `dateRange` (for example, a past-only calendar).

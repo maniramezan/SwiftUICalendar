@@ -149,14 +149,19 @@ scrolls. They hold for built-in views and are what custom day views are written 
   Larger text can increase this floor. Automatic overflow activates only below the measured floor;
   `.minimumSize` delegates overflow to the host. Never shrink text to conceal a layout failure.
 - **Soft margins give way first.** `calendarMargin` and `monthInset` shrink (`marginScale`) before
-  the grid overflows or is clipped. Never pad the grid with a fixed margin that can push it below
-  its floor; a hosted test must measure cells against the innermost scroll view's clip, not just the
-  viewport width.
+  the grid overflows or is clipped. Once the grid does overflow, the margins are restored in full so
+  the outer columns keep their inset at both scroll extremes. Never pad the grid with a fixed margin
+  that can push it below its floor; a hosted test must measure cells against the innermost scroll
+  view's clip, not just the viewport width.
 - **Full Dynamic Type.** Measure representative labels outside the day-cell loop and resolve
   sufficient width and height. Do not cap the text-size environment or use fixed growth factors.
   Navigation headers use natural height and reflow; very short hosts can scroll their headers.
   Verify actual labels on iOS as well as pure geometry on macOS.
-- **Touch targets do not scale down.** The 44pt floor holds at every text size and width.
+- **Touch targets do not scale down.** The 44pt floor holds at every text size and width. It is
+  `CalendarMetrics.minimumHitTarget`; views read it rather than writing `44`.
+- **A swipe never selects.** The pager's drag runs alongside the day buttons, so it records itself
+  in `CalendarPagingGuard` and `CalendarBodyView` refuses a selection that belongs to it. Do not
+  disable the buttons mid-gesture.
 - **Custom day views are proposed one rectangle.** `CalendarDayContext.cellSize` is its size, neither
   side under 44pt. Custom renderers declare their readable minimum with `setDayContent(minimumSize:)`.
   A day view fills the proposal (`.frame(maxWidth: .infinity, maxHeight: .infinity)`), reads

@@ -1,3 +1,4 @@
+import OSLog
 import SwiftCommons
 import SwiftUI
 import SwiftUICalendarAccessibility
@@ -8,8 +9,9 @@ struct CalendarBodyView: View {
     @Environment(Typography.self) var typography
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
-    @Environment(\.calendarPagingGestureActive) private var pagingGestureActive
+    @Environment(\.calendarPagingGuard) private var pagingGuard
     @State private var containerWidth: CGFloat = 0
+    private let logger = Logger.swiftUICalendar(for: CalendarBodyView.self)
     private let layoutWidth: CGFloat?
     private let keyboard: CalendarKeyboardCursor?
     private let monthIdentifier: MonthIdentifier?
@@ -78,6 +80,10 @@ struct CalendarBodyView: View {
     var body: some View {
         let rangePosition = viewModel.state.selection.rangePositionMatcher(
             in: viewModel.engine.calendar)
+        // Resolved once for the month; resolving it per cell repeated the calendar and locale
+        // lookups for every day on every body pass.
+        let secondaryAccessibility = theme.day.secondaryLabelMode.accessibilityResolver(
+            primaryCalendar: viewModel.engine.calendar)
         VStack(spacing: metrics.rowSpacing) {
             // Weekday headers
             if showWeekdayHeader {
@@ -123,9 +129,7 @@ struct CalendarBodyView: View {
                             calendar: viewModel.engine.calendar,
                             cellSize: CGSize(width: cellSize, height: rowHeight),
                             rangePosition: item.dayStart.flatMap(rangePosition),
-                            secondaryAccessibilityLabel: theme.day.secondaryLabelMode
-                                .accessibilityLabel(
-                                    for: date, primaryCalendar: viewModel.engine.calendar)
+                            secondaryAccessibilityLabel: secondaryAccessibility.label(for: date)
                         )
 
                         CalendarDayCell(context: context, renderer: theme.day.renderer)
@@ -163,7 +167,7 @@ struct CalendarBodyView: View {
                                 item.isInDisplayedMonth && item.isEnabled
                                     ? Color.primary : Color.gray
                             )
-                            .disabled(!item.isEnabled || pagingGestureActive)
+                            .disabled(!item.isEnabled)
                             .contentShape(Rectangle())
                     } else {
                         // Hidden overflow day, or a date that could not be resolved.
@@ -241,6 +245,11 @@ extension CalendarBodyView {
         // `.disabled` already blocks built-in cells; a custom view can still invoke `onSelect`
         // directly, and the state would reject it anyway.
         guard item.isEnabled else { return }
+        // A horizontal swipe that started on this cell presses its button too; the swipe owns it.
+        guard pagingGuard?.shouldSuppressSelection() != true else {
+            logger.debug("Ignored a day selection that belongs to a month swipe")
+            return
+        }
         // Tapping a day from an adjacent month navigates the calendar to that month — but only when
         // navigation is allowed. In a vertical scroll the target month is already on screen, so
         // mutating `currentDate` here would trigger an unwanted scroll jump.
