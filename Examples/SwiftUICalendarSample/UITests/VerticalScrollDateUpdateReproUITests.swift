@@ -1,6 +1,7 @@
 import SwiftUICalendarAccessibility
 import XCTest
 
+@MainActor
 final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
     func testVerticalScrollMovesInBothDirectionsForMVVM() throws {
         let app = XCUIApplication()
@@ -29,7 +30,7 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
         XCTAssertTrue(currentHeaderElement.waitForExistence(timeout: 5))
         let currentHeader = currentHeaderElement.identifier
 
-        app.scrollViews.firstMatch.swipeUp(velocity: .slow)
+        verticalList(in: app).swipeUp(velocity: .slow)
         XCTAssertTrue(waitForHeaderToLeaveViewport(currentHeader, in: app))
 
         app.openSettings()
@@ -66,17 +67,23 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
         let initial = visibleMonthOrdinals(app)
         XCTAssertFalse(initial.isEmpty)
 
-        app.scrollViews.firstMatch.swipeUp(velocity: .slow)
+        verticalList(in: app).swipeUp(velocity: .slow)
         XCTAssertTrue(waitForMonthMovement(in: app, beyond: initial.max() ?? 0, direction: 1))
         let afterUp = visibleMonthOrdinals(app)
         XCTAssertGreaterThan(afterUp.max() ?? 0, initial.max() ?? 0)
         XCTAssertLessThanOrEqual((afterUp.max() ?? 0) - (initial.max() ?? 0), 12)
 
-        app.scrollViews.firstMatch.swipeDown(velocity: .slow)
+        verticalList(in: app).swipeDown(velocity: .slow)
         XCTAssertTrue(waitForMonthMovement(in: app, beyond: afterUp.max() ?? 0, direction: -1))
         let afterDown = visibleMonthOrdinals(app)
         XCTAssertLessThan(afterDown.max() ?? 0, afterUp.max() ?? 0)
         XCTAssertGreaterThanOrEqual(afterDown.min() ?? 0, (initial.min() ?? 0) - 12)
+    }
+
+    private func verticalList(in app: XCUIApplication) -> XCUIElement {
+        // The outer horizontal-overflow viewport includes the fixed header. A downward swipe
+        // starting there hits header controls, not the vertical list nested inside it.
+        app.scrollViews.element(boundBy: app.scrollViews.count - 1)
     }
 
     private func visibleMonthOrdinals(_ app: XCUIApplication) -> [Int] {
@@ -87,9 +94,14 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
         )
         var ordinals: [Int] = []
         for index in 0..<headers.count {
+            let header = headers.element(boundBy: index)
+            // Lazy stacks retain offscreen months. Their presence does not mean they are visible.
+            guard header.isHittable,
+                header.frame.intersects(app.windows.firstMatch.frame)
+            else { continue }
             guard
                 let month = CalendarAccessibilityID.parseVerticalMonthHeader(
-                    headers.element(boundBy: index).identifier
+                    header.identifier
                 )
             else { continue }
             ordinals.append(month.year * 12 + month.month)

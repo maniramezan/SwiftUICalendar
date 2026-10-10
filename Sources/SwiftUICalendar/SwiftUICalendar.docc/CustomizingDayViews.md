@@ -56,13 +56,20 @@ cells already fill an iPhone SE.
 - **Keep the cell the hit target.** Make the whole cell tappable with `.contentShape(Rectangle())`
   rather than growing the visible content.
 - **Let text scale, but contain it.** Use semantic fonts (`context.typography.dayFont`) so text
-  follows Dynamic Type, and give the label `minimumScaleFactor` so a large setting shrinks it back
-  into the cell instead of clipping. Do not scale the frame itself with Dynamic Type; the calendar
-  owns row sizing.
+  follows Dynamic Type. Built-in labels are measured at their full text size; both cell width and
+  height can grow. Register custom content with `setDayContent(minimumSize:)` to declare the size
+  it needs for the supplied Dynamic Type size, typography, and calendar. The calendar allocates at
+  least that rectangle, with a 44pt interaction floor. Do not assume the cell is square.
 - **Clip what you draw outside the cell.** Shadows and badges that spill past the cell overlap
   the next day; apply `.clipped()` or keep them inside.
 
 ## Register the View
+
+`CalendarConfiguration.layout` controls preferred column spacing (theme default), minimum column
+spacing (4pt), and overflow. Outer margins compress first, then gaps. Automatic horizontal scrolling
+only activates below the measured minimum width. At a 44pt cell minimum, the default floor is 332pt.
+Larger text raises that floor. `.minimumSize` requests the required width instead; the host must
+provide enough space or its own scrolling. Observe the contract with `.onCalendarLayoutChange`.
 
 ```swift
 let theme = Theme()

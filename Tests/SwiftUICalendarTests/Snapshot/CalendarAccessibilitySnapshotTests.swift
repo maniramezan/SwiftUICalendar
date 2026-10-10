@@ -1,5 +1,6 @@
 import Foundation
 import SnapshotTesting
+import SwiftUI
 import SwiftUICalendarAccessibility
 import Testing
 
@@ -8,6 +9,53 @@ import Testing
 @MainActor
 @Suite("Calendar accessibility snapshots", .enabled(if: snapshotsEnabled))
 struct CalendarAccessibilitySnapshotTests {
+    @Test(
+        "Spoken range and secondary-calendar context",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func dayDescriptions(identifier: Calendar.Identifier) throws {
+        var calendar = Calendar(identifier: identifier)
+        calendar.locale = Locale(identifier: "en_US")
+        calendar.timeZone = try #require(TimeZone(secondsFromGMT: 0))
+        let date = Date(timeIntervalSince1970: 0)
+        let descriptions = [CalendarRangePosition.start, .interior, .end, .startAndEnd].map {
+            role in
+            CalendarDayContext(
+                date: date, day: 1, dayLabel: "1", isToday: false, isSelected: true,
+                isInCurrentMonth: true, theme: Theme().day, typography: .default,
+                onSelect: { _ in }, calendar: calendar, rangePosition: role,
+                secondaryAccessibilityLabel: Theme.Day.SecondaryLabelMode.persian
+                    .accessibilityLabel(
+                        for: date, primaryCalendar: calendar)
+            ).nativeAccessibilityLabel
+        }
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(
+                of: descriptions.joined(separator: "\n"), as: .lines,
+                named: "day-descriptions-\(identifier)")
+        }
+    }
+
+    @Test("Header descriptions distinguish controls without repeating system gestures")
+    func headerControlDescriptions() {
+        let item = MonthItem(id: 6, title: "June")
+        let header = CalendarNavigationHeaderView(
+            items: [item], selectedItem: .constant(item), onPrevious: {}, onNext: {})
+        let descriptions = [
+            header.monthAccessibilityLabel,
+            header.monthAccessibilityHint,
+            "Calendar.Navigation.Year.ChangeHint".localized(locale: Locale(identifier: "en_US")),
+            "Calendar.Navigation.PreviousYears".localized(locale: Locale(identifier: "en_US")),
+            "Calendar.Navigation.NextYears".localized(locale: Locale(identifier: "en_US")),
+            "verticalMonthHeader: heading",
+            "yearPageTitle: heading",
+            "yearOptionSelection: selectedTrait",
+        ]
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(
+                of: descriptions.joined(separator: "\n"), as: .lines, named: "header-descriptions")
+        }
+    }
+
     @Test(
         "Shared identifiers follow the rendered calendar",
         arguments: [Calendar.Identifier.gregorian, .persian])

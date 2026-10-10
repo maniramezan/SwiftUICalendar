@@ -19,6 +19,7 @@ jobs:
   pr-checks:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: xcode-27
+    timeout-minutes: 45
     permissions:
       contents: read
     defaults:
@@ -51,14 +52,26 @@ jobs:
       - name: Validate Swift formatting
         run: bash ./scripts/lint.sh
 
+      - name: Validate test watchdog
+        run: ruby ./scripts/tests/test-watchdog-test.rb
+
       - name: Build package
         run: swift build -c debug
 
       # Runs every package test, in parallel, with coverage enabled, then enforces the minimum.
       - name: Run all tests and check coverage
+        timeout-minutes: 20
         env:
           MINIMUM_COVERAGE: 80
-        run: bash ./scripts/check-coverage.sh
+        run: ruby ./scripts/test-watchdog.rb --timeout 900 -- bash ./scripts/check-coverage.sh
+
+      - name: Upload package test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: package-test-diagnostics
+          path: SwiftUICalendar/.build/test-diagnostics
+          if-no-files-found: ignore
 
       - name: Build iOS sample
         # Allow the locked TCA dependency macros on fresh, noninteractive CI runners.
@@ -135,6 +148,7 @@ jobs:
   main-validation:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: xcode-27
+    timeout-minutes: 45
     permissions:
       contents: read
     defaults:
@@ -167,14 +181,26 @@ jobs:
       - name: Validate Swift formatting
         run: bash ./scripts/lint.sh
 
+      - name: Validate test watchdog
+        run: ruby ./scripts/tests/test-watchdog-test.rb
+
       - name: Build package
         run: swift build -c debug
 
       # Runs every package test, in parallel, with coverage enabled, then enforces the minimum.
       - name: Run all tests and check coverage
+        timeout-minutes: 20
         env:
           MINIMUM_COVERAGE: 80
-        run: bash ./scripts/check-coverage.sh
+        run: ruby ./scripts/test-watchdog.rb --timeout 900 -- bash ./scripts/check-coverage.sh
+
+      - name: Upload package test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: package-test-diagnostics
+          path: SwiftUICalendar/.build/test-diagnostics
+          if-no-files-found: ignore
 
       - name: Build iOS sample
         # Allow the locked TCA dependency macros on fresh, noninteractive CI runners.

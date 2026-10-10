@@ -1,8 +1,10 @@
 dayRenderer: circle
 dayLabel: 15
+cellSize: 44x44
 secondaryLabel: none
 isToday: false
 isSelected: false
+builtInSelectionAnnouncement: traitOnly
 isInCurrentMonth: false
 emptyDayBorderColor: clear
 emptyDayBorderColorWidth: 0

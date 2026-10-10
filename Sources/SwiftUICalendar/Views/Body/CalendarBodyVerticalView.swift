@@ -27,9 +27,8 @@ struct CalendarBodyVerticalView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            // A legacy macOS scroller consumes width after the viewport resolves its grid.
-            // Keep the content width independent of the user's scrollbar preference.
-            ScrollView(.vertical, showsIndicators: false) {
+            // See `CalendarScrollChrome.indicators` for why macOS hides the indicator.
+            ScrollView(.vertical) {
                 LazyVStack(spacing: metrics.monthSpacing) {
                     if let anchor {
                         // Offsets outside `dateRange` resolve to `nil` and render nothing, so a
@@ -79,6 +78,7 @@ struct CalendarBodyVerticalView: View {
             // Alignment still snaps the resting position to a month.
             .scrollTargetBehavior(.viewAligned(limitBehavior: .never))
             .scrollPosition(id: $scrollPosition, anchor: .top)
+            .scrollIndicators(CalendarScrollChrome.indicators)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onAppear {
                 initializeWindow()
@@ -441,6 +441,7 @@ private struct VerticalMonthView: View {
             .frame(width: gridWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier(
                 CalendarAccessibilityID.verticalMonthHeader(
                     year: item.id.year, month: item.id.month)
