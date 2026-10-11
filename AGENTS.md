@@ -145,23 +145,26 @@ The calendar lives inside hosts that give it less than a full screen: a card ins
 column, an inline editor below it, a landscape phone. These rules decide what always fits and what
 scrolls. They hold for built-in views and are what custom day views are written against.
 
-- **Seven columns always fit the width.** Text size never widens the grid. The width floor is seven
-  minimum cells (`CalendarMetrics.minCalendarWidth`, 356pt at the 44pt touch target) — and a
-  viewport narrower than that scrolls horizontally with its first column reachable, never clips.
+- **Readable content determines the minimum width.** Seven 44pt cells and six 4pt gaps need 332pt.
+  Larger text can increase this floor. Automatic overflow activates only below the measured floor;
+  `.minimumSize` delegates overflow to the host. Never shrink text to conceal a layout failure.
 - **Soft margins give way first.** `calendarMargin` and `monthInset` shrink (`marginScale`) before
-  the grid overflows or is clipped. Never pad the grid with a fixed margin that can push it below
-  its floor; a hosted test must measure cells against the innermost scroll view's clip, not just the
-  viewport width.
-- **Dynamic Type scales height, within a cap.** Like the system Calendar, rows grow a little with
-  text size and stop growing well before accessibility sizes; the seven columns stay put. Target
-  row-height factor: up to `large` 1.0, `xLarge` 1.05, `xxLarge` 1.10, `xxxLarge` 1.15, any
-  accessibility size 1.20. Day-number fonts are capped so numerals fit the cell width, with
-  `minimumScaleFactor` as the backstop. Extra height is absorbed by the existing vertical scroll
-  fallback; it never causes horizontal overflow. (Row-height scaling is tracked as a follow-up;
-  until it lands, rows are fixed and text is contained by `minimumScaleFactor`.)
-- **Touch targets do not scale down.** The 44pt floor holds at every text size and width.
+  the grid overflows or is clipped. Once the grid does overflow, the margins are restored in full so
+  the outer columns keep their inset at both scroll extremes. Never pad the grid with a fixed margin
+  that can push it below its floor; a hosted test must measure cells against the innermost scroll
+  view's clip, not just the viewport width.
+- **Full Dynamic Type.** Measure representative labels outside the day-cell loop and resolve
+  sufficient width and height. Do not cap the text-size environment or use fixed growth factors.
+  Navigation headers use natural height and reflow; very short hosts can scroll their headers.
+  Verify actual labels on iOS as well as pure geometry on macOS.
+- **Touch targets do not scale down.** The 44pt floor holds at every text size and width. It is
+  `CalendarMetrics.minimumHitTarget`; views read it rather than writing `44`.
+- **A swipe never selects.** The pager's drag runs alongside the day buttons, so it records itself
+  in `CalendarPagingGuard` and `CalendarBodyView` refuses a selection that belongs to it. Do not
+  disable the buttons mid-gesture.
 - **Custom day views are proposed one rectangle.** `CalendarDayContext.cellSize` is its size, neither
-  side under 44pt; the height grows with Dynamic Type, the width does not. A day view fills the proposal (`.frame(maxWidth: .infinity, maxHeight: .infinity)`), reads
+  side under 44pt. Custom renderers declare their readable minimum with `setDayContent(minimumSize:)`.
+  A day view fills the proposal (`.frame(maxWidth: .infinity, maxHeight: .infinity)`), reads
   `cellSize` to scale marks instead of hardcoding frames or using a `GeometryReader`, sheds detail
   rather than overflowing at the minimum size, and contains whatever it draws. The calendar owns
   row and column sizing; a day view never asks for more room. See `CustomizingDayViews.md`.
@@ -169,16 +172,18 @@ scrolls. They hold for built-in views and are what custom day views are written 
 ### Layout test matrix
 
 A change to anything that sizes or pads the grid needs a hosted unit test at each of these, in every
-scroll mode, asserting all seven columns are inside the viewport **and** its scroll view's clip:
+scroll mode, asserting columns fit the actual clip or are reachable through genuine overflow:
 
 | Dimension | Values |
 |-----------|--------|
-| Viewport width | 343, 355, 359, 375, 393, 402, 404, 430pt (SE minus a host inset, either side of the 356pt floor, full-width phones) |
+| Viewport width | 320, 332, 343, 355, 356, 359, 375, 393, 402, 404, 430pt |
 | Viewport height | 132, 180, 240pt (rows reachable by scrolling) |
-| Dynamic Type | `xSmall`, `xxxLarge`, `accessibility5` (once row scaling lands) |
-| Device (sample UI test) | iPhone SE (3rd gen), a Pro Max in landscape, an iPad |
+| Dynamic Type | `large`, `xxxLarge`, `accessibility5` |
+| Device (sample UI test) | iPhone SE (3rd gen), a Pro Max in landscape, an iPad; each at the default and an accessibility text size (`DynamicTypeUITests`) |
 
-`CalendarConstrainedHostTests` is the reference for the width and height rows.
+`CalendarConstrainedHostTests` is the reference for the width and height rows and
+`CalendarDynamicTypeLayoutTests` for the Dynamic Type row; both hardcode their expected values so a
+wrong policy cannot agree with itself.
 
 ## Planning Workflow
 

@@ -66,11 +66,16 @@ public struct CalendarDayContext {
     public let secondaryLabel: String?
     /// Calendar, locale, and time zone used for spoken date labels.
     public let calendar: Calendar
+    /// Role within a selected range, when applicable.
+    public let rangePosition: CalendarRangePosition?
+    /// Spoken secondary content. Defaults to the legacy secondary-label description.
+    /// An empty string suppresses redundant secondary speech without hiding the visual label.
+    public let secondaryAccessibilityLabel: String?
     /// The size, in points, the calendar gives this day view.
     ///
     /// The calendar proposes exactly this size to every day view, and neither side is ever less than
-    /// the platform's 44pt touch target. The width is set by the grid; the height equals the width at
-    /// the default text size and grows a little with Dynamic Type. Size your content from it instead
+    /// the platform's 44pt touch target. Width and height accommodate readable content at the
+    /// effective text size. The rectangle need not be square. Size your content from it instead
     /// of hardcoding a frame or measuring with a `GeometryReader`, which costs a layout pass per cell:
     /// for example, scale an emoji to `cellSize.width * 0.4`, or drop a secondary label when
     /// `cellSize` is at its minimum.
@@ -95,6 +100,9 @@ public struct CalendarDayContext {
     ///   - secondaryLabel: Optional secondary label text.
     ///   - calendar: Calendar context for accessible date descriptions.
     ///   - cellSize: Size given to the day view. Defaults to the 44pt minimum touch target square.
+    ///   - rangePosition: Role within a selected date range, if any.
+    ///   - secondaryAccessibilityLabel: Full spoken secondary content, overriding the short label.
+    ///     An empty string suppresses the spoken secondary description.
     public init(
         date: Date,
         day: Int,
@@ -108,7 +116,9 @@ public struct CalendarDayContext {
         onSelect: @escaping (Date) -> Void,
         secondaryLabel: String? = nil,
         calendar: Calendar = .current,
-        cellSize: CGSize? = nil
+        cellSize: CGSize? = nil,
+        rangePosition: CalendarRangePosition? = nil,
+        secondaryAccessibilityLabel: String? = nil
     ) {
         self.date = date
         self.day = day
@@ -122,22 +132,40 @@ public struct CalendarDayContext {
         self.onSelect = onSelect
         self.secondaryLabel = secondaryLabel
         self.calendar = calendar
+        self.rangePosition = rangePosition
+        self.secondaryAccessibilityLabel = secondaryAccessibilityLabel
         let minimum = CalendarMetrics.default.minCellSize
         self.cellSize = cellSize ?? CGSize(width: minimum, height: minimum)
     }
 
     /// A localized date and state description for built-in and custom accessible controls.
     @MainActor public var accessibilityLabel: String {
+        accessibilityLabel(includingSelection: true)
+    }
+
+    // Built-in buttons expose selected state through their trait, not duplicated label text.
+    @MainActor var nativeAccessibilityLabel: String {
+        accessibilityLabel(includingSelection: false)
+    }
+
+    @MainActor private func accessibilityLabel(includingSelection: Bool) -> String {
         let locale = calendar.locale ?? .current
         // `setLocalizedDateFormatFromTemplate` resolves a locale/CLDR pattern lookup, which is
         // expensive enough that doing it fresh per cell dominates scroll frame time — see
         // `CalendarRenderCache.templateFormatter(template:calendar:)`.
         let formatter = CalendarRenderCache.shared.templateFormatter(
-            template: "GyMMMMd", calendar: calendar)
+            template: "GyMMMMdEEEE", calendar: calendar)
         var parts = [formatter.string(from: date)]
         if isToday { parts.append("Calendar.Day.Today".localized(locale: locale)) }
-        if isSelected { parts.append("Calendar.Day.Selected".localized(locale: locale)) }
-        if let secondaryLabel {
+        if isSelected, includingSelection {
+            parts.append("Calendar.Day.Selected".localized(locale: locale))
+        }
+        if let rangePosition {
+            parts.append("Calendar.Day.Range.\(rangePosition.rawValue)".localized(locale: locale))
+        }
+        if let secondaryAccessibilityLabel {
+            if !secondaryAccessibilityLabel.isEmpty { parts.append(secondaryAccessibilityLabel) }
+        } else if let secondaryLabel {
             parts.append(
                 String(
                     format: "Calendar.Day.Secondary".localized(locale: locale), locale: locale,

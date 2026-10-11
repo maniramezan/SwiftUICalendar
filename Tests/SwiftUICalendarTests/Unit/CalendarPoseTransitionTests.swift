@@ -28,7 +28,10 @@ struct CalendarPoseTransitionTests {
             PoseCalendar(model: model, theme: theme, mode: mode, pose: pose), size: size)
         defer { hosted.window.contentView = nil }
 
-        let folds: [[ClosedRange<CGFloat>]] = [[], [520...580], [300...600], [300...400], []]
+        // Revisit both overflow boundaries on the same mounted viewport, not just a fresh host.
+        let folds: [[ClosedRange<CGFloat>]] = [
+            [], [520...580], [300...600], [], [300...400], [520...580], [], [300...600], [],
+        ]
         for blocked in folds {
             pose.foldRanges = blocked
             #expect(waitForStableRender(hosted.hosting))

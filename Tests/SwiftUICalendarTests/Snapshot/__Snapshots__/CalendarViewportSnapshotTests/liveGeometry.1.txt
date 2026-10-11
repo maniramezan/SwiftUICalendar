@@ -1,0 +1,12 @@
+direction=leftToRight viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
+direction=leftToRight viewport=520.0 leading=0.0 trailing=380.0 content=520.0 overflow=false
+direction=leftToRight viewport=300.0 leading=0.0 trailing=600.0 content=348.0 overflow=true
+direction=leftToRight viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
+direction=leftToRight viewport=500.0 leading=400.0 trailing=0.0 content=500.0 overflow=false
+direction=leftToRight viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
+direction=rightToLeft viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
+direction=rightToLeft viewport=520.0 leading=380.0 trailing=0.0 content=520.0 overflow=false
+direction=rightToLeft viewport=300.0 leading=0.0 trailing=600.0 content=348.0 overflow=true
+direction=rightToLeft viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
+direction=rightToLeft viewport=500.0 leading=0.0 trailing=400.0 content=500.0 overflow=false
+direction=rightToLeft viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false

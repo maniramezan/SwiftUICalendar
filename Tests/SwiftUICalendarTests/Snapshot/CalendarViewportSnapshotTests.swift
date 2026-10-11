@@ -12,7 +12,8 @@ struct CalendarViewportSnapshotTests {
         let metrics = CalendarMetrics.default
         let lines = [240.0, 320.0, 600.0, 1024.0].map { width in
             let viewport = CalendarViewportLayout(
-                width: width, minimumWidth: metrics.minCalendarWidth)
+                width: width, cellWidth: metrics.minCellSize, margins: 0,
+                preferredSpacing: metrics.itemSpacing, minimumSpacing: metrics.itemSpacing)
             let grid = CalendarGridLayout(containerWidth: viewport.contentWidth, metrics: metrics)
             return
                 "viewport=\(width) content=\(viewport.contentWidth) overflow=\(viewport.overflows) cell=\(grid.cellSize)"
@@ -31,10 +32,35 @@ struct CalendarViewportSnapshotTests {
                     [300...400], containerWidth: 700, layoutDirection: direction))
             let width = 700 - span.total
             let viewport = CalendarViewportLayout(
-                width: width, minimumWidth: metrics.minCalendarWidth,
-                margins: 2 * metrics.calendarMargin)
+                width: width, cellWidth: metrics.minCellSize,
+                margins: 2 * metrics.calendarMargin,
+                preferredSpacing: metrics.itemSpacing, minimumSpacing: metrics.itemSpacing)
             return
                 "direction=\(direction) viewport=\(width) leading=\(span.leading) trailing=\(span.trailing) content=\(viewport.contentWidth) overflow=\(viewport.overflows)"
+        }
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(of: lines.joined(separator: "\n"), as: .lines)
+        }
+    }
+
+    @Test("Live geometry resolves each fold transition without a previous measurement")
+    func liveGeometry() {
+        let metrics = CalendarMetrics.default
+        let folds: [[ClosedRange<CGFloat>]] = [[], [520...580], [300...600], [], [300...400], []]
+        let lines = [LayoutDirection.leftToRight, .rightToLeft].flatMap { direction in
+            folds.map { blocked in
+                let span = CalendarFoldSpan.resolve(
+                    containerWidth: 900,
+                    blocked: CalendarFoldSpan.leadingOrigin(
+                        blocked, containerWidth: 900, layoutDirection: direction))
+                let available = 900 - span.total
+                let layout = CalendarViewportLayout(
+                    width: available, cellWidth: metrics.minCellSize,
+                    margins: 2 * metrics.calendarMargin,
+                    preferredSpacing: metrics.itemSpacing, minimumSpacing: 4)
+                return
+                    "direction=\(direction) viewport=\(available) leading=\(span.leading) trailing=\(span.trailing) content=\(layout.contentWidth) overflow=\(layout.overflows)"
+            }
         }
         withSnapshotTesting(record: globalRecordMode) {
             assertSnapshot(of: lines.joined(separator: "\n"), as: .lines)

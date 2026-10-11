@@ -6,7 +6,10 @@ import SwiftUI
 /// view state, so a view can build one per layout pass and a test can assert on it directly.
 struct CalendarGridLayout: Equatable {
     let width: CGFloat
+    /// Width of a day cell, which is also the height at the default text size.
     let cellSize: CGFloat
+    /// Height of a day row: the cell width, grown to `minRowHeight` so Dynamic Type grows rows, not columns.
+    let rowHeight: CGFloat
     let gridWidth: CGFloat
     let columns: [GridItem]
 
@@ -31,6 +34,7 @@ struct CalendarGridLayout: Equatable {
             }
         gridWidth = usesCompactWidth ? naturalGridWidth : width
         self.cellSize = cellSize
+        rowHeight = max(metrics.minRowHeight, cellSize)
         columns = Array(
             repeating: GridItem(
                 usesCompactWidth ? .fixed(cellSize) : .flexible(minimum: metrics.minCellSize),
@@ -55,6 +59,7 @@ struct CalendarGridLayout: Equatable {
     }
 
     static func == (lhs: CalendarGridLayout, rhs: CalendarGridLayout) -> Bool {
-        lhs.width == rhs.width && lhs.cellSize == rhs.cellSize && lhs.gridWidth == rhs.gridWidth
+        lhs.width == rhs.width && lhs.cellSize == rhs.cellSize && lhs.rowHeight == rhs.rowHeight
+            && lhs.gridWidth == rhs.gridWidth
     }
 }

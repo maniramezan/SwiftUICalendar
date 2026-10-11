@@ -83,6 +83,7 @@ public struct CalendarConfiguration: Equatable, Sendable {
     public var horizontalHeightMode: HorizontalHeightMode
     /// How the day grid resolves its width inside the available container.
     public var gridSizing: GridSizing
+    public var layout: CalendarLayoutConfiguration
     public var showsHeader: Bool
     public var yearSelection: YearSelection
     /// Keyboard shortcuts the calendar handles while focused.
@@ -94,7 +95,8 @@ public struct CalendarConfiguration: Equatable, Sendable {
         gridSizing: GridSizing = .adaptive,
         showsHeader: Bool = true,
         yearSelection: YearSelection = YearSelection(),
-        keyboardNavigation: KeyboardNavigation = .all
+        keyboardNavigation: KeyboardNavigation = .all,
+        layout: CalendarLayoutConfiguration = .init()
     ) {
         self.scrollMode = scrollMode
         self.horizontalHeightMode = horizontalHeightMode
@@ -102,6 +104,7 @@ public struct CalendarConfiguration: Equatable, Sendable {
         self.showsHeader = showsHeader
         self.yearSelection = yearSelection
         self.keyboardNavigation = keyboardNavigation
+        self.layout = layout
     }
 }
 

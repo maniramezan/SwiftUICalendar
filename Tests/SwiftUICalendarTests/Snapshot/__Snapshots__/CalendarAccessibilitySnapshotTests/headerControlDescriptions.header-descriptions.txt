@@ -1,0 +1,8 @@
+Month, June
+Choose another month
+Choose another year
+Previous years
+Next years
+verticalMonthHeader: heading
+yearPageTitle: heading
+yearOptionSelection: selectedTrait

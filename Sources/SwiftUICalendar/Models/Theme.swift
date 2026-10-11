@@ -70,11 +70,15 @@ extension Theme {
         /// Use ``useSquareDualCalendarDayView(secondaryLabel:)`` to select the built-in square style.
         /// Assign a closure when your app provides a custom ``CalendarDayView`` implementation.
         var renderer: Renderer = .circle
+        /// Minimum readable size of custom content, evaluated once per calendar layout.
+        public var minimumContentSize: ((CalendarDaySizingContext) -> CGSize)?
 
         /// Installs a custom day-cell renderer.
         public func setDayContent<Content: CalendarDayView>(
+            minimumSize: ((CalendarDaySizingContext) -> CGSize)? = nil,
             @ViewBuilder _ content: @escaping (CalendarDayContext) -> Content
         ) {
+            minimumContentSize = minimumSize
             renderer = .custom { context in AnyView(content(context)) }
         }
 

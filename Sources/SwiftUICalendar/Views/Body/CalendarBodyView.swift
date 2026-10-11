@@ -1,3 +1,4 @@
+import OSLog
 import SwiftCommons
 import SwiftUI
 import SwiftUICalendarAccessibility
@@ -8,7 +9,9 @@ struct CalendarBodyView: View {
     @Environment(Typography.self) var typography
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
+    @Environment(\.calendarPagingGuard) private var pagingGuard
     @State private var containerWidth: CGFloat = 0
+    private let logger = Logger.swiftUICalendar(for: CalendarBodyView.self)
     private let layoutWidth: CGFloat?
     private let keyboard: CalendarKeyboardCursor?
     private let monthIdentifier: MonthIdentifier?
@@ -28,8 +31,14 @@ struct CalendarBodyView: View {
         )
     }
 
+    /// Width of a day cell, set by the grid.
     private var cellSize: CGFloat {
         gridLayout.cellSize
+    }
+
+    /// Height of a day row: the cell width, grown by Dynamic Type within its cap.
+    private var rowHeight: CGFloat {
+        gridLayout.rowHeight
     }
 
     private var headerHeight: CGFloat {
@@ -61,14 +70,20 @@ struct CalendarBodyView: View {
         if showWeekdayHeader {
             // Row spacings: 1 between header and days + (rowCount - 1) between day rows
             let totalRowSpacing = metrics.rowSpacing * CGFloat(rowCount)
-            return headerHeight + (CGFloat(rowCount) * cellSize) + totalRowSpacing
+            return headerHeight + (CGFloat(rowCount) * rowHeight) + totalRowSpacing
         } else {
             // Grid only: (rowCount - 1) spacings between rows
-            return CGFloat(rowCount) * cellSize + CGFloat(rowCount - 1) * metrics.rowSpacing
+            return CGFloat(rowCount) * rowHeight + CGFloat(rowCount - 1) * metrics.rowSpacing
         }
     }
 
     var body: some View {
+        let rangePosition = viewModel.state.selection.rangePositionMatcher(
+            in: viewModel.engine.calendar)
+        // Resolved once for the month; resolving it per cell repeated the calendar and locale
+        // lookups for every day on every body pass.
+        let secondaryAccessibility = theme.day.secondaryLabelMode.accessibilityResolver(
+            primaryCalendar: viewModel.engine.calendar)
         VStack(spacing: metrics.rowSpacing) {
             // Weekday headers
             if showWeekdayHeader {
@@ -112,18 +127,22 @@ struct CalendarBodyView: View {
                             },
                             secondaryLabel: resolveSecondaryLabel(for: date),
                             calendar: viewModel.engine.calendar,
-                            cellSize: CGSize(width: cellSize, height: cellSize)
+                            cellSize: CGSize(width: cellSize, height: rowHeight),
+                            rangePosition: item.dayStart.flatMap(rangePosition),
+                            secondaryAccessibilityLabel: secondaryAccessibility.label(for: date)
                         )
 
                         CalendarDayCell(context: context, renderer: theme.day.renderer)
                             .id(item.id)
+                            .modifier(CalendarDayAccessibilityFocus(id: item.id))
                             .accessibilityIdentifier(
                                 CalendarAccessibilityID.day(
                                     year: item.year, month: item.month, day: item.day)
                             )
-                            // Keep the cell a square (cellSize × cellSize) and center it in the wider column so
-                            // square day views stay square when the grid fills a wide window.
-                            .frame(width: cellSize, height: cellSize)
+                            // Give the cell exactly its width by row height (a square at the default text
+                            // size) and center it in the wider column, so day views keep their shape when
+                            // the grid fills a wide window.
+                            .frame(width: cellSize, height: rowHeight)
                             .overlay {
                                 // `item.dayStart`, never `item.date`: the cursor stores a
                                 // start-of-day date, and `date` keeps whatever time-of-day the month
@@ -154,7 +173,7 @@ struct CalendarBodyView: View {
                         // Hidden overflow day, or a date that could not be resolved.
                         Color.clear
                             .frame(maxWidth: .infinity)
-                            .frame(height: cellSize)
+                            .frame(height: rowHeight)
                     }
                 }
             }
@@ -226,6 +245,11 @@ extension CalendarBodyView {
         // `.disabled` already blocks built-in cells; a custom view can still invoke `onSelect`
         // directly, and the state would reject it anyway.
         guard item.isEnabled else { return }
+        // A horizontal swipe that started on this cell presses its button too; the swipe owns it.
+        guard pagingGuard?.shouldSuppressSelection() != true else {
+            logger.debug("Ignored a day selection that belongs to a month swipe")
+            return
+        }
         // Tapping a day from an adjacent month navigates the calendar to that month — but only when
         // navigation is allowed. In a vertical scroll the target month is already on screen, so
         // mutating `currentDate` here would trigger an unwanted scroll jump.

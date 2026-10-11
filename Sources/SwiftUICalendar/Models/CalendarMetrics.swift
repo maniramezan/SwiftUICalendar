@@ -15,13 +15,18 @@ import SwiftUI
 /// package as plain values via `\.calendarMetrics`.
 struct CalendarMetrics: Equatable, Sendable {
     /// Horizontal gap between day columns.
-    let itemSpacing: CGFloat
+    private(set) var itemSpacing: CGFloat
     /// Vertical gap between day rows (and between the weekday header and the grid).
     let rowSpacing: CGFloat
     /// Lower bound for a day cell's side length.
-    let minCellSize: CGFloat
+    private(set) var minCellSize: CGFloat
     /// Upper bound for a day cell's row height; stops cells ballooning on wide (macOS) windows.
-    let maxCellSize: CGFloat
+    private(set) var maxCellSize: CGFloat
+    /// Lower bound for a day row's height; grows with Dynamic Type but never drops below the touch floor.
+    private(set) var minRowHeight: CGFloat
+    /// The platform touch floor, from `motion.minimumHitTarget`. Controls that must stay tappable
+    /// at every text size and width take this rather than a literal.
+    let minimumHitTarget: CGFloat
     /// Vertical gap between months in the vertically scrolling calendar.
     let monthSpacing: CGFloat
     /// Horizontal inset applied to each month in the vertically scrolling calendar.
@@ -52,7 +57,7 @@ struct CalendarMetrics: Equatable, Sendable {
     /// Opacity of a disabled header control.
     let disabledOpacity: Double
     /// Floor for the weekday header row's height.
-    let weekdayHeaderMinHeight: CGFloat
+    private(set) var weekdayHeaderMinHeight: CGFloat
     /// Bounds on how much of the adjacent months the horizontal pager reveals at each edge.
     let minimumPeekWidth: CGFloat
     let maximumPeekWidth: CGFloat
@@ -93,7 +98,9 @@ struct CalendarMetrics: Equatable, Sendable {
         let motion = theme.motion
         itemSpacing = spacing.oneUnit
         rowSpacing = spacing.oneUnit
+        minimumHitTarget = motion.minimumHitTarget
         minCellSize = motion.minimumHitTarget
+        minRowHeight = motion.minimumHitTarget
         // Derived ceiling: the minimum hit target plus a roomy spacing step. See the type doc for why
         // this is computed here instead of being a global design token.
         maxCellSize = motion.minimumHitTarget + spacing.twoAndHalfUnits
@@ -158,6 +165,21 @@ struct CalendarMetrics: Equatable, Sendable {
 // MARK: - Pager
 
 extension CalendarMetrics {
+    func resolvingContent(cell: CGSize, weekday: CGSize) -> CalendarMetrics {
+        var result = self
+        result.minCellSize = max(minCellSize, cell.width, weekday.width)
+        result.maxCellSize = max(maxCellSize, result.minCellSize)
+        result.minRowHeight = max(minCellSize, cell.height)
+        result.weekdayHeaderMinHeight = max(weekdayHeaderMinHeight, weekday.height)
+        return result
+    }
+
+    func resolvingSpacing(_ spacing: CGFloat) -> CalendarMetrics {
+        var result = self
+        result.itemSpacing = spacing
+        return result
+    }
+
     /// Tokens for the horizontal month pager.
     ///
     /// Grouped rather than flattened onto ``CalendarMetrics`` because they only mean something to
@@ -272,7 +294,7 @@ extension CalendarMetrics {
     func resolvedHeight(rowCount: Int, layoutWidth: CGFloat) -> CGFloat {
         let cellSize = CalendarGridLayout.cellSize(containerWidth: layoutWidth, metrics: self)
         let totalRowSpacing = rowSpacing * CGFloat(rowCount - 1)
-        let height = (CGFloat(rowCount) * cellSize) + totalRowSpacing
+        let height = (CGFloat(rowCount) * max(minRowHeight, cellSize)) + totalRowSpacing
         return ceil(height) + pager.heightCeilingPadding
     }
 }

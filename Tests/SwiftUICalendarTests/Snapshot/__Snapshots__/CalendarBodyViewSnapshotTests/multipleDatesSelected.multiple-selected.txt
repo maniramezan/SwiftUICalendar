@@ -8,7 +8,9 @@ showsHeader: true
 dayRenderer: circle
 secondaryLabel: none
 selection: multiple([2025-06-05, 2025-06-15, 2025-06-25])
-layout(width=390): cell=48.86 gridWidth=390 compactWidth=false
+viewport: minimum=332 overflow=false gap=8 marginScale=1
+cell: 46.57x46.57 weekdayHeight=24
+layout(width=390): cell=46.57 gridWidth=374 compactWidth=false
 weekdayHeader: S M T W T F S
 
 month: June [gregorian y2025 m6 era1] rows=5

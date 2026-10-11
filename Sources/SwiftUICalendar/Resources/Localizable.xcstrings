@@ -1,6 +1,70 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Calendar.Day.Range.start": {
+      "comment": "Role of the first day in a selected date range.",
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Range start" } } }
+    },
+    "Calendar.Day.Range.end": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Range end" } } }
+    },
+    "Calendar.Day.Range.interior": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Within selected range" } } }
+    },
+    "Calendar.Day.Range.startAndEnd": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Range start and end" } } }
+    },
+    "Calendar.Day.SecondaryDate": {
+      "comment": "Alternate calendar date. First %@ is the localized calendar name; second %@ is its full date.",
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@, %@" } } }
+    },
+    "Calendar.Navigation.PreviousYears": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Previous years" } } }
+    },
+    "Calendar.Navigation.NextYears": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Next years" } } }
+    },
+    "Calendar.Navigation.Month.Selected": {
+      "comment": "VoiceOver name for the month control. %@ is the displayed month name.",
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Month, %@" } } }
+    },
+    "Calendar.Navigation.Month.ChangeHint": {
+      "comment": "Outcome of activating the month control, without repeating VoiceOver gestures.",
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Choose another month" } } }
+    },
+    "Calendar.Navigation.PreviousYear": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Previous year" } } }
+    },
+    "Calendar.Navigation.NextYear": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Next year" } } }
+    },
+    "Calendar.Navigation.PreviousMonth": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Previous month" } } }
+    },
+    "Calendar.Navigation.NextMonth": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Next month" } } }
+    },
+    "Calendar.Selection.RangeStart": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Range starts on %@. Choose an end date." } } }
+    },
+    "Calendar.Selection.RangeComplete": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Selected range, %@ to %@." } } }
+    },
     "Calendar.Day.Secondary": {
       "comment": "VoiceOver description of a day cell's secondary (alternate calendar) label. %@ is the secondary label.",
       "extractionState": "manual",
@@ -104,7 +168,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Double tap to change the selected year"
+            "value": "Choose another year"
           }
         }
       }

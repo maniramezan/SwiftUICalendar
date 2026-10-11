@@ -132,14 +132,18 @@ struct CalendarFoldSpanTests {
         let band = container - span.total
         #expect(band == 300)
 
-        let layout = CalendarViewportLayout(width: band, minimumWidth: metrics.minCalendarWidth)
+        let layout = CalendarViewportLayout(
+            width: band, cellWidth: metrics.minCellSize, margins: 0,
+            preferredSpacing: metrics.itemSpacing, minimumSpacing: metrics.itemSpacing)
         #expect(layout.overflows)
         #expect(layout.contentWidth == metrics.minCalendarWidth)
 
         // Without the fold the same container comfortably fits.
         #expect(
-            !CalendarViewportLayout(width: container, minimumWidth: metrics.minCalendarWidth)
-                .overflows)
+            !CalendarViewportLayout(
+                width: container, cellWidth: metrics.minCellSize, margins: 0,
+                preferredSpacing: metrics.itemSpacing, minimumSpacing: metrics.itemSpacing
+            ).overflows)
     }
 }
 

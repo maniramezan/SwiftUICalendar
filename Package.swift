@@ -38,7 +38,7 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/maniramezan/SwiftUIComponents",
-            .upToNextMajor(from: "0.16.0")
+            .upToNextMajor(from: "0.18.1")
         ),
         .package(
             url: "https://github.com/pointfreeco/swift-snapshot-testing",

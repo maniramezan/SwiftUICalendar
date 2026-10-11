@@ -71,6 +71,7 @@
     { "path": "UITests/HeaderControlUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/LocaleDirectionUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/WeekdayColumnsReachableUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
+    { "path": "UITests/DynamicTypeUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
   ],
   "targets": [
     {

@@ -27,6 +27,7 @@ func assertCalendarStructure(
     theme: Theme = Theme(),
     width: CGFloat = 390,
     monthSpan: Int = 0,
+    minimumCellSize: CGSize = CGSize(width: 44, height: 44),
     named name: String? = nil,
     file: StaticString = #filePath,
     testName: String = #function,
@@ -37,7 +38,8 @@ func assertCalendarStructure(
         configuration: configuration,
         theme: theme,
         width: width,
-        monthSpan: monthSpan
+        monthSpan: monthSpan,
+        minimumCellSize: minimumCellSize
     )
     withSnapshotTesting(record: globalRecordMode) {
         assertSnapshot(
@@ -73,7 +75,8 @@ enum CalendarStructure {
         configuration: CalendarConfiguration,
         theme: Theme,
         width: CGFloat,
-        monthSpan: Int
+        monthSpan: Int,
+        minimumCellSize: CGSize = CGSize(width: 44, height: 44)
     ) -> String {
         let calendar = model.state.calendar
         var lines: [String] = []
@@ -89,9 +92,30 @@ enum CalendarStructure {
         lines.append("secondaryLabel: \(secondaryName(theme.day.secondaryLabelMode))")
         lines.append("selection: \(describe(model.selection, calendar: calendar))")
 
-        let metrics = CalendarMetrics.default
+        let baseMetrics = CalendarMetrics.default.resolvingContent(
+            cell: minimumCellSize, weekday: .zero)
+        let margins =
+            2 * baseMetrics.calendarMargin
+            + (configuration.scrollMode == .vertical ? 2 * baseMetrics.monthInset : 0)
+        let viewport = CalendarViewportLayout(
+            width: width, cellWidth: baseMetrics.minCellSize, margins: margins,
+            preferredSpacing: configuration.layout.preferredColumnSpacing
+                ?? baseMetrics.itemSpacing,
+            minimumSpacing: configuration.layout.minimumColumnSpacing)
+        let metrics = baseMetrics.scalingSoftMargins(by: viewport.marginScale).resolvingSpacing(
+            viewport.columnSpacing)
+        let contentWidth = viewport.contentWidth - margins * viewport.marginScale
+        let gridContainerWidth =
+            configuration.scrollMode == .horizontal
+            ? metrics.pageWidth(containerWidth: contentWidth) : contentWidth
         let layout = CalendarGridLayout(
-            containerWidth: width, metrics: metrics, sizing: configuration.gridSizing)
+            containerWidth: gridContainerWidth, metrics: metrics, sizing: configuration.gridSizing)
+        lines.append(
+            "viewport: minimum=\(number(viewport.minimumWidth)) overflow=\(viewport.overflows) gap=\(number(viewport.columnSpacing)) marginScale=\(number(viewport.marginScale))"
+        )
+        lines.append(
+            "cell: \(number(layout.cellSize))x\(number(layout.rowHeight)) weekdayHeight=\(number(metrics.weekdayHeaderHeight(cellSize: layout.cellSize)))"
+        )
         let isCompact = layout.gridWidth != layout.width
         lines.append(
             "layout(width=\(number(width))): cell=\(number(layout.cellSize)) "
@@ -183,9 +207,12 @@ enum CalendarStructure {
         var lines: [String] = []
         lines.append("dayRenderer: \(rendererName(theme.day.renderer))")
         lines.append("dayLabel: \(context.dayLabel)")
+        lines.append(
+            "cellSize: \(number(context.cellSize.width))x\(number(context.cellSize.height))")
         lines.append("secondaryLabel: \(context.secondaryLabel ?? "none")")
         lines.append("isToday: \(context.isToday)")
         lines.append("isSelected: \(context.isSelected)")
+        lines.append("builtInSelectionAnnouncement: traitOnly")
         lines.append("isInCurrentMonth: \(context.isInCurrentMonth)")
         // `accessibilityLabel` is intentionally omitted: it resolves localized strings, which differ
         // between a local toolchain and CI. `CalendarDayAccessibilityTests` covers it directly.

@@ -45,10 +45,13 @@ struct YearDecadeGridPickerView: View {
         }) {
             Text(currentValue.title)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .allowsTightening(true)
+                // A year never wraps; it asks for its natural width so the header reflows or
+                // overflows instead of truncating it.
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, metrics.controlPadding)
                 .padding(.vertical, metrics.tightPadding)
+                .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
@@ -90,7 +93,7 @@ struct YearDecadeGridPopoverContent: View {
                         .contentShape(Rectangle().inset(by: -metrics.hitTargetOutset))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Calendar.Navigation.Previous".localized)
+                .accessibilityLabel("Calendar.Navigation.PreviousYears".localized)
                 .accessibilityIdentifier(CalendarAccessibilityID.yearPagePreviousButton)
                 .disabled(!YearDecadeGrid.canPageBackward(from: pageStart, minYear: minYear))
 
@@ -98,6 +101,7 @@ struct YearDecadeGridPopoverContent: View {
 
                 Text(YearDecadeGrid.rangeLabel(pageStart: pageStart))
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
 
                 Spacer()
 
@@ -110,7 +114,7 @@ struct YearDecadeGridPopoverContent: View {
                         .contentShape(Rectangle().inset(by: -metrics.hitTargetOutset))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Calendar.Navigation.Next".localized)
+                .accessibilityLabel("Calendar.Navigation.NextYears".localized)
                 .accessibilityIdentifier(CalendarAccessibilityID.yearPageNextButton)
                 .disabled(!YearDecadeGrid.canPageForward(from: pageStart, maxYear: maxYear))
             }
@@ -178,6 +182,7 @@ private struct YearDecadeGridCell: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(CalendarAccessibilityID.yearOption(year: year))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .disabled(!isSelectable)
         .opacity(isSelectable ? 1 : 0.3)
     }

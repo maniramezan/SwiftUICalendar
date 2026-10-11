@@ -1,8 +1,10 @@
 dayRenderer: square
 dayLabel: 15
+cellSize: 44x44
 secondaryLabel: none
 isToday: true
 isSelected: false
+builtInSelectionAnnouncement: traitOnly
 isInCurrentMonth: true
 emptyDayBorderColor: clear
 emptyDayBorderColorWidth: 0
