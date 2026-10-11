@@ -100,6 +100,9 @@ CalendarView(model: calendar, theme: theme)
 - ``CalendarConfiguration/GridSizing``
 - ``CalendarConfiguration/YearSelection``
 - ``CalendarConfiguration/KeyboardNavigation``
+- ``CalendarLayoutConfiguration``
+- ``CalendarLayoutConfiguration/Overflow``
+- ``CalendarLayoutInfo``
 - ``Theme/Day``
 - ``Theme/Day/SecondaryLabelMode``
 - ``Typography``
@@ -118,6 +121,8 @@ CalendarView(model: calendar, theme: theme)
 
 - <doc:CustomizingDayViews>
 - ``CalendarDayContext``
+- ``CalendarDaySizingContext``
+- ``CalendarRangePosition``
 - ``CalendarDayView``
 
 ### Tutorials
