@@ -234,7 +234,8 @@ private struct CalendarSurface: View {
                 ScrollView(
                     headerHeight + metrics.rowSpacing + metrics.minRowHeight
                         + metrics.weekdayHeaderMinHeight > geometry.size.height
-                        ? .vertical : []
+                        ? .vertical : [],
+                    showsIndicators: CalendarScrollChrome.showsIndicators
                 ) {
                     VStack(spacing: metrics.rowSpacing) {
                         CalendarPinnedHeader(
@@ -251,7 +252,6 @@ private struct CalendarSurface: View {
                     .frame(maxWidth: .infinity)
                 }
                 .scrollBounceBehavior(.basedOnSize)
-                .scrollIndicators(CalendarScrollChrome.indicators)
             }
         }
     }
@@ -268,7 +268,7 @@ private struct CalendarFixedSurface: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView(.vertical) {
+            ScrollView(.vertical, showsIndicators: CalendarScrollChrome.showsIndicators) {
                 VStack(spacing: metrics.rowSpacing) {
                     CalendarPinnedHeader(
                         viewModel: viewModel, configuration: configuration,
@@ -284,7 +284,6 @@ private struct CalendarFixedSurface: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
-            .scrollIndicators(CalendarScrollChrome.indicators)
             .onChange(of: keyboard.scrollRequest) { _, request in
                 guard keyboard.isActive, let request else { return }
                 proxy.scrollTo(request.identity)

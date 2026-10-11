@@ -27,8 +27,8 @@ struct CalendarBodyVerticalView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            // See `CalendarScrollChrome.indicators` for why macOS hides the indicator.
-            ScrollView(.vertical) {
+            // See `CalendarScrollChrome.showsIndicators` for why macOS hides the indicator.
+            ScrollView(.vertical, showsIndicators: CalendarScrollChrome.showsIndicators) {
                 LazyVStack(spacing: metrics.monthSpacing) {
                     if let anchor {
                         // Offsets outside `dateRange` resolve to `nil` and render nothing, so a
@@ -78,7 +78,6 @@ struct CalendarBodyVerticalView: View {
             // Alignment still snaps the resting position to a month.
             .scrollTargetBehavior(.viewAligned(limitBehavior: .never))
             .scrollPosition(id: $scrollPosition, anchor: .top)
-            .scrollIndicators(CalendarScrollChrome.indicators)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onAppear {
                 initializeWindow()
