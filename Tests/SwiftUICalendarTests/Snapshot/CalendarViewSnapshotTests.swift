@@ -60,6 +60,10 @@ struct CalendarViewSnapshotTests {
         let distant = try #require(vm.monthIdentifier(offset: 60))
         try vm.navigate(toMonth: distant)
         try vm.navigate(toMonth: original)
+        // Continuous scrolling may settle partway through a month. Synchronizing its visible
+        // month must preserve the same rendered window and selection structure.
+        let settled = try #require(vm.engine.navigationDate(in: original, preferredDay: 1))
+        try vm.navigate(to: settled)
         assertCalendarStructure(
             model: vm, configuration: CalendarConfiguration(scrollMode: .vertical),
             width: snapshotWidth, monthSpan: 1, named: "vertical-calendar")

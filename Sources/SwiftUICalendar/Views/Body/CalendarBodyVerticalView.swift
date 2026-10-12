@@ -73,10 +73,7 @@ struct CalendarBodyVerticalView: View {
                 .padding(.vertical, metrics.itemSpacing)
                 .padding(.horizontal, metrics.monthInset)
             }
-            // `.never`: the default limit caps a fling to about one view in compact width, so a fast
-            // scroll stopped abruptly after a single month instead of decelerating naturally.
-            // Alignment still snaps the resting position to a month.
-            .scrollTargetBehavior(.viewAligned(limitBehavior: .never))
+            .scrollTargetBehavior(CalendarVerticalScrollTargetBehavior())
             .scrollPosition(id: $scrollPosition, anchor: .top)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onAppear {
@@ -109,7 +106,7 @@ struct CalendarBodyVerticalView: View {
                 proxy.scrollTo(request.identity)
             }
             .onChange(of: viewModel.currentDate) { _, _ in
-                synchronizeExternalNavigation()
+                synchronizeExternalNavigation(proxy: proxy)
             }
             .onChange(of: viewModel.calendarSignature) { _, signature in
                 logger.info(
@@ -152,7 +149,7 @@ struct CalendarBodyVerticalView: View {
     }
 
     /// Rebuilds the window when navigation arrives from outside the vertical scroll.
-    private func synchronizeExternalNavigation() {
+    private func synchronizeExternalNavigation(proxy: ScrollViewProxy) {
         let target = currentMonthIdentifier
         // A model change this view's own settlement produced is not external navigation. By the
         // time it arrives the list may have moved on, and treating it as external reset the window
@@ -163,13 +160,20 @@ struct CalendarBodyVerticalView: View {
             )
             return
         }
-        guard target != scrollPosition else { return }
         logger.info(
             "External navigation to \(target.year, privacy: .public)-\(target.month, privacy: .public); regenerating window"
         )
         // Regenerate around the target so external navigation starts from a clean, centered window.
         settle.cancel()
-        resetWindow()
+        if target == anchor {
+            // A continuous scroll can leave the anchor month only partly visible. Changing its
+            // selected date (Today, for example) must still restore the month to the viewport.
+            withTransaction(Transaction(animation: nil)) {
+                proxy.scrollTo(target, anchor: .top)
+            }
+        } else {
+            resetWindow()
+        }
     }
 
     /// Applies the final visible month after a user scroll settles. Updating the model only at the
