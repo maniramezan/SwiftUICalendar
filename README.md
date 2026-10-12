@@ -135,6 +135,36 @@ CalendarView(model: calendar, configuration: configuration)
 Use `.compact` when the calendar should look identical regardless of window size, and `.flexible`
 when it should track the full width of a resizable pane.
 
+## Readable Layout and Overflow
+
+The calendar never shrinks day numbers to fit. Cells keep a 44pt hit target, rows grow with
+Dynamic Type, and a swipe never selects a date. `CalendarConfiguration.layout` controls the
+horizontal fit when the width is too small for readable cells.
+
+```swift
+let configuration = CalendarConfiguration(
+    layout: CalendarLayoutConfiguration(
+        preferredColumnSpacing: 8,
+        minimumColumnSpacing: 4,
+        overflow: .automatic
+    )
+)
+
+CalendarView(model: calendar, configuration: configuration)
+    .onCalendarLayoutChange { info in
+        // info.minimumWidth is the width a host-owned layout must provide.
+    }
+```
+
+| `overflow` | Behavior |
+| --- | --- |
+| `.automatic` (default) | Outer margins compress first, then column gaps. Only when readable cells and minimum gaps still cannot fit does the grid scroll horizontally, so every weekday stays reachable. Margins are restored in full once it scrolls. |
+| `.minimumSize` | The calendar requests the width it needs and the host owns overflow, for example by placing it in its own horizontal `ScrollView`. |
+
+At a 44pt cell minimum the default floor is 332pt wide. Larger text sizes raise it.
+Custom day views declare the room they need with
+`theme.day.setDayContent(minimumSize:)`; see the DocC article *Customizing Day Views*.
+
 ## iPhone Duo
 
 On a partially folded iPhone Duo the hinge divides the inner display, and the system reports a
