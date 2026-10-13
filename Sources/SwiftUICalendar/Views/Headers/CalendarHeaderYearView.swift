@@ -69,7 +69,8 @@ struct CalendarHeaderYearView: View {
         Binding(
             get: {
                 Self.selectedYearItem(
-                    currentYear: model.currentYear,
+                    // Follows a vertical scroll before it settles; see `previewScrolledMonth(_:)`.
+                    currentYear: model.headerYear,
                     itemsById: yearItemsById,
                     items: yearItems
                 )

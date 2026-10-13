@@ -64,6 +64,13 @@ import SwiftUI
     public private(set) var state: CalendarState
     // A Today tap must reveal its day even when navigation clamps to the existing date.
     private(set) var todayScrollRequest: UInt = 0
+    // The month a vertical scroll is passing through before it settles. Only the header reads these,
+    // so a scroll keeps the title current without writing `state`, which every realized month grid
+    // observes. See `previewScrolledMonth(_:)`.
+    private(set) var scrollPreviewMonth: MonthIdentifier?
+    // Split from `scrollPreviewMonth` so the year picker re-renders only when a scroll crosses a
+    // year, not on every month.
+    private(set) var scrollPreviewYear: Int?
     @ObservationIgnored private var onAction: ((CalendarAction) -> Void)?
     // Grids, month offsets, month titles, and date formatters live in a cache keyed by calendar signature rather
     // than by model instance, so multiple calendar instances (and any that predate `sync`
@@ -228,6 +235,34 @@ import SwiftUI
 
     func navigateInVisibleEra(toMonth month: MonthIdentifier) throws {
         try perform(.navigateVisibleEraMonth(month))
+    }
+
+    // MARK: - Scroll preview
+
+    /// The month the header shows: the month a vertical scroll is passing through, otherwise
+    /// ``visibleMonth``.
+    var headerMonth: MonthIdentifier { scrollPreviewMonth ?? visibleMonth }
+
+    /// The year the header shows; follows ``headerMonth``.
+    var headerYear: Int { scrollPreviewYear ?? currentYear }
+
+    /// Shows `month` in the header without navigating the model.
+    ///
+    /// A vertical scroll calls this on every month boundary it crosses and navigates the model only
+    /// once the scroll settles. Navigating mid-scroll wrote `state`, which invalidated every realized
+    /// month grid (and, for a controlled calendar, sent a store action) per boundary crossed. Pass
+    /// `nil`, or the visible month, to make the header follow ``visibleMonth`` again.
+    ///
+    /// A month in another era is not previewed: the year picker only offers years of the visible era,
+    /// so the header waits for the settled navigation instead.
+    func previewScrolledMonth(_ month: MonthIdentifier?) {
+        let visible = visibleMonth
+        let preview = month.flatMap { $0 == visible || $0.era != visible.era ? nil : $0 }
+        let year = preview.flatMap { $0.year == currentYear ? nil : $0.year }
+        // `@Observable` notifies on every write, equal or not; only write real changes so the
+        // header re-renders once per boundary and the year picker only when the year differs.
+        if scrollPreviewMonth != preview { scrollPreviewMonth = preview }
+        if scrollPreviewYear != year { scrollPreviewYear = year }
     }
 
     /// Creates a view model for a given calendar system and selection mode.
