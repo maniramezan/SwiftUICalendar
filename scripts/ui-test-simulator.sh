@@ -24,8 +24,9 @@
 set -euo pipefail
 
 hang_marker="hung before establishing connection"
-# Combined CPU of the simulator's processes, in percent of one core, that counts as quiet.
-quiet_cpu="${SIMULATOR_QUIET_CPU:-30}"
+# Combined CPU of the simulator's processes, in percent of one core, that counts as quiet. A settled
+# CI simulator idles at 35-40%, mostly `diagnosticd` (run 38428942312).
+quiet_cpu="${SIMULATOR_QUIET_CPU:-50}"
 quiet_timeout="${SIMULATOR_QUIET_TIMEOUT:-600}"
 quiet_checks=3
 quiet_interval=5
