@@ -14,6 +14,28 @@ struct CalendarViewModelNavigationTests {
 
     // MARK: - goToToday
 
+    @Test(
+        "Repeated Today requests remain observable when the date is unchanged",
+        arguments: [false, true])
+    func repeatedTodayRequests(controlled: Bool) throws {
+        let now = Date()
+        let state = try CalendarState(
+            calendar: Calendar(identifier: .gregorian), currentDate: now,
+            dateRange: .onOrBefore(now))
+        var actions: [CalendarAction] = []
+        let vm =
+            controlled
+            ? CalendarViewModel(state: state, onAction: { actions.append($0) })
+            : CalendarViewModel(state: state)
+        vm.goToToday()
+        let date = vm.currentDate
+        let request = vm.todayScrollRequest
+        vm.goToToday()
+        #expect(vm.currentDate == date)
+        #expect(vm.todayScrollRequest == request + 1)
+        if controlled { #expect(actions == [.today, .today]) }
+    }
+
     @Test("goToToday: navigates to today's month and year")
     func goToTodayNavigatesToCurrentMonthAndYear() {
         let vm = CalendarViewModel.test()
