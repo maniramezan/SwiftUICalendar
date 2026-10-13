@@ -6,16 +6,9 @@ struct CalendarHeaderMonthView: View {
 
     private let logger = Logger.swiftUICalendar(for: Self.self)
 
-    private var monthItems: [MonthItem] {
-        Self.monthItems(for: model)
-    }
-
-    private var monthItemsById: [Int: MonthItem] {
-        Dictionary(uniqueKeysWithValues: monthItems.map { ($0.id, $0) })
-    }
-
+    /// Months of the year the header shows, which follows a vertical scroll before it settles.
     static func monthItems(for model: CalendarViewModel) -> [MonthItem] {
-        model.months(in: model.currentYear).map {
+        model.months(in: model.headerYear).map {
             MonthItem(
                 id: $0.month + ($0.identifier.isLeapMonth ? 100 : 0),
                 title: model.monthSymbol(for: $0.identifier), month: $0.identifier)
@@ -31,15 +24,18 @@ struct CalendarHeaderMonthView: View {
     }
 
     var body: some View {
+        // Resolved once per body: this re-renders on every month a vertical scroll crosses.
+        let items = Self.monthItems(for: model)
+        let itemsById = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        let month = model.headerMonth
         CalendarNavigationHeaderView(
-            items: monthItems,
+            items: items,
             selectedItem: Binding(
                 get: {
                     Self.selectedMonthItem(
-                        currentMonth: model.currentMonth
-                            + (model.visibleMonth.isLeapMonth ? 100 : 0),
-                        itemsById: monthItemsById,
-                        items: monthItems
+                        currentMonth: month.month + (month.isLeapMonth ? 100 : 0),
+                        itemsById: itemsById,
+                        items: items
                     )
                 },
                 set: { newItem in

@@ -98,6 +98,7 @@ struct CalendarBodyVerticalView: View {
             .onDisappear {
                 settle.cancel()
                 prefetch.cancel()
+                viewModel.previewScrolledMonth(nil)
             }
             .onScrollPhaseChange { _, newPhase in
                 if newPhase == .tracking || newPhase == .interacting {
@@ -125,6 +126,7 @@ struct CalendarBodyVerticalView: View {
                 logger.info(
                     "Calendar signature changed to \(signature, privacy: .public); resetting window"
                 )
+                viewModel.previewScrolledMonth(nil)
                 resetWindow()
             }
             .onChange(of: realizedMonths) { _, realized in
@@ -138,11 +140,15 @@ struct CalendarBodyVerticalView: View {
                     prefetch.scrollPositionChanged(
                         to: position, anchor: anchor, viewModel: viewModel)
                 }
+                // The header follows the gesture live; only the model waits for the scroll to
+                // settle. Before the user's own first gesture this is a programmatic reveal,
+                // which must never move the header.
+                if settle.isUserScrolling { viewModel.previewScrolledMonth(position) }
                 guard position != currentMonthIdentifier else { return }
                 // Mid-gesture or mid-momentum, the `.idle` phase change settles once at the end.
-                // Settling on every month crossed wrote the model ~100 times per fling, re-rendered
-                // the header each time, and raced the still-moving scroll position (see
-                // `synchronizeExternalNavigation`).
+                // Settling on every month crossed wrote the model ~100 times per fling,
+                // invalidated every realized grid each time, and raced the still-moving scroll
+                // position (see `synchronizeExternalNavigation`).
                 guard !settle.isScrolling else { return }
                 guard viewModel.engine.start(of: position) != nil else { return }
                 scheduleScrollSettlement()
@@ -173,6 +179,9 @@ struct CalendarBodyVerticalView: View {
         // time it arrives the list may have moved on, and treating it as external reset the window
         // and `scrollTo`'d back to the settled month — killing the scroll's momentum mid-fling.
         if !isTodayRequest, settle.consumeSettledMonth(target) {
+            // A controlled calendar applies the settlement a render later, so the header kept
+            // previewing it until now. If a new gesture began meanwhile, keep following that one.
+            viewModel.previewScrolledMonth(settle.isUserScrolling ? scrollPosition : nil)
             logger.debug(
                 "Ignoring self-originated navigation to \(target.year, privacy: .public)-\(target.month, privacy: .public)"
             )
@@ -183,6 +192,7 @@ struct CalendarBodyVerticalView: View {
         )
         // Regenerate around the target so external navigation starts from a clean, centered window.
         settle.cancel()
+        viewModel.previewScrolledMonth(nil)
         let calendar = viewModel.engine.calendar
         pendingDayReveal =
             calendar.isDateInToday(viewModel.currentDate)
@@ -221,8 +231,9 @@ struct CalendarBodyVerticalView: View {
         }
     }
 
-    /// Applies the final visible month after a user scroll settles. Updating the model only at the
-    /// end of a gesture prevents intermediate positions from repeatedly changing the header.
+    /// Applies the final visible month after a user scroll settles. Intermediate positions only move
+    /// the header (`previewScrolledMonth(_:)`); the model, which every realized grid observes, is
+    /// navigated once at the end of the gesture.
     private func scheduleScrollSettlement() {
         settle.schedule { settleScrollPosition() }
     }
@@ -231,9 +242,14 @@ struct CalendarBodyVerticalView: View {
         // Programmatic month/day reveals can also expose part of a neighboring month.
         // Only a user's gesture may turn that visibility into a model navigation.
         guard settle.hasUserInteraction else { return }
-        guard let position = scrollPosition, position != currentMonthIdentifier else { return }
-        guard viewModel.engine.start(of: position) != nil else { return }
+        guard let position = scrollPosition, position != currentMonthIdentifier,
+            viewModel.engine.start(of: position) != nil
+        else {
+            viewModel.previewScrolledMonth(nil)
+            return
+        }
         guard let date = viewModel.engine.navigationDate(in: position, preferredDay: 1) else {
+            viewModel.previewScrolledMonth(nil)
             logger.error(
                 "No navigable date in settled month \(position.year, privacy: .public)-\(position.month, privacy: .public)"
             )
@@ -242,12 +258,16 @@ struct CalendarBodyVerticalView: View {
         CalendarSignpost.scroll.measure("settleScrollPosition") {
             do {
                 try viewModel.navigate(to: date)
+                // Clears the preview once an owned model is on `position`; a controlled model
+                // catches up a render later, and keeps the header on `position` until it does.
+                viewModel.previewScrolledMonth(position)
                 settle.recordSettled(position)
                 recenterWindowIfNeeded(around: position)
                 logger.debug(
                     "Settled on \(position.year, privacy: .public)-\(position.month, privacy: .public)"
                 )
             } catch {
+                viewModel.previewScrolledMonth(nil)
                 logger.error(
                     "Failed to navigate to settled month", error: error,
                     context: "month=\(position.year)-\(position.month)")
@@ -320,6 +340,9 @@ final class ScrollSettleCoordinator {
 
     /// Whether a user gesture or its momentum is in progress (any non-idle scroll phase).
     private(set) var isScrolling = false
+    /// Whether the scroll in progress is a user's gesture or its momentum, not a programmatic
+    /// `.animating` scroll.
+    private(set) var isUserScrolling = false
     private(set) var hasUserInteraction = false
 
     /// Remembers that `month` was written to the model by a settlement, not by external navigation.
@@ -351,9 +374,10 @@ final class ScrollSettleCoordinator {
         isScrolling = phase != .idle
         switch phase {
         case .tracking, .interacting, .decelerating:
+            isUserScrolling = true
             hasUserInteraction = true
         case .idle, .animating:
-            break
+            isUserScrolling = false
         }
         if phase == .idle {
             CalendarSignpost.scroll.end("verticalScroll", scrollInterval)
@@ -371,6 +395,7 @@ final class ScrollSettleCoordinator {
         CalendarSignpost.scroll.end("verticalScroll", scrollInterval)
         scrollInterval = nil
         isScrolling = false
+        isUserScrolling = false
         hasUserInteraction = false
         settledMonth = nil
     }
