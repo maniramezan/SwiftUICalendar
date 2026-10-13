@@ -21,6 +21,14 @@ class SampleUITestCase: XCTestCase {
     }
 }
 
+extension XCUIElementSnapshot {
+    /// This element and all of its descendants, depth first. Reading frames and identifiers from
+    /// one snapshot costs a single round trip to the app instead of one per element.
+    var flattened: [any XCUIElementSnapshot] {
+        [self] + children.flatMap(\.flattened)
+    }
+}
+
 extension XCUIApplication {
     /// Longest the settings panel is given to appear before the toggle is tapped again.
     fileprivate static let settingsPresentationTimeout: TimeInterval = 6

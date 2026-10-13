@@ -4,7 +4,8 @@
 #
 #   ui-test-simulator.sh boot <device name>       Boot the newest iOS runtime's <device name> and
 #                                                print its UDID.
-#   ui-test-simulator.sh wait <udid>              Block until the simulator has finished booting.
+#   ui-test-simulator.sh wait <udid>              Block until the simulator has finished booting
+#                                                and its background work has quieted down.
 #   ui-test-simulator.sh test <udid> <plan> <result bundle> [xcodebuild flags...]
 #                                                Run <plan>, rebooting and retrying once if the
 #                                                test runner never connects.
@@ -14,10 +15,55 @@
 # to reach the simulator's service hub to resume it, so no test runs and the plan fails after the
 # 300-second startup timer. Booting first and waiting on `bootstatus` avoids most of that; the retry
 # covers the rest.
+#
+# `bootstatus` returns while the simulator is still indexing, rendering posters, and compiling
+# shaders. On a 3-CPU runner that work starves the app under test: run 38411339964 spent 12 to 55
+# seconds per accessibility query and timed out a test that passes in under a minute. So `wait`
+# also holds until the simulator's own processes go quiet.
 
 set -euo pipefail
 
 hang_marker="hung before establishing connection"
+# Combined CPU of the simulator's processes, in percent of one core, that counts as quiet. A settled
+# CI simulator idles at 35-40%, mostly `diagnosticd` (run 38428942312).
+quiet_cpu="${SIMULATOR_QUIET_CPU:-50}"
+quiet_timeout="${SIMULATOR_QUIET_TIMEOUT:-600}"
+quiet_checks=3
+quiet_interval=5
+
+# Prints "<cpu> <process>" for the simulator's processes, busiest first. They run from the
+# simulator runtime's root or, for installed apps, from the device's own directory.
+simulator_processes() {
+  # `comm` is the full executable path, which can contain spaces ("iOS 27.0.simruntime").
+  ps -axo %cpu=,comm= | awk -v device="CoreSimulator/Devices/$1/" '
+    index($0, "CoreSimulator/Profiles/Runtimes/") || index($0, device) {
+      name = $0; sub(/.*\//, "", name); print $1, name
+    }' | sort -rn
+}
+
+wait_for_quiet() {
+  local udid="$1" started=$SECONDS quiet=0 total
+  while ((SECONDS - started < quiet_timeout)); do
+    total="$(simulator_processes "${udid}" | awk '{ sum += $1 } END { printf "%d", sum }')"
+    if ((total <= quiet_cpu)); then
+      quiet=$((quiet + 1))
+      if ((quiet >= quiet_checks)); then
+        echo "Simulator went quiet (${total}% CPU) after $((SECONDS - started))s"
+        return 0
+      fi
+    else
+      quiet=0
+      if (((SECONDS - started) % 30 < quiet_interval)); then
+        echo "Simulator still busy at ${total}% CPU; busiest processes:"
+        simulator_processes "${udid}" | head -5 | sed 's/^/  /'
+      fi
+    fi
+    sleep "${quiet_interval}"
+  done
+  # Testing a busy simulator is slower, not wrong, so carry on rather than fail the job.
+  echo "::warning::The simulator was still busy after ${quiet_timeout}s; testing anyway"
+  simulator_processes "${udid}" | head -5 | sed 's/^/  /'
+}
 
 resolve_udid() {
   xcrun simctl list devices available -j | ruby -rjson -e '
@@ -37,6 +83,7 @@ wait_for_boot() {
   # rest of first-boot setup, not just the "Booted" state.
   xcrun simctl bootstatus "${udid}" -b
   echo "Simulator ${udid} finished booting after $((SECONDS - started))s of waiting"
+  wait_for_quiet "${udid}"
 }
 
 run_plan() {
