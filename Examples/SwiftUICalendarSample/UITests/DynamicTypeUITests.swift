@@ -83,17 +83,25 @@ final class DynamicTypeUITests: SampleUITestCase {
             let days = app.buttons.matching(
                 NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))
             XCTAssertTrue(days.firstMatch.waitForExistence(timeout: Self.dayCellTimeout))
-            let firstRowTop =
-                (0..<days.count)
-                .map { days.element(boundBy: $0).frame }
-                .filter { $0.width > 0 }
-                .map(\.minY)
-                .min() ?? 0
+            // One snapshot instead of a query per day and control. Every query is answered on the
+            // app's main thread, and on a busy CI simulator each took 12 to 55 seconds, so the
+            // three dozen this check used to make outlasted the test's time allowance.
+            let elements = try app.snapshot().flattened
+            let firstRowTop = try XCTUnwrap(
+                elements
+                    .filter {
+                        $0.elementType == .button
+                            && $0.identifier.hasPrefix(CalendarAccessibilityID.dayPrefix)
+                            && $0.frame.width > 0
+                    }
+                    .map(\.frame.minY)
+                    .min(),
+                "\(mode): no day cell in the snapshot")
             for identifier in [
                 CalendarAccessibilityID.monthButton, CalendarAccessibilityID.yearButton,
             ] {
-                let control = app.descendants(matching: .any)[identifier].firstMatch
-                XCTAssertTrue(control.waitForExistence(timeout: Self.dayCellTimeout), identifier)
+                let control = try XCTUnwrap(
+                    elements.first { $0.identifier == identifier }, "\(mode): no \(identifier)")
                 XCTAssertLessThanOrEqual(
                     control.frame.maxY, firstRowTop + Self.frameTolerance,
                     "\(mode): \(identifier) ends at \(control.frame.maxY), below the first week at \(firstRowTop)"
@@ -110,16 +118,24 @@ final class DynamicTypeUITests: SampleUITestCase {
             NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))
         XCTAssertTrue(days.firstMatch.waitForExistence(timeout: Self.dayCellTimeout))
         for attempt in 0..<4 {
-            let window = app.windows.firstMatch.frame
-            let populated = days.allElementsBoundByIndex.map { (element: $0, frame: $0.frame) }
-                .filter { $0.frame.width > 0 && $0.frame.height > 0 }
+            // Find the row in one snapshot rather than querying every day cell's frame; only the
+            // chosen row's cells are resolved as live elements.
+            let snapshot = try app.snapshot()
+            let window = snapshot.frame
+            let populated = snapshot.flattened.filter {
+                $0.elementType == .button
+                    && $0.identifier.hasPrefix(CalendarAccessibilityID.dayPrefix)
+                    && $0.frame.width > 0 && $0.frame.height > 0
+            }
             let rows = Dictionary(grouping: populated) { Int($0.frame.minY.rounded()) }
             for y in rows.keys.sorted() {
                 let row = rows[y, default: []].sorted { $0.frame.minX < $1.frame.minX }
                 guard row.count == Self.weekdayColumnCount, let first = row.first,
-                    window.contains(first.frame), first.element.isHittable
+                    window.contains(first.frame)
                 else { continue }
-                return row.map(\.element)
+                let elements = row.map { app.buttons[$0.identifier] }
+                guard elements[0].isHittable else { continue }
+                return elements
             }
             // Full Dynamic Type may put the first full week below the viewport. Reveal it;
             // never confuse an offscreen cached row with a clipped or unreachable date.

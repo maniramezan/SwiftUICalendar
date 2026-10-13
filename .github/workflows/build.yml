@@ -130,7 +130,8 @@ jobs:
       # Left to xcodebuild, a cold boot overlaps the test runner's launch, and the runner can stay
       # suspended until the plan fails (run 38346060741). Boot after the build, not during it: on
       # this 3-CPU runner a concurrent first boot slowed the build from 3 to 16 minutes (run
-      # 38404918337).
+      # 38404918337). The wait then holds until the simulator's first-boot background work goes
+      # quiet, which otherwise starved the app under test into timeouts (run 38411339964).
       - name: Boot UI test simulator
         timeout-minutes: 15
         run: |
