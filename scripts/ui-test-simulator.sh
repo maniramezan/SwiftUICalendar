@@ -12,8 +12,8 @@
 # A cold simulator reports "Booted" seconds after `simctl boot`, long before first-boot setup ends.
 # Left to xcodebuild, the test runner is launched suspended into that churn, and xcodebuild can fail
 # to reach the simulator's service hub to resume it, so no test runs and the plan fails after the
-# 300-second startup timer. Booting during the build and waiting on `bootstatus` avoids most of
-# that; the retry covers the rest.
+# 300-second startup timer. Booting first and waiting on `bootstatus` avoids most of that; the retry
+# covers the rest.
 
 set -euo pipefail
 
