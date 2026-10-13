@@ -96,8 +96,12 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
         for index in 0..<headers.count {
             let header = headers.element(boundBy: index)
             // Lazy stacks retain offscreen months. Their presence does not mean they are visible.
-            guard header.isHittable,
-                header.frame.intersects(app.windows.firstMatch.frame)
+            // Check the frame first: asking a retained header with no on-screen frame whether it is
+            // hittable fails the test ("Activation point invalid") instead of returning false.
+            let frame = header.frame
+            guard !frame.isEmpty,
+                frame.intersects(app.windows.firstMatch.frame),
+                header.isHittable
             else { continue }
             guard
                 let month = CalendarAccessibilityID.parseVerticalMonthHeader(

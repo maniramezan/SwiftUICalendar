@@ -99,15 +99,18 @@ jobs:
         working-directory: SwiftUICalendar
     env:
       PROJECT: Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
-      DESTINATION: platform=iOS Simulator,name=iPhone 17
+      DEVICE_NAME: iPhone 17
       # A cold simulator clone can take minutes to launch an app in landscape, and an app that is
       # starved that long answers no accessibility query (build 37137076097 spent 10 minutes in one
       # test). Run serially so clones do not starve each other, fail a stuck test in minutes rather
       # than the default, and retry once in a fresh process before calling it a regression.
+      # Simulator diagnostics collection never finishes on this runner: it waits out its 600-second
+      # timeout after any failure (run 38346060741) and adds nothing to the result bundle.
       UI_TEST_FLAGS: >-
         -parallel-testing-enabled NO -test-timeouts-enabled YES
         -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 300
         -retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES
+        -collect-test-diagnostics never
     steps:
       - name: Checkout SwiftUICalendar
         uses: actions/checkout@v7.0.1
@@ -117,25 +120,34 @@ jobs:
       - name: Select Swift toolchain
         run: bash ./scripts/select-swift-toolchain.sh
 
+      # Boots while the sample builds. Left to xcodebuild, a cold boot overlaps the test runner's
+      # launch, and the runner can stay suspended until the plan fails (run 38346060741).
+      - name: Boot UI test simulator
+        run: echo "SIMULATOR_UDID=$(bash ./scripts/ui-test-simulator.sh boot "$DEVICE_NAME")" >> "$GITHUB_ENV"
+
       - name: Build sample UI tests once
         # Allow the locked TCA dependency macros on fresh, noninteractive CI runners.
         run: >-
           xcodebuild build-for-testing -project "$PROJECT" -scheme SwiftUICalendarSample
-          -destination "$DESTINATION" -skipMacroValidation
+          -destination "id=$SIMULATOR_UDID" -skipMacroValidation
           -testProductsPath .build/SampleUITests.xctestproducts
 
+      - name: Wait for UI test simulator to finish booting
+        timeout-minutes: 10
+        run: bash ./scripts/ui-test-simulator.sh wait "$SIMULATOR_UDID"
+
       - name: Run default UI test plan
+        timeout-minutes: 60
         run: |
           mkdir -p .build/results
-          xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts \
-            -testPlan SwiftUICalendarSample -destination "$DESTINATION" $UI_TEST_FLAGS \
-            -resultBundlePath .build/results/default.xcresult
+          bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" SwiftUICalendarSample \
+            .build/results/default.xcresult $UI_TEST_FLAGS
 
       - name: Run per-language UI test plan
+        timeout-minutes: 40
         run: >-
-          xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts
-          -testPlan SwiftUICalendarSampleLocales -destination "$DESTINATION" $UI_TEST_FLAGS
-          -resultBundlePath .build/results/locales.xcresult
+          bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" SwiftUICalendarSampleLocales
+          .build/results/locales.xcresult $UI_TEST_FLAGS
 
       - name: Upload test results
         if: always()
