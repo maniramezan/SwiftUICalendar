@@ -62,6 +62,8 @@ import SwiftUI
 
     /// The authoritative value state for a locally owned model.
     public private(set) var state: CalendarState
+    // A Today tap must reveal its day even when navigation clamps to the existing date.
+    private(set) var todayScrollRequest: UInt = 0
     @ObservationIgnored private var onAction: ((CalendarAction) -> Void)?
     // Grids, month offsets, month titles, and date formatters live in a cache keyed by calendar signature rather
     // than by model instance, so multiple calendar instances (and any that predate `sync`
@@ -473,7 +475,13 @@ import SwiftUI
     // MARK: - Today navigation
 
     func goToToday() {
-        try? perform(.today)
+        do {
+            try perform(.today)
+            todayScrollRequest &+= 1
+            logger.debug("Requested Today navigation and day reveal")
+        } catch {
+            logger.error("Today navigation failed", error: error)
+        }
     }
 
     /// Whether today falls inside ``dateRange``, so the Today control can navigate.

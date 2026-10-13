@@ -12,7 +12,11 @@ struct CalendarBodyVerticalView: View {
     private let logger = Logger.swiftUICalendar(for: CalendarBodyVerticalView.self)
 
     @State private var anchor: MonthIdentifier?
+    @State private var months: [MonthIdentifier] = []
     @State private var scrollPosition: MonthIdentifier?
+    @State private var realizedMonths: Set<MonthIdentifier> = []
+    @State private var navigationPosition = ScrollPosition(idType: MonthIdentifier.self)
+    @State private var pendingDayReveal: Date?
     // The settle coordinator is a reference type held in `@State` rather than a value: its
     // bookkeeping changes on every scroll position update, and a value in `@State` would invalidate
     // this body — and with it the whole month list — on each one.
@@ -30,37 +34,33 @@ struct CalendarBodyVerticalView: View {
             // See `CalendarScrollChrome.showsIndicators` for why macOS hides the indicator.
             ScrollView(.vertical, showsIndicators: CalendarScrollChrome.showsIndicators) {
                 LazyVStack(spacing: metrics.monthSpacing) {
-                    if let anchor {
-                        // Offsets outside `dateRange` resolve to `nil` and render nothing, so a
-                        // narrow range simply yields a short list.
-                        ForEach(VerticalMonthWindow.offsets, id: \.self) { offset in
-                            if let identifier = viewModel.monthIdentifier(
-                                offset: offset, from: anchor)
-                            {
-                                // No `.environment(...)` re-injection here: the model, theme, and
-                                // typography are already inherited from `CalendarView`. Each
-                                // observable `.environment(_:)` call (and each
-                                // `@Environment(Type.self)` a row declares) instantiates a generic
-                                // key path at runtime; per realized row, that was the dominant cost
-                                // of a fast-scroll frame.
-                                VerticalMonthView(
-                                    item: VerticalMonthItem(
-                                        id: identifier,
-                                        monthTitle: viewModel.monthSymbol(for: identifier)
-                                    ),
-                                    locale: viewModel.locale,
-                                    typography: typography,
-                                    // `nil` until the first measurement: rows then measure
-                                    // themselves, exactly as before.
-                                    layoutWidth: contentWidth > 0 ? contentWidth : nil,
-                                    keyboard: keyboard
-                                )
-                                .id(identifier)
-                            }
-                        }
+                    // Month identity must survive re-anchoring. Relative offsets refer to a
+                    // different month after navigation and invalidate lazy placement caches.
+                    ForEach(months, id: \.self) { identifier in
+                        // No `.environment(...)` re-injection here: the model, theme, and
+                        // typography are already inherited from `CalendarView`. Each
+                        // observable `.environment(_:)` call (and each
+                        // `@Environment(Type.self)` a row declares) instantiates a generic
+                        // key path at runtime; per realized row, that was the dominant cost
+                        // of a fast-scroll frame.
+                        VerticalMonthView(
+                            item: VerticalMonthItem(
+                                id: identifier,
+                                monthTitle: viewModel.monthSymbol(for: identifier)
+                            ),
+                            locale: viewModel.locale,
+                            typography: typography,
+                            // `nil` until the first measurement: rows then measure
+                            // themselves, exactly as before.
+                            layoutWidth: contentWidth > 0 ? contentWidth : nil,
+                            keyboard: keyboard
+                        )
+                        .onAppear { realizedMonths.insert(identifier) }
+                        .onDisappear { realizedMonths.remove(identifier) }
                     }
                 }
                 .scrollTargetLayout()
+                .frame(maxWidth: .infinity)
                 // Measured inside the horizontal padding, so it equals the width each row's grid
                 // would otherwise have measured for itself.
                 .onGeometryChange(for: CGFloat.self) { geometry in
@@ -74,25 +74,35 @@ struct CalendarBodyVerticalView: View {
                 .padding(.horizontal, metrics.monthInset)
             }
             .scrollTargetBehavior(CalendarVerticalScrollTargetBehavior())
-            .scrollPosition(id: $scrollPosition, anchor: .top)
+            .calendarVerticalScrollPosition(navigation: $navigationPosition, month: $scrollPosition)
+            .onScrollTargetVisibilityChange(
+                idType: MonthIdentifier.self, threshold: VerticalMonthWindow.visibilityThreshold
+            ) { visible in
+                #if !os(macOS)
+                let visible = Set(visible)
+                scrollPosition = months.first(where: visible.contains)
+                #endif
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onAppear {
+                initializeWindow()
+            }
+            .onChange(of: anchor) { _, target in
+                #if os(macOS)
+                if let target { proxy.scrollTo(target, anchor: .top) }
+                #endif
+            }
+            .onChange(of: contentWidth) { _, _ in
                 initializeWindow()
             }
             .onDisappear {
                 settle.cancel()
                 prefetch.cancel()
             }
-            .onChange(of: anchor) { _, target in
-                guard let target else { return }
-                logger.debug(
-                    "Scrolling to anchor \(target.year, privacy: .public)-\(target.month, privacy: .public)"
-                )
-                withTransaction(Transaction(animation: nil)) {
-                    proxy.scrollTo(target, anchor: .top)
-                }
-            }
             .onScrollPhaseChange { _, newPhase in
+                if newPhase == .tracking || newPhase == .interacting {
+                    pendingDayReveal = nil
+                }
                 settle.recordPhase(newPhase)
                 if newPhase == .idle {
                     scheduleScrollSettlement()
@@ -108,11 +118,19 @@ struct CalendarBodyVerticalView: View {
             .onChange(of: viewModel.currentDate) { _, _ in
                 synchronizeExternalNavigation(proxy: proxy)
             }
+            .onChange(of: viewModel.todayScrollRequest) { _, _ in
+                synchronizeExternalNavigation(proxy: proxy, isTodayRequest: true)
+            }
             .onChange(of: viewModel.calendarSignature) { _, signature in
                 logger.info(
                     "Calendar signature changed to \(signature, privacy: .public); resetting window"
                 )
                 resetWindow()
+            }
+            .onChange(of: realizedMonths) { _, realized in
+                guard let day = pendingDayReveal else { return }
+                let month = viewModel.engine.month(containing: day)
+                if realized.contains(month) { revealRequestedDay(in: month, proxy: proxy) }
             }
             .onChange(of: scrollPosition) { _, position in
                 guard let position else { return }
@@ -137,42 +155,69 @@ struct CalendarBodyVerticalView: View {
     }
 
     private func initializeWindow() {
-        guard anchor == nil else { return }
+        guard anchor == nil, contentWidth > 0 else { return }
         let current = currentMonthIdentifier
         logger.info(
             "Initializing vertical window at \(current.year, privacy: .public)-\(current.month, privacy: .public)"
         )
-        // `scrollPosition` is left for the `onChange(of: anchor)` -> `scrollTo` below to populate;
-        // writing it here too raced with the scroll view's own write to the same binding within one
-        // frame, tripping SwiftUI's "tried to update multiple times per frame" diagnostic.
-        anchor = current
+        // Observe visibility separately from the explicit navigation request, so initial
+        // positioning does not race a user-position binding within the same layout pass.
+        resetWindow(to: current)
     }
 
     /// Rebuilds the window when navigation arrives from outside the vertical scroll.
-    private func synchronizeExternalNavigation(proxy: ScrollViewProxy) {
+    private func synchronizeExternalNavigation(proxy: ScrollViewProxy, isTodayRequest: Bool = false)
+    {
         let target = currentMonthIdentifier
         // A model change this view's own settlement produced is not external navigation. By the
         // time it arrives the list may have moved on, and treating it as external reset the window
         // and `scrollTo`'d back to the settled month — killing the scroll's momentum mid-fling.
-        if settle.consumeSettledMonth(target) {
+        if !isTodayRequest, settle.consumeSettledMonth(target) {
             logger.debug(
                 "Ignoring self-originated navigation to \(target.year, privacy: .public)-\(target.month, privacy: .public)"
             )
             return
         }
         logger.info(
-            "External navigation to \(target.year, privacy: .public)-\(target.month, privacy: .public); regenerating window"
+            "External navigation to \(target.year, privacy: .public)-\(target.month, privacy: .public); restoring position"
         )
         // Regenerate around the target so external navigation starts from a clean, centered window.
         settle.cancel()
+        let calendar = viewModel.engine.calendar
+        pendingDayReveal =
+            calendar.isDateInToday(viewModel.currentDate)
+            ? calendar.startOfDay(for: viewModel.currentDate) : nil
+        if realizedMonths.contains(target), pendingDayReveal != nil {
+            revealRequestedDay(in: target, proxy: proxy)
+            return
+        }
         if target == anchor {
             // A continuous scroll can leave the anchor month only partly visible. Changing its
             // selected date (Today, for example) must still restore the month to the viewport.
             withTransaction(Transaction(animation: nil)) {
+                #if os(macOS)
                 proxy.scrollTo(target, anchor: .top)
+                #else
+                navigationPosition.scrollTo(id: target, anchor: .top)
+                #endif
             }
         } else {
             resetWindow()
+        }
+    }
+
+    private func revealRequestedDay(in month: MonthIdentifier, proxy: ScrollViewProxy) {
+        guard let day = pendingDayReveal, viewModel.engine.month(containing: day) == month else {
+            return
+        }
+        pendingDayReveal = nil
+        logger.debug("Revealing the requested day in the visible month")
+        withTransaction(Transaction(animation: nil)) {
+            #if os(macOS)
+            proxy.scrollTo(MonthSnapshot.Day.identity(for: day), anchor: .center)
+            #else
+            navigationPosition.scrollTo(id: MonthSnapshot.Day.identity(for: day), anchor: .center)
+            #endif
         }
     }
 
@@ -183,6 +228,9 @@ struct CalendarBodyVerticalView: View {
     }
 
     private func settleScrollPosition() {
+        // Programmatic month/day reveals can also expose part of a neighboring month.
+        // Only a user's gesture may turn that visibility into a model navigation.
+        guard settle.hasUserInteraction else { return }
         guard let position = scrollPosition, position != currentMonthIdentifier else { return }
         guard viewModel.engine.start(of: position) != nil else { return }
         guard let date = viewModel.engine.navigationDate(in: position, preferredDay: 1) else {
@@ -212,8 +260,8 @@ struct CalendarBodyVerticalView: View {
     /// has ``VerticalMonthWindow/radius`` months of room.
     ///
     /// Runs only after an idle settlement, never mid-scroll (growing or shifting a `LazyVStack`
-    /// under an active scroll position is what the SDK mishandles). The settled month is already at
-    /// the top and becomes the new anchor, so the re-anchor is not visible.
+    /// under an active scroll position is what the SDK mishandles). Stable month IDs let the native
+    /// scroll position preserve the partially visible month when the window is re-centered.
     private func recenterWindowIfNeeded(around position: MonthIdentifier) {
         let engine = viewModel.engine
         guard let anchor, let anchorStart = engine.start(of: anchor),
@@ -234,15 +282,25 @@ struct CalendarBodyVerticalView: View {
         )
         // Controlled models receive the navigation through a later render. Use the settled
         // position directly rather than reading their still-stale current month.
-        resetWindow(to: position)
+        resetWindow(to: position, scrollToTarget: false)
     }
 
-    private func resetWindow(to target: MonthIdentifier? = nil) {
+    private func resetWindow(to target: MonthIdentifier? = nil, scrollToTarget: Bool = true) {
         // A new anchor invalidates the current sweep: prefetch offsets are relative to `anchor`, so
         // a stale sweep would warm entries keyed to an anchor the window no longer uses.
         prefetch.cancel()
-        // See `initializeWindow` — `scrollPosition` follows from the anchor change, not a direct write.
-        anchor = target ?? currentMonthIdentifier
+        let target = target ?? currentMonthIdentifier
+        months = VerticalMonthWindow.offsets.compactMap {
+            viewModel.monthIdentifier(offset: $0, from: target)
+        }
+        anchor = target
+        guard scrollToTarget else { return }
+        logger.debug(
+            "Scrolling to anchor \(target.year, privacy: .public)-\(target.month, privacy: .public)"
+        )
+        withTransaction(Transaction(animation: nil)) {
+            navigationPosition.scrollTo(id: target, anchor: .top)
+        }
     }
 }
 
@@ -262,6 +320,7 @@ final class ScrollSettleCoordinator {
 
     /// Whether a user gesture or its momentum is in progress (any non-idle scroll phase).
     private(set) var isScrolling = false
+    private(set) var hasUserInteraction = false
 
     /// Remembers that `month` was written to the model by a settlement, not by external navigation.
     func recordSettled(_ month: MonthIdentifier) {
@@ -290,6 +349,12 @@ final class ScrollSettleCoordinator {
     /// so a stall can be read directly against the gesture on the Instruments timeline.
     func recordPhase(_ phase: ScrollPhase) {
         isScrolling = phase != .idle
+        switch phase {
+        case .tracking, .interacting, .decelerating:
+            hasUserInteraction = true
+        case .idle, .animating:
+            break
+        }
         if phase == .idle {
             CalendarSignpost.scroll.end("verticalScroll", scrollInterval)
             scrollInterval = nil
@@ -306,6 +371,7 @@ final class ScrollSettleCoordinator {
         CalendarSignpost.scroll.end("verticalScroll", scrollInterval)
         scrollInterval = nil
         isScrolling = false
+        hasUserInteraction = false
         settledMonth = nil
     }
 }
@@ -473,6 +539,8 @@ struct VerticalMonthItem: Identifiable, Equatable {
 /// a ±120 window. ±240 keeps that cost low while leaving 20 years of room per fling, and
 /// re-centering after each settlement keeps that room available wherever the scroll rests.
 enum VerticalMonthWindow {
+    /// A month remains current while at least this fraction is visible at the top of the list.
+    static let visibilityThreshold = 0.01
     /// Months realized on each side of the anchor.
     static let radius = 240
     /// How far from the anchor a settled scroll must rest before the window re-centers.
@@ -501,4 +569,17 @@ enum VerticalMonthWindow {
         .environment(CalendarViewModel.test(identifier: .persian, selection: .range(Date(), nil)))
         .environment(Theme.default)
         .environment(Typography.default)
+}
+
+extension View {
+    @ViewBuilder
+    fileprivate func calendarVerticalScrollPosition(
+        navigation: Binding<ScrollPosition>, month: Binding<MonthIdentifier?>
+    ) -> some View {
+        #if os(macOS)
+        scrollPosition(id: month, anchor: .top)
+        #else
+        scrollPosition(navigation, anchor: .top)
+        #endif
+    }
 }

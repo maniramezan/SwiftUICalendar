@@ -64,6 +64,10 @@ struct CalendarViewSnapshotTests {
         // month must preserve the same rendered window and selection structure.
         let settled = try #require(vm.engine.navigationDate(in: original, preferredDay: 1))
         try vm.navigate(to: settled)
+        for offset in [-8, 0, -1, 0] {
+            let target = try #require(vm.monthIdentifier(offset: offset, from: original))
+            try vm.navigate(toMonth: target)
+        }
         assertCalendarStructure(
             model: vm, configuration: CalendarConfiguration(scrollMode: .vertical),
             width: snapshotWidth, monthSpan: 1, named: "vertical-calendar")
