@@ -4,21 +4,21 @@ import XCTest
 @MainActor
 final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
     func testVerticalScrollMovesInBothDirectionsForMVVM() throws {
-        let app = XCUIApplication.calendarSample()
+        let app = sampleApplication()
         app.launch()
         configure(app, architecture: .mvvm)
         assertBidirectionalScrolling(app)
     }
 
     func testVerticalScrollMovesInBothDirectionsForTCA() throws {
-        let app = XCUIApplication.calendarSample()
+        let app = sampleApplication()
         app.launch()
         configure(app, architecture: .tca)
         assertBidirectionalScrolling(app)
     }
 
     func testSwitchingArchitectureResetsToCurrentMonth() throws {
-        let app = XCUIApplication.calendarSample()
+        let app = sampleApplication()
         app.launch()
         configure(app, architecture: .mvvm)
 
@@ -44,7 +44,7 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
     }
 
     func testTCAPathRendersCalendar() throws {
-        let app = XCUIApplication.calendarSample()
+        let app = sampleApplication()
         app.launch()
 
         configure(app, architecture: .tca)

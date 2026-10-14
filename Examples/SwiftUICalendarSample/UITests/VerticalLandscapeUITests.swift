@@ -8,7 +8,7 @@ import XCTest
 final class VerticalLandscapeUITests: SampleUITestCase {
     func testVerticalCalendarOpensOnTheCurrentMonthInLandscape() throws {
         XCUIDevice.shared.orientation = .landscapeLeft
-        let app = XCUIApplication.calendarSample()
+        let app = sampleApplication()
         app.launch()
 
         app.chooseScrollMode(.vertical)
