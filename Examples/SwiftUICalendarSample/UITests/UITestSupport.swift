@@ -30,6 +30,17 @@ extension XCUIElementSnapshot {
 }
 
 extension XCUIApplication {
+    /// XCTest injects its query engine into the app. In CI run 38522651721, the timeout
+    /// spindump showed that engine blocking the app main thread in
+    /// `_os_log_impl_mirror_to_stderr` / `writev` while resolving a settings option.
+    /// Suppress OS activity logging only in the UI-test app; XCTest activities, screenshots,
+    /// assertions, and crash reports remain available in the result bundle.
+    static func calendarSample() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchEnvironment["OS_ACTIVITY_MODE"] = "disable"
+        return app
+    }
+
     /// Longest the settings panel is given to appear before the toggle is tapped again.
     fileprivate static let settingsPresentationTimeout: TimeInterval = 6
     fileprivate static let settingsRetryTaps = 2
@@ -97,7 +108,8 @@ extension XCUIApplication {
     ) -> XCUIElement {
         let option = buttons.matching(identifier: optionIdentifier).firstMatch
         let form = scrollViews.firstMatch
-        for _ in 0..<4 where !option.waitForExistence(timeout: 1) {
+        for _ in 0..<4 {
+            if option.waitForExistence(timeout: 1) { return option }
             form.swipeUp()
         }
         // `openSettings` has already confirmed the panel is up; give a slow form time to render.

@@ -7,7 +7,7 @@ import XCTest
 /// edges of the screen and showing only 5 of 7 weekday columns.
 final class FixedCalendarRotationUITests: SampleUITestCase {
     func testFixedCalendarShowsAllWeekdayColumnsAfterLandscapeToPortraitRotation() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.calendarSample()
         app.launch()
         // Default configuration is scroll mode `.none` — no settings change needed.
 

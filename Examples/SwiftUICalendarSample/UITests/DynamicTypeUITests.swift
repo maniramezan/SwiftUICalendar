@@ -147,7 +147,7 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     @MainActor
     private func launch(size: String) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.calendarSample()
         app.launchArguments += [Self.sizeFlag, size]
         app.launch()
         return app

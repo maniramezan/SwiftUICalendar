@@ -3,7 +3,7 @@ import XCTest
 
 final class RotationScrollUITests: SampleUITestCase {
     func testHorizontalCalendarResetsScrollPositionAfterRotatingFromScrolledLandscape() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.calendarSample()
         app.launch()
 
         app.chooseScrollMode(.horizontal)

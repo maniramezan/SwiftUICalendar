@@ -5,7 +5,7 @@ import XCTest
 /// works in any locale and stays in step with the identifiers the views actually apply.
 final class HeaderControlUITests: SampleUITestCase {
     func testMonthNavigationAndYearPicker() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.calendarSample()
         app.launch()
         // The sample opens in `.none` scroll mode, which shows a single month grid.
 

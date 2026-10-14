@@ -18,7 +18,7 @@ final class LocaleDirectionUITests: SampleUITestCase {
     // MARK: Helpers
 
     private func launchApp() -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.calendarSample()
         app.launch()
         return app
     }
