@@ -67,6 +67,7 @@ struct CalendarBodyVerticalView: View {
                         } action: { position in
                             guard let position, requestedAnchor == identifier else { return }
                             if abs(position) > VerticalMonthWindow.navigationAlignmentTolerance {
+                                requestedAnchor = nil
                                 // Lazy estimates can land one variable-height month early. Once
                                 // the requested row is measured, resolve its actual placement.
                                 withTransaction(Transaction(animation: nil)) {
