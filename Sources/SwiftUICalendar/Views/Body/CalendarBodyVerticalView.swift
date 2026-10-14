@@ -99,7 +99,11 @@ struct CalendarBodyVerticalView: View {
                 // ScrollPosition.scrollTo in the same transaction as replacing the lazy rows can
                 // leave UIKit's placement estimates on the preceding month in a narrow viewport.
                 withTransaction(Transaction(animation: nil)) {
+                    #if os(macOS)
                     proxy.scrollTo(target, anchor: .top)
+                    #else
+                    navigationPosition.scrollTo(id: target, anchor: .top)
+                    #endif
                 }
             }
             .onChange(of: contentWidth) { _, _ in
@@ -332,7 +336,7 @@ struct CalendarBodyVerticalView: View {
             "Scrolling to anchor \(target.year, privacy: .public)-\(target.month, privacy: .public)"
         )
         #if !os(macOS)
-        navigationPosition = ScrollPosition(idType: MonthIdentifier.self)
+        navigationPosition = ScrollPosition(id: target, anchor: .top)
         navigationRevision += 1
         #endif
         requestedAnchor = target
