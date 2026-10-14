@@ -3,35 +3,33 @@ import XCTest
 
 @MainActor
 final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
-    func testVerticalScrollMovesInBothDirectionsForMVVM() throws {
+    func testVerticalScrollMovesInBothDirectionsForMVVM() async throws {
         let app = sampleApplication()
         app.launch()
         configure(app, architecture: .mvvm)
-        assertBidirectionalScrolling(app)
+        try await assertBidirectionalScrolling(app)
     }
 
-    func testVerticalScrollMovesInBothDirectionsForTCA() throws {
+    func testVerticalScrollMovesInBothDirectionsForTCA() async throws {
         let app = sampleApplication()
         app.launch()
         configure(app, architecture: .tca)
-        assertBidirectionalScrolling(app)
+        try await assertBidirectionalScrolling(app)
     }
 
-    func testSwitchingArchitectureResetsToCurrentMonth() throws {
+    func testSwitchingArchitectureResetsToCurrentMonth() async throws {
         let app = sampleApplication()
         app.launch()
         configure(app, architecture: .mvvm)
 
-        let currentHeaderElement = app.staticTexts.matching(
-            NSPredicate(
-                format: "identifier BEGINSWITH %@",
-                CalendarAccessibilityID.verticalMonthHeaderPrefix)
-        ).firstMatch
-        XCTAssertTrue(currentHeaderElement.waitForExistence(timeout: 5))
-        let currentHeader = currentHeaderElement.identifier
+        let initialHeaders = try visibleMonthHeaders(app)
+        let currentHeader = try XCTUnwrap(initialHeaders.first?.identifier)
 
         verticalList(in: app).swipeUp(velocity: .slow)
-        XCTAssertTrue(waitForHeaderToLeaveViewport(currentHeader, in: app))
+        let leftViewport = try await waitForHeaders(in: app) { headers in
+            !headers.contains { $0.identifier == currentHeader }
+        }
+        XCTAssertTrue(leftViewport)
 
         app.openSettings()
         app.option(
@@ -40,7 +38,10 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
         ).tap()
         app.dismissSettings()
 
-        XCTAssertTrue(app.staticTexts[currentHeader].waitForExistence(timeout: 5))
+        let returnedToViewport = try await waitForHeaders(in: app) { headers in
+            headers.contains { $0.identifier == currentHeader }
+        }
+        XCTAssertTrue(returnedToViewport)
     }
 
     func testTCAPathRendersCalendar() throws {
@@ -51,10 +52,8 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
 
         let dayButtons = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))
-        let rendered = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "count > 0"), object: dayButtons)
-        XCTAssertEqual(
-            XCTWaiter.wait(for: [rendered], timeout: 5), .completed,
+        XCTAssertTrue(
+            dayButtons.firstMatch.waitForExistence(timeout: 5),
             "The TCA-hosted calendar should render day buttons")
     }
 
@@ -63,19 +62,23 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
         XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))
     }
 
-    private func assertBidirectionalScrolling(_ app: XCUIApplication) {
-        let initial = visibleMonthOrdinals(app)
+    private func assertBidirectionalScrolling(_ app: XCUIApplication) async throws {
+        let initial = try visibleMonthHeaders(app).map(\.ordinal)
         XCTAssertFalse(initial.isEmpty)
 
         verticalList(in: app).swipeUp(velocity: .slow)
-        XCTAssertTrue(waitForMonthMovement(in: app, beyond: initial.max() ?? 0, direction: 1))
-        let afterUp = visibleMonthOrdinals(app)
+        let movedUp = try await waitForMonthMovement(
+            in: app, beyond: initial.max() ?? 0, direction: 1)
+        XCTAssertTrue(movedUp)
+        let afterUp = try visibleMonthHeaders(app).map(\.ordinal)
         XCTAssertGreaterThan(afterUp.max() ?? 0, initial.max() ?? 0)
         XCTAssertLessThanOrEqual((afterUp.max() ?? 0) - (initial.max() ?? 0), 12)
 
         verticalList(in: app).swipeDown(velocity: .slow)
-        XCTAssertTrue(waitForMonthMovement(in: app, beyond: afterUp.max() ?? 0, direction: -1))
-        let afterDown = visibleMonthOrdinals(app)
+        let movedDown = try await waitForMonthMovement(
+            in: app, beyond: afterUp.max() ?? 0, direction: -1)
+        XCTAssertTrue(movedDown)
+        let afterDown = try visibleMonthHeaders(app).map(\.ordinal)
         XCTAssertLessThan(afterDown.max() ?? 0, afterUp.max() ?? 0)
         XCTAssertGreaterThanOrEqual(afterDown.min() ?? 0, (initial.min() ?? 0) - 12)
     }
@@ -86,53 +89,51 @@ final class VerticalScrollDateUpdateReproUITests: SampleUITestCase {
         app.scrollViews.element(boundBy: app.scrollViews.count - 1)
     }
 
-    private func visibleMonthOrdinals(_ app: XCUIApplication) -> [Int] {
-        let headers = app.staticTexts.matching(
-            NSPredicate(
-                format: "identifier BEGINSWITH %@",
-                CalendarAccessibilityID.verticalMonthHeaderPrefix)
-        )
-        var ordinals: [Int] = []
-        for index in 0..<headers.count {
-            let header = headers.element(boundBy: index)
-            // Lazy stacks retain offscreen months. Their presence does not mean they are visible.
-            // Check the frame first: asking a retained header with no on-screen frame whether it is
-            // hittable fails the test ("Activation point invalid") instead of returning false.
-            let frame = header.frame
-            guard !frame.isEmpty,
-                frame.intersects(app.windows.firstMatch.frame),
-                header.isHittable
-            else { continue }
-            guard
-                let month = CalendarAccessibilityID.parseVerticalMonthHeader(
-                    header.identifier
-                )
-            else { continue }
-            ordinals.append(month.year * 12 + month.month)
+    private struct VisibleMonthHeader {
+        let identifier: String
+        let ordinal: Int
+    }
+
+    private func visibleMonthHeaders(_ app: XCUIApplication) throws -> [VisibleMonthHeader] {
+        // One snapshot keeps every frame in the same update and avoids live hit-testing RPCs for
+        // retained LazyVStack rows. Labels only need to intersect the actual vertical viewport.
+        let window = try app.windows.firstMatch.snapshot()
+        let elements = window.flattened
+        let verticalScroll = try XCTUnwrap(elements.last { $0.elementType == .scrollView })
+        let viewport = verticalScroll.frame.intersection(window.frame)
+        return elements.compactMap { header in
+            guard header.elementType == .staticText,
+                !header.frame.isEmpty,
+                header.frame.intersects(viewport),
+                let month = CalendarAccessibilityID.parseVerticalMonthHeader(header.identifier)
+            else { return nil }
+            return VisibleMonthHeader(
+                identifier: header.identifier, ordinal: month.year * 12 + month.month)
         }
-        return ordinals
     }
 
     private func waitForMonthMovement(
         in app: XCUIApplication,
         beyond boundary: Int,
         direction: Int
-    ) -> Bool {
-        let predicate = NSPredicate { _, _ in
-            let values = self.visibleMonthOrdinals(app)
-            guard let candidate = values.max() else { return false }
+    ) async throws -> Bool {
+        try await waitForHeaders(in: app) { headers in
+            guard let candidate = headers.map(\.ordinal).max() else { return false }
             return direction > 0 ? candidate > boundary : candidate < boundary
         }
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: nil)
-        return XCTWaiter.wait(for: [expectation], timeout: 5) == .completed
     }
 
-    private func waitForHeaderToLeaveViewport(_ identifier: String, in app: XCUIApplication) -> Bool
-    {
-        let predicate = NSPredicate { _, _ in
-            !app.staticTexts[identifier].isHittable
-        }
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: nil)
-        return XCTWaiter.wait(for: [expectation], timeout: 5) == .completed
+    private func waitForHeaders(
+        in app: XCUIApplication,
+        matching predicate: ([VisibleMonthHeader]) -> Bool
+    ) async throws -> Bool {
+        let deadline = ContinuousClock.now + .seconds(5)
+        repeat {
+            if predicate(try visibleMonthHeaders(app)) { return true }
+            // Yield the runner's main actor instead of re-entering live XCTest queries from an
+            // XCTNSPredicateExpectation callback while a scroll is settling.
+            try await Task.sleep(for: .milliseconds(100))
+        } while ContinuousClock.now < deadline
+        return false
     }
 }
