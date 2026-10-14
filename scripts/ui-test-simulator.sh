@@ -7,6 +7,8 @@
 #   ui-test-simulator.sh wait <udid>              Boot and wait for first-boot setup to finish.
 #   ui-test-simulator.sh test <udid> <plan> <result bundle> [xcodebuild flags...]
 #   ui-test-simulator.sh delete <udid>            Shut down and remove the owned device.
+#
+# Set UI_TEST_CONFIGURATION to run one named configuration from the selected plan.
 
 set -euo pipefail
 
@@ -36,6 +38,9 @@ case "${1:-}" in
     udid="$2" plan="$3" result="$4"
     shift 4
     mkdir -p "$(dirname "${result}")"
+    if [[ -n "${UI_TEST_CONFIGURATION:-}" ]]; then
+      set -- "$@" -only-test-configuration "$UI_TEST_CONFIGURATION"
+    fi
     xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts \
       -testPlan "${plan}" -destination "id=${udid}" "$@" -resultBundlePath "${result}"
     ;;

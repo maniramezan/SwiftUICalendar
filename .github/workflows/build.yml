@@ -56,6 +56,7 @@ jobs:
         run: |
           ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
+          ruby ./scripts/tests/ui-test-workflow-test.rb
 
       - name: Build package
         run: swift build -c debug
@@ -75,34 +76,24 @@ jobs:
           path: SwiftUICalendar/.build/test-diagnostics
           if-no-files-found: ignore
 
-      # The ui-tests job compiles the iOS sample with build-for-testing; do not build it again here.
+      # The ui-test-build job compiles the iOS sample with build-for-testing; do not build it again here.
       - name: Compile public API examples
         run: bash ./scripts/check-examples.sh
 
       - name: Build DocC documentation
         run: bash ./scripts/build-docs.sh
 
-  # Builds the sample once, then runs every UI test plan from that build. Parallelism and ordering
-  # come from the plans themselves; Xcode clones the simulators it needs.
-  ui-tests:
+  # Export one relocatable build. The default plan and each language reuse these exact products
+  # on independent runners, so cold simulator setup does not contend across configurations.
+  ui-test-build:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: xcode-27
+    timeout-minutes: 20
     permissions:
       contents: read
     defaults:
       run:
         working-directory: SwiftUICalendar
-    env:
-      PROJECT: Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
-      DEVICE_NAME: iPhone 17
-      # Let the test plans and Xcode choose parallelism for the available hardware. Keep individual
-      # tests bounded; report failures directly rather than hiding slow tests behind retries.
-      # Simulator diagnostics collection never finishes on this runner: it waits out its 600-second
-      # timeout after any failure (run 38346060741) and adds nothing to the result bundle.
-      UI_TEST_FLAGS: >-
-        -test-timeouts-enabled YES
-        -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 300
-        -collect-test-diagnostics never
     steps:
       - name: Checkout SwiftUICalendar
         uses: actions/checkout@v7.0.1
@@ -113,19 +104,84 @@ jobs:
         run: bash ./scripts/select-swift-toolchain.sh
 
       - name: Build sample UI tests once
-        # Allow the locked TCA dependency macros on fresh, noninteractive CI runners.
         run: >-
-          xcodebuild build-for-testing -project "$PROJECT" -scheme SwiftUICalendarSample
-          -destination "platform=iOS Simulator,name=$DEVICE_NAME" -skipMacroValidation
-          -testProductsPath .build/SampleUITests.xctestproducts
+          xcodebuild build-for-testing
+          -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
+          -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
+          -skipMacroValidation -testProductsPath .build/SampleUITests.xctestproducts
+
+      # Preserve executable permissions and symlinks when passing products between runners.
+      - name: Archive UI test products
+        run: tar -czf .build/SampleUITests.tar.gz -C .build SampleUITests.xctestproducts
+
+      - name: Upload UI test products
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ui-test-products
+          path: SwiftUICalendar/.build/SampleUITests.tar.gz
+          compression-level: 0
+          retention-days: 1
+
+  ui-test-plans:
+    name: UI plan (${{ matrix.name }})
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    needs: ui-test-build
+    runs-on: xcode-27
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Default
+            plan: SwiftUICalendarSample
+            configuration: ""
+          - name: English
+            plan: SwiftUICalendarSampleLocales
+            configuration: English
+          - name: German
+            plan: SwiftUICalendarSampleLocales
+            configuration: German
+          - name: Persian
+            plan: SwiftUICalendarSampleLocales
+            configuration: Persian
+          - name: Arabic
+            plan: SwiftUICalendarSampleLocales
+            configuration: Arabic
+          - name: Hebrew
+            plan: SwiftUICalendarSampleLocales
+            configuration: Hebrew
+    defaults:
+      run:
+        working-directory: SwiftUICalendar
+    env:
+      DEVICE_NAME: iPhone 17
+      UI_TEST_PLAN: ${{ matrix.plan }}
+      UI_TEST_CONFIGURATION: ${{ matrix.configuration }}
+    steps:
+      - name: Checkout SwiftUICalendar
+        uses: actions/checkout@v7.0.1
+        with:
+          path: SwiftUICalendar
+
+      - name: Select Swift toolchain
+        run: bash ./scripts/select-swift-toolchain.sh
+
+      - name: Download UI test products
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: ui-test-products
+          path: SwiftUICalendar/.build
+
+      - name: Restore UI test products
+        run: tar -xzf .build/SampleUITests.tar.gz -C .build
 
       - name: Record runner resources
         run: |
           sysctl hw.ncpu hw.memsize
           df -h .
 
-      # Build once above, then test on a new device with no retained application data. Never erase
-      # the runner's shared device; Xcode may clone this owned device for parallel workers.
       - name: Create UI test simulator
         run: |
           udid="$(bash ./scripts/ui-test-simulator.sh create "$DEVICE_NAME")"
@@ -135,18 +191,19 @@ jobs:
         timeout-minutes: 5
         run: bash ./scripts/ui-test-simulator.sh wait "$SIMULATOR_UDID"
 
-      - name: Run default UI test plan
-        timeout-minutes: 60
+      - name: Run UI test plan
+        timeout-minutes: 30
+        # Leave worker scheduling to Xcode; retain the existing individual test limits.
+        # Full simulator diagnostics collection hangs here; keep XCTest result bundles instead.
         run: |
-          mkdir -p .build/results
-          bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" SwiftUICalendarSample \
-            .build/results/default.xcresult $UI_TEST_FLAGS
-
-      - name: Run per-language UI test plan
-        timeout-minutes: 40
-        run: >-
-          bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" SwiftUICalendarSampleLocales
-          .build/results/locales.xcresult $UI_TEST_FLAGS
+          flags=(
+            -test-timeouts-enabled YES
+            -default-test-execution-time-allowance 180
+            -maximum-test-execution-time-allowance 300
+            -collect-test-diagnostics never
+          )
+          bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" "$UI_TEST_PLAN" \
+            .build/results/tests.xcresult "${flags[@]}"
 
       - name: Delete UI test simulator
         if: always() && env.SIMULATOR_UDID != ''
@@ -156,9 +213,22 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: ui-test-results
+          name: ui-test-results-${{ matrix.name }}
           path: SwiftUICalendar/.build/results
           if-no-files-found: ignore
+
+  # Keep the required check's name stable and fail it if any build or matrix job fails or skips.
+  ui-tests:
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
+    needs: [ui-test-build, ui-test-plans]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require every UI test plan to pass
+        env:
+          BUILD_RESULT: ${{ needs.ui-test-build.result }}
+          PLANS_RESULT: ${{ needs.ui-test-plans.result }}
+        run: test "$BUILD_RESULT" = success && test "$PLANS_RESULT" = success
 
   main-validation:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -200,6 +270,7 @@ jobs:
         run: |
           ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
+          ruby ./scripts/tests/ui-test-workflow-test.rb
 
       - name: Build package
         run: swift build -c debug

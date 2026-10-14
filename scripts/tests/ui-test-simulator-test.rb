@@ -93,6 +93,14 @@ class UITestSimulatorTest < Minitest::Test
                    "results/locales.xcresult"]], calls
   end
 
+  def test_named_configuration_is_forwarded_as_one_argument
+    output, status = run_script("test", "owned-device", "Locales", "results/tests.xcresult",
+                                "-test-timeouts-enabled", "YES", UI_TEST_CONFIGURATION: "English (US)")
+    assert status.success?, output
+    assert_equal 1, calls.count
+    assert_equal ["-only-test-configuration", "English (US)"], calls.first[-4, 2]
+  end
+
   def test_deletes_only_owned_device_even_if_shutdown_fails
     output, status = run_script("delete", "owned-device", SIM_EXIT: "1")
     refute status.success?, output
