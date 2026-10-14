@@ -58,13 +58,15 @@ struct CalendarBodyVerticalView: View {
                             keyboard: keyboard
                         )
                         .onGeometryChange(for: CGFloat?.self) { geometry in
+                            #if os(macOS)
+                            nil
+                            #else
                             requestedAnchor == identifier
                                 ? geometry.frame(in: .scrollView(axis: .vertical)).minY : nil
+                            #endif
                         } action: { position in
                             guard let position, requestedAnchor == identifier else { return }
-                            if abs(position) <= VerticalMonthWindow.navigationAlignmentTolerance {
-                                requestedAnchor = nil
-                            } else {
+                            if abs(position) > VerticalMonthWindow.navigationAlignmentTolerance {
                                 // Lazy estimates can land one variable-height month early. Once
                                 // the requested row is measured, resolve its actual placement.
                                 withTransaction(Transaction(animation: nil)) {
@@ -254,6 +256,7 @@ struct CalendarBodyVerticalView: View {
             return
         }
         pendingDayReveal = nil
+        requestedAnchor = nil
         logger.debug("Revealing the requested day in the visible month")
         withTransaction(Transaction(animation: nil)) {
             #if os(macOS)
