@@ -57,6 +57,21 @@ struct CalendarBodyVerticalView: View {
                             layoutWidth: contentWidth > 0 ? contentWidth : nil,
                             keyboard: keyboard
                         )
+                        .onGeometryChange(for: CGFloat?.self) { geometry in
+                            requestedAnchor == identifier
+                                ? geometry.frame(in: .scrollView(axis: .vertical)).minY : nil
+                        } action: { position in
+                            guard let position, requestedAnchor == identifier else { return }
+                            if abs(position) <= VerticalMonthWindow.navigationAlignmentTolerance {
+                                requestedAnchor = nil
+                            } else {
+                                // Lazy estimates can land one variable-height month early. Once
+                                // the requested row is measured, resolve its actual placement.
+                                withTransaction(Transaction(animation: nil)) {
+                                    proxy.scrollTo(identifier, anchor: .top)
+                                }
+                            }
+                        }
                         .onAppear { realizedMonths.insert(identifier) }
                         .onDisappear { realizedMonths.remove(identifier) }
                     }
@@ -117,6 +132,7 @@ struct CalendarBodyVerticalView: View {
             .onScrollPhaseChange { _, newPhase in
                 if newPhase == .tracking || newPhase == .interacting {
                     pendingDayReveal = nil
+                    requestedAnchor = nil
                 }
                 settle.recordPhase(newPhase)
                 if newPhase == .idle {
@@ -585,6 +601,7 @@ struct VerticalMonthItem: Identifiable, Equatable {
 enum VerticalMonthWindow {
     /// A month remains current while at least this fraction is visible at the top of the list.
     static let visibilityThreshold = 0.01
+    static let navigationAlignmentTolerance: CGFloat = 1
     /// Months realized on each side of the anchor.
     static let radius = 240
     /// How far from the anchor a settled scroll must rest before the window re-centers.
