@@ -92,8 +92,12 @@ struct CalendarBodyVerticalView: View {
             .onAppear {
                 initializeWindow()
             }
-            .onChange(of: requestedAnchor) { _, target in
-                guard let target else { return }
+            .task(id: requestedAnchor) {
+                guard let target = requestedAnchor else { return }
+                #if !os(macOS)
+                await Task.yield()
+                guard !Task.isCancelled else { return }
+                #endif
                 // Resolve the ID after the replacement window has entered the view tree. Issuing
                 // ScrollPosition.scrollTo in the same transaction as replacing the lazy rows can
                 // leave UIKit's placement estimates on the preceding month in a narrow viewport.
