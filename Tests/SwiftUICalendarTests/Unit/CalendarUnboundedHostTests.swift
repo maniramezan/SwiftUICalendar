@@ -9,8 +9,8 @@ import Testing
 struct CalendarUnboundedHostTests {
     @Test func calendarInsideHostScrollViewHasVisibleRows() throws {
         let model = CalendarViewModel.snapshot(selection: .single(nil))
-        let frames = MeasuredDayFrames(
-            month: try #require(model.monthIdentifier()), calendar: model.engine.calendar)
+        let month = try #require(model.monthIdentifier())
+        let frames = MeasuredDayFrames(month: month, calendar: model.engine.calendar)
         let theme = Theme()
         theme.day.setDayContent { MeasuringDayView(context: $0, frames: frames) }
         let hosted = hostView(

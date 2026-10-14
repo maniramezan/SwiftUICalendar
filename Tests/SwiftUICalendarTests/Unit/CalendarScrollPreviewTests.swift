@@ -55,11 +55,13 @@ struct CalendarScrollPreviewTests {
     func yearPreviewOnlyAcrossYears() throws {
         let viewModel = try model(year: 2025, month: 11)
 
-        viewModel.previewScrolledMonth(try #require(viewModel.monthIdentifier(offset: 1)))
+        let nextMonth = try #require(viewModel.monthIdentifier(offset: 1))
+        viewModel.previewScrolledMonth(nextMonth)
         #expect(viewModel.scrollPreviewYear == nil)
         #expect(viewModel.headerYear == 2025)
 
-        viewModel.previewScrolledMonth(try #require(viewModel.monthIdentifier(offset: 2)))
+        let followingMonth = try #require(viewModel.monthIdentifier(offset: 2))
+        viewModel.previewScrolledMonth(followingMonth)
         #expect(viewModel.scrollPreviewYear == 2026)
         #expect(viewModel.headerYear == 2026)
     }

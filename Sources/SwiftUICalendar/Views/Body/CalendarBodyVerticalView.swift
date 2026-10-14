@@ -12,6 +12,8 @@ struct CalendarBodyVerticalView: View {
     private let logger = Logger.swiftUICalendar(for: CalendarBodyVerticalView.self)
 
     @State private var anchor: MonthIdentifier?
+    @State private var requestedAnchor: MonthIdentifier?
+    @State private var navigationRevision = 0
     @State private var months: [MonthIdentifier] = []
     @State private var scrollPosition: MonthIdentifier?
     @State private var realizedMonths: Set<MonthIdentifier> = []
@@ -73,6 +75,9 @@ struct CalendarBodyVerticalView: View {
                 .padding(.vertical, metrics.itemSpacing)
                 .padding(.horizontal, metrics.monthInset)
             }
+            // Replace UIKit's lazy placement cache only for external jumps. A user-driven
+            // window recenter keeps the scroll container and its deceleration intact.
+            .id(navigationRevision)
             .scrollTargetBehavior(CalendarVerticalScrollTargetBehavior())
             .calendarVerticalScrollPosition(navigation: $navigationPosition, month: $scrollPosition)
             .onScrollTargetVisibilityChange(
@@ -87,10 +92,14 @@ struct CalendarBodyVerticalView: View {
             .onAppear {
                 initializeWindow()
             }
-            .onChange(of: anchor) { _, target in
-                #if os(macOS)
-                if let target { proxy.scrollTo(target, anchor: .top) }
-                #endif
+            .onChange(of: requestedAnchor) { _, target in
+                guard let target else { return }
+                // Resolve the ID after the replacement window has entered the view tree. Issuing
+                // ScrollPosition.scrollTo in the same transaction as replacing the lazy rows can
+                // leave UIKit's placement estimates on the preceding month in a narrow viewport.
+                withTransaction(Transaction(animation: nil)) {
+                    proxy.scrollTo(target, anchor: .top)
+                }
             }
             .onChange(of: contentWidth) { _, _ in
                 initializeWindow()
@@ -318,9 +327,11 @@ struct CalendarBodyVerticalView: View {
         logger.debug(
             "Scrolling to anchor \(target.year, privacy: .public)-\(target.month, privacy: .public)"
         )
-        withTransaction(Transaction(animation: nil)) {
-            navigationPosition.scrollTo(id: target, anchor: .top)
-        }
+        #if !os(macOS)
+        navigationPosition = ScrollPosition(idType: MonthIdentifier.self)
+        navigationRevision += 1
+        #endif
+        requestedAnchor = target
     }
 }
 
