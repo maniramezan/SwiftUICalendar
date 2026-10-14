@@ -67,7 +67,7 @@ jobs:
 
       - name: Upload package test diagnostics
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: package-test-diagnostics
           path: SwiftUICalendar/.build/test-diagnostics
@@ -154,7 +154,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ui-test-results
           path: SwiftUICalendar/.build/results
@@ -211,7 +211,7 @@ jobs:
 
       - name: Upload package test diagnostics
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: package-test-diagnostics
           path: SwiftUICalendar/.build/test-diagnostics
