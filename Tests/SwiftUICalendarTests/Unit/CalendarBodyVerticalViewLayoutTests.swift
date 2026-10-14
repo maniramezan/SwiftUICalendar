@@ -150,9 +150,12 @@ struct CalendarBodyVerticalViewLayoutTests {
         }
     }
 
-    @Test("narrow vertical viewport aligns consecutive month jumps",
-          arguments: [Calendar.Identifier.gregorian, .persian], [CGFloat(44), 72])
-    func hostedNarrowConsecutiveMonthJumps(identifier: Calendar.Identifier, minimumDayHeight: CGFloat) throws {
+    @Test(
+        "narrow vertical viewport aligns consecutive month jumps",
+        arguments: [Calendar.Identifier.gregorian, .persian], [CGFloat(44), 72])
+    func hostedNarrowConsecutiveMonthJumps(
+        identifier: Calendar.Identifier, minimumDayHeight: CGFloat
+    ) throws {
         let gregorian = Calendar(identifier: .gregorian)
         let end = try #require(gregorian.date(from: DateComponents(year: 2026, month: 10, day: 14)))
         let model = CalendarViewModel(
@@ -162,9 +165,10 @@ struct CalendarBodyVerticalViewLayoutTests {
         let original = model.visibleMonth
         let frames = MeasuredDayFrames(calendar: model.engine.calendar)
         let theme = Theme()
-        theme.day.setDayContent(minimumSize: { _ in CGSize(width: 44, height: minimumDayHeight) }) {
-            MeasuringDayView(context: $0, frames: frames)
-        }
+        theme.day.setDayContent(
+            minimumSize: { _ in CGSize(width: 44, height: minimumDayHeight) },
+            { MeasuringDayView(context: $0, frames: frames) }
+        )
         let size = CGSize(width: 359, height: 494)
         let hosted = hostView(
             CalendarView(model: model, theme: theme, configuration: .init(scrollMode: .vertical)),
@@ -178,8 +182,9 @@ struct CalendarBodyVerticalViewLayoutTests {
             try model.navigate(to: day)
             #expect(waitForStableRender(hosted.hosting))
             let frame = try #require(frames.inMonth[model.engine.calendar.startOfDay(for: day)])
-            #expect(CGRect(origin: .zero, size: size).contains(frame),
-                    "Requested month is outside the narrow viewport: \(month), \(frame)")
+            #expect(
+                CGRect(origin: .zero, size: size).contains(frame),
+                "Requested month is outside the narrow viewport: \(month), \(frame)")
         }
     }
 

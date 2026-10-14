@@ -75,7 +75,9 @@ struct CalendarBodyVerticalView: View {
                 .padding(.vertical, metrics.itemSpacing)
                 .padding(.horizontal, metrics.monthInset)
             }
-            .scrollTargetBehavior(CalendarVerticalScrollTargetBehavior(alignsMonths: requestedAnchor == nil))
+            .scrollTargetBehavior(
+                CalendarVerticalScrollTargetBehavior(alignsMonths: requestedAnchor == nil)
+            )
             .calendarVerticalScrollPosition(navigation: $navigationPosition, month: $scrollPosition)
             .onScrollTargetVisibilityChange(
                 idType: MonthIdentifier.self, threshold: VerticalMonthWindow.visibilityThreshold
