@@ -47,17 +47,25 @@ class UITestWorkflowTest < Minitest::Test
     assert_operator seconds, :>, 0
     assert_operator seconds + 120, :<, step.fetch("timeout-minutes") * 60
     assert_operator step.fetch("timeout-minutes") + 5, :<=, plans.fetch("timeout-minutes")
-    refute_match(/-(?:parallel-testing-enabled|parallel-testing-worker-count|maximum-parallel-testing-workers)/,
-                 command)
   end
 
-  def test_xcode_owns_simulator_startup_without_manual_warmup
-    steps = JOBS.fetch("ui-test-plans").fetch("steps")
+  # Xcode clones and cold-boots its own devices for parallel testing, so warming the owned device only
+  # helps when the tests run on it directly. Both halves are required: warm it, and keep Xcode from
+  # cloning it. Each plan has its own runner, so serial execution within a job is cheap.
+  def test_tests_run_serially_on_a_device_settled_before_xcode_starts
+    plans = JOBS.fetch("ui-test-plans")
+    steps = plans.fetch("steps")
     create = steps.index { |entry| entry.fetch("name") == "Create UI test simulator" }
+    prepare = steps.index { |entry| entry.fetch("run", "").include?("ui-test-simulator.sh prepare") }
     run = steps.index { |entry| entry.fetch("name") == "Run UI test plan" }
-    assert_operator create, :<, run
-    commands = steps.map { |entry| entry.fetch("run", "") }.join("\n")
-    refute_match(/simctl\s+(?:boot|bootstatus)\b|ui-test-simulator\.sh\s+(?:wait|prepare)\b/, commands)
+    refute_nil prepare, "The simulator must be booted and settled before the tests"
+    assert_operator create, :<, prepare
+    assert_operator prepare, :<, run
+    assert steps.fetch(prepare).key?("timeout-minutes"), "A stuck boot must not consume the job"
+    script = File.read(File.join(ROOT, "scripts/ui-test-simulator.sh"))
+    assert_match(/-parallel-testing-enabled NO/, script)
+    command = steps.fetch(run).fetch("run")
+    refute_match(/-(?:parallel-testing-worker-count|maximum-parallel-testing-workers)/, command)
   end
 
   def test_ui_jobs_share_one_exported_build

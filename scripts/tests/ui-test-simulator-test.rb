@@ -81,6 +81,24 @@ class UITestSimulatorTest < Minitest::Test
     assert_equal 2, calls.count
   end
 
+  def test_prepare_boots_and_settles_the_device_and_leaves_it_running
+    output, status = run_script("prepare", "owned-device")
+    assert status.success?, output
+    assert_equal [["xcrun", "simctl", "bootstatus", "owned-device", "-b"]], calls
+  end
+
+  def test_prepare_failure_fails_the_job_instead_of_testing_a_half_booted_device
+    _, status = run_script("prepare", "owned-device", SIM_EXIT: "1")
+    refute status.success?
+  end
+
+  def test_tests_never_run_in_parallel_clones
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult")
+    assert status.success?, output
+    arguments = calls.first
+    assert_equal "NO", arguments[arguments.index("-parallel-testing-enabled") + 1]
+  end
+
   def test_missing_template_fails_without_mutating_devices
     output, status = run_script("create", "missing")
     refute status.success?
@@ -94,7 +112,8 @@ class UITestSimulatorTest < Minitest::Test
     assert_equal 65, status.exitstatus, output
     assert_equal [["xcodebuild", "test-without-building", "-testProductsPath",
                    ".build/SampleUITests.xctestproducts", "-testPlan", "Locales", "-destination",
-                   "id=owned-device", "-test-timeouts-enabled", "YES", "-resultBundlePath",
+                   "id=owned-device", "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "YES",
+                   "-resultBundlePath",
                    "results/locales.xcresult", "-resultStreamPath", "results/locales.events.jsonl"]], calls
   end
 

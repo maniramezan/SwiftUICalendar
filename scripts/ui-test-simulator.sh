@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
 
 # Own one fresh simulator per job; the runner's existing devices and their data are untouched.
-# Xcode chooses parallel workers from the test plans and reuses the build-for-testing products.
-# Leave the fresh destination unbooted so Xcode owns all simulator startup and worker resources.
+# The tests run on that one device, booted and settled before xcodebuild starts, and reuse the
+# build-for-testing products.
+#
+# Parallel testing is off on purpose. For a parallelizable plan Xcode creates and cold-boots its own
+# "Clone N" devices, so warming the owned device does nothing for the clones that run the tests. On
+# the 3-CPU runner the first test on each cold clone then spent 90 seconds to 8 minutes in first-boot
+# churn (including a 120-second wait for the instruments lockdown service) and tripped the 180-second
+# test allowance, a different test each run. Once settled, every test takes 15 to 80 seconds. The
+# matrix already spreads the plans across runners, so one worker per runner costs little.
 #
 #   ui-test-simulator.sh create <device name>     Print a fresh device's UDID on the newest runtime.
+#   ui-test-simulator.sh prepare <udid>           Boot and wait for first-boot setup to finish.
 #   ui-test-simulator.sh test <udid> <plan> <result bundle> [xcodebuild flags...]
 #   ui-test-simulator.sh delete <udid>            Shut down and remove the owned device.
 #
@@ -30,6 +38,11 @@ case "${1:-}" in
   create)
     create_device "$2"
     ;;
+  prepare)
+    # bootstatus waits for data migration and setup, not just the "Booted" state. The device stays
+    # booted: it is the one the tests run on.
+    xcrun simctl bootstatus "$2" -b
+    ;;
   test)
     udid="$2" plan="$3" result="$4"
     shift 4
@@ -45,7 +58,8 @@ case "${1:-}" in
     stream="${result%.xcresult}.events.jsonl"
     : > "$stream"
     xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts \
-      -testPlan "${plan}" -destination "id=${udid}" "$@" -resultBundlePath "${result}" \
+      -testPlan "${plan}" -destination "id=${udid}" -parallel-testing-enabled NO "$@" \
+      -resultBundlePath "${result}" \
       -resultStreamPath "$stream"
     ;;
   delete)
@@ -54,7 +68,7 @@ case "${1:-}" in
     xcrun simctl delete "$2"
     ;;
   *)
-    echo "usage: $0 create <device name> | test <udid> <plan> <result> [flags...] | delete <udid>" >&2
+    echo "usage: $0 create <device name> | prepare <udid> | test <udid> <plan> <result> [flags...] | delete <udid>" >&2
     exit 64
     ;;
 esac

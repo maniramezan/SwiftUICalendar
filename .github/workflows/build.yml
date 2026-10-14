@@ -208,15 +208,18 @@ jobs:
           udid="$(bash ./scripts/ui-test-simulator.sh create "$DEVICE_NAME")"
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
-      - name: Record simulator state before Xcode starts
-        timeout-minutes: 1
+      # Tests run on this one device with parallel testing off, so its first-boot work must finish
+      # here; otherwise the first test absorbs it and trips the per-test allowance.
+      - name: Boot and settle UI test simulator
+        timeout-minutes: 6
         run: |
+          bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
           xcrun simctl list devices booted
           vm_stat
 
       - name: Run UI test plan
         timeout-minutes: 20
-        # Leave worker scheduling to Xcode; retain the existing individual test limits.
+        # The script runs one worker on the settled simulator; retain the existing individual test limits.
         # Full simulator diagnostics collection hangs here; keep XCTest result bundles instead.
         # The process watchdog exits before GitHub cancels the step, leaving time to upload evidence.
         run: |
