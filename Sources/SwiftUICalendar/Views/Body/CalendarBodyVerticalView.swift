@@ -75,9 +75,6 @@ struct CalendarBodyVerticalView: View {
                 .padding(.vertical, metrics.itemSpacing)
                 .padding(.horizontal, metrics.monthInset)
             }
-            // Replace UIKit's lazy placement cache only for external jumps. A user-driven
-            // window recenter keeps the scroll container and its deceleration intact.
-            .id(navigationRevision)
             .scrollTargetBehavior(CalendarVerticalScrollTargetBehavior())
             .calendarVerticalScrollPosition(navigation: $navigationPosition, month: $scrollPosition)
             .onScrollTargetVisibilityChange(
@@ -167,6 +164,9 @@ struct CalendarBodyVerticalView: View {
                 scheduleScrollSettlement()
             }
         }
+        // Recreate the reader with the UIKit scroll view so its proxy cannot retain stale
+        // placement estimates. Native scrolling and window recentering keep this identity.
+        .id(navigationRevision)
     }
 
     private var currentMonthIdentifier: MonthIdentifier {
