@@ -57,6 +57,7 @@ jobs:
           ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
           ruby ./scripts/tests/ui-test-workflow-test.rb
+          python3 ./scripts/tests/configure-ui-test-products-test.py
 
       - name: Build package
         run: swift build -c debug
@@ -109,6 +110,9 @@ jobs:
           -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
           -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
           -skipMacroValidation -testProductsPath .build/SampleUITests.xctestproducts
+
+      - name: Configure functional UI test diagnostics
+        run: python3 ./scripts/configure-ui-test-products.py .build/SampleUITests.xctestproducts
 
       # Preserve executable permissions and symlinks when passing products between runners.
       - name: Archive UI test products
@@ -292,6 +296,7 @@ jobs:
           ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
           ruby ./scripts/tests/ui-test-workflow-test.rb
+          python3 ./scripts/tests/configure-ui-test-products-test.py
 
       - name: Build package
         run: swift build -c debug
