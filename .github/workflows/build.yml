@@ -150,7 +150,11 @@ jobs:
               RotationUITests
               RotationScrollUITests
               VerticalLandscapeUITests
-              WeekdayColumnsReachableUITests
+          # Two 65-second tests that would otherwise make Layout the longest job.
+          - name: Weekday Columns
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: WeekdayColumnsReachableUITests
           - name: Navigation
             plan: SwiftUICalendarSample
             configuration: ""
