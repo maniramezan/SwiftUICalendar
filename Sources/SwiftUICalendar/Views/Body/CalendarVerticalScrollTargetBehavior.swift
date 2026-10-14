@@ -4,7 +4,12 @@ import SwiftUI
 /// shorter viewport turns small drags into large jumps. Keep those gestures continuous while
 /// preserving the existing month alignment in compact hosts and on other platforms.
 struct CalendarVerticalScrollTargetBehavior: ScrollTargetBehavior {
+    var alignsMonths = true
+
     func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        // Explicit navigation already supplies an exact month or day. Snapping that request
+        // again can choose the previous month when the requested row exceeds the viewport.
+        guard alignsMonths else { return }
         #if os(iOS)
         guard context.horizontalSizeClass != .regular else { return }
         #endif

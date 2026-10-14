@@ -57,24 +57,6 @@ struct CalendarBodyVerticalView: View {
                             layoutWidth: contentWidth > 0 ? contentWidth : nil,
                             keyboard: keyboard
                         )
-                        .onGeometryChange(for: CGFloat?.self) { geometry in
-                            #if os(macOS)
-                            nil
-                            #else
-                            requestedAnchor == identifier
-                                ? geometry.frame(in: .scrollView(axis: .vertical)).minY : nil
-                            #endif
-                        } action: { position in
-                            guard let position, requestedAnchor == identifier else { return }
-                            if abs(position) > VerticalMonthWindow.navigationAlignmentTolerance {
-                                requestedAnchor = nil
-                                // Lazy estimates can land one variable-height month early. Once
-                                // the requested row is measured, resolve its actual placement.
-                                withTransaction(Transaction(animation: nil)) {
-                                    proxy.scrollTo(identifier, anchor: .top)
-                                }
-                            }
-                        }
                         .onAppear { realizedMonths.insert(identifier) }
                         .onDisappear { realizedMonths.remove(identifier) }
                     }
@@ -93,7 +75,7 @@ struct CalendarBodyVerticalView: View {
                 .padding(.vertical, metrics.itemSpacing)
                 .padding(.horizontal, metrics.monthInset)
             }
-            .scrollTargetBehavior(CalendarVerticalScrollTargetBehavior())
+            .scrollTargetBehavior(CalendarVerticalScrollTargetBehavior(alignsMonths: requestedAnchor == nil))
             .calendarVerticalScrollPosition(navigation: $navigationPosition, month: $scrollPosition)
             .onScrollTargetVisibilityChange(
                 idType: MonthIdentifier.self, threshold: VerticalMonthWindow.visibilityThreshold
@@ -605,7 +587,6 @@ struct VerticalMonthItem: Identifiable, Equatable {
 enum VerticalMonthWindow {
     /// A month remains current while at least this fraction is visible at the top of the list.
     static let visibilityThreshold = 0.01
-    static let navigationAlignmentTolerance: CGFloat = 1
     /// Months realized on each side of the anchor.
     static let radius = 240
     /// How far from the anchor a settled scroll must rest before the window re-centers.
