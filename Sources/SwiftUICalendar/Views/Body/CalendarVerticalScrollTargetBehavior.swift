@@ -9,7 +9,9 @@ struct CalendarVerticalScrollTargetBehavior: ScrollTargetBehavior {
     func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
         // Explicit navigation already supplies an exact month or day. Snapping that request
         // again can choose the previous month when the requested row exceeds the viewport.
+        #if !os(macOS)
         guard alignsMonths else { return }
+        #endif
         #if os(iOS)
         guard context.horizontalSizeClass != .regular else { return }
         #endif
