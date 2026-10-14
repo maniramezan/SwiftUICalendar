@@ -2,10 +2,9 @@
 
 # Own one fresh simulator per job; the runner's existing devices and their data are untouched.
 # Xcode chooses parallel workers from the test plans and reuses the build-for-testing products.
+# Leave the fresh destination unbooted so Xcode owns all simulator startup and worker resources.
 #
 #   ui-test-simulator.sh create <device name>     Print a fresh device's UDID on the newest runtime.
-#   ui-test-simulator.sh wait <udid>              Boot and wait for first-boot setup to finish.
-#   ui-test-simulator.sh prepare <udid>           Finish first boot, then stop the worker template.
 #   ui-test-simulator.sh test <udid> <plan> <result bundle> [xcodebuild flags...]
 #   ui-test-simulator.sh delete <udid>            Shut down and remove the owned device.
 #
@@ -31,15 +30,6 @@ case "${1:-}" in
   create)
     create_device "$2"
     ;;
-  wait|prepare)
-    # bootstatus waits for data migration and setup, not just the "Booted" state. No CPU-idle
-    # heuristic: system background services can remain busy even when the device is usable.
-    xcrun simctl bootstatus "$2" -b
-    if [[ "$1" == prepare ]]; then
-      # Xcode boots its own worker clones. Do not keep the unused template consuming CPU and RAM.
-      xcrun simctl shutdown "$2"
-    fi
-    ;;
   test)
     udid="$2" plan="$3" result="$4"
     shift 4
@@ -64,7 +54,7 @@ case "${1:-}" in
     xcrun simctl delete "$2"
     ;;
   *)
-    echo "usage: $0 create <device name> | wait <udid> | prepare <udid> | test <udid> <plan> <result> [flags...] | delete <udid>" >&2
+    echo "usage: $0 create <device name> | test <udid> <plan> <result> [flags...] | delete <udid>" >&2
     exit 64
     ;;
 esac

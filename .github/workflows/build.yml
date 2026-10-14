@@ -204,10 +204,9 @@ jobs:
           udid="$(bash ./scripts/ui-test-simulator.sh create "$DEVICE_NAME")"
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
-      - name: Prepare UI test simulator
-        timeout-minutes: 5
+      - name: Record simulator state before Xcode starts
+        timeout-minutes: 1
         run: |
-          bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
           xcrun simctl list devices booted
           vm_stat
 

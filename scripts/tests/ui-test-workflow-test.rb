@@ -51,12 +51,13 @@ class UITestWorkflowTest < Minitest::Test
                  command)
   end
 
-  def test_worker_template_is_prepared_and_stopped_before_xcode_starts
+  def test_xcode_owns_simulator_startup_without_manual_warmup
     steps = JOBS.fetch("ui-test-plans").fetch("steps")
-    prepare = steps.index { |entry| entry.fetch("name") == "Prepare UI test simulator" }
+    create = steps.index { |entry| entry.fetch("name") == "Create UI test simulator" }
     run = steps.index { |entry| entry.fetch("name") == "Run UI test plan" }
-    assert_operator prepare, :<, run
-    assert_includes steps.fetch(prepare).fetch("run"), 'prepare "$SIMULATOR_UDID"'
+    assert_operator create, :<, run
+    commands = steps.map { |entry| entry.fetch("run", "") }.join("\n")
+    refute_match(/simctl\s+(?:boot|bootstatus)\b|ui-test-simulator\.sh\s+(?:wait|prepare)\b/, commands)
   end
 
   def test_ui_jobs_share_one_exported_build
