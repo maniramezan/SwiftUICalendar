@@ -7,11 +7,22 @@ class UITestWorkflowTest < Minitest::Test
   ROOT = File.expand_path("../..", __dir__)
   JOBS = YAML.load_file(File.join(ROOT, ".github/workflows/build.yml")).fetch("jobs")
 
-  def test_matrix_runs_default_plan_and_every_locale_exactly_once
+  def test_matrix_runs_every_default_suite_and_locale_exactly_once
     matrix = JOBS.fetch("ui-test-plans").fetch("strategy").fetch("matrix").fetch("include")
     default = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSample" }
-    assert_equal 1, default.count
-    assert_equal "", default.first.fetch("configuration")
+    classes = Dir.glob(File.join(ROOT, "Examples/SwiftUICalendarSample/UITests/*.swift"))
+                 .flat_map { |path| File.read(path).scan(/class\s+(\w+)\s*:\s*SampleUITestCase\b/).flatten }
+    default_plan = JSON.parse(File.read(File.join(ROOT,
+      "Examples/SwiftUICalendarSample/SwiftUICalendarSample.xctestplan")))
+    skipped = default_plan.fetch("testTargets").first.fetch("skippedTests")
+    expected_suites = (classes - skipped).sort
+    actual_suites = default.flat_map { |entry| entry.fetch("suites").split }
+    assert_equal expected_suites, actual_suites.sort,
+                 "Every default suite must run exactly once, including newly added suites"
+    default.each do |entry|
+      assert_equal "", entry.fetch("configuration")
+      refute_empty entry.fetch("suites")
+    end
 
     plan = JSON.parse(File.read(File.join(ROOT,
       "Examples/SwiftUICalendarSample/SwiftUICalendarSampleLocales.xctestplan")))
@@ -19,8 +30,25 @@ class UITestWorkflowTest < Minitest::Test
     actual = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSampleLocales" }
                    .map { |entry| entry.fetch("configuration") }.sort
     assert_equal expected, actual
-    assert_equal expected.count + 1, matrix.count
+    assert_equal expected.count + default.count, matrix.count
+    matrix.reject { |entry| entry.fetch("plan") == "SwiftUICalendarSample" }.each do |entry|
+      assert_nil entry["suites"], "Locale jobs must run the complete locale plan"
+    end
     assert_equal false, JOBS.fetch("ui-test-plans").fetch("strategy").fetch("fail-fast")
+  end
+
+  def test_watchdog_leaves_time_for_cleanup_and_diagnostics_before_github_timeout
+    plans = JOBS.fetch("ui-test-plans")
+    step = plans.fetch("steps").find { |entry| entry.fetch("name") == "Run UI test plan" }
+    command = step.fetch("run")
+    assert_includes command, "ruby ./scripts/test-watchdog.rb"
+    assert_includes command, "--diagnostics .build/results/watchdog"
+    seconds = command.match(/--timeout (\d+)/)[1].to_i
+    assert_operator seconds, :>, 0
+    assert_operator seconds + 120, :<, step.fetch("timeout-minutes") * 60
+    assert_operator step.fetch("timeout-minutes") + 5, :<=, plans.fetch("timeout-minutes")
+    refute_match(/-(?:parallel-testing-enabled|parallel-testing-worker-count|maximum-parallel-testing-workers)/,
+                 command)
   end
 
   def test_ui_jobs_share_one_exported_build

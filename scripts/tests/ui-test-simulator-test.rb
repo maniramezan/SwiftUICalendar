@@ -29,6 +29,12 @@ class UITestSimulatorTest < Minitest::Test
       elsif ARGV[0, 2] == ["simctl", "create"]
         puts "owned-device"
       end
+      if File.basename($0, ".rb") == "xcodebuild" && ENV["TEST_HANG"] == "1"
+        trap("TERM") {}
+        puts "test runner stalled"
+        STDOUT.flush
+        sleep 30
+      end
       exit ENV.fetch(File.basename($0, ".rb") == "xcodebuild" ? "TEST_EXIT" : "SIM_EXIT", "0").to_i
     RUBY
     %w[xcrun xcodebuild].each do |name|
@@ -49,11 +55,16 @@ class UITestSimulatorTest < Minitest::Test
     FileUtils.remove_entry(@directory)
   end
 
-  def run_script(*arguments, **environment)
+  def run_script(*arguments, watchdog_timeout: nil, **environment)
+    command = ["bash", SCRIPT, *arguments]
+    if watchdog_timeout
+      command = [RbConfig.ruby, File.expand_path("../test-watchdog.rb", __dir__),
+                 "--timeout", watchdog_timeout.to_s, "--diagnostics", "results/watchdog", "--", *command]
+    end
     Open3.capture2e(
       {"PATH" => "#{@directory}:#{ENV.fetch('PATH')}", "CALL_LOG" => @log,
        "DEVICE_JSON" => JSON.generate(@devices)}.merge(environment.transform_keys(&:to_s)),
-      "bash", SCRIPT, *arguments, chdir: @directory
+      *command, chdir: @directory
     )
   end
 
@@ -85,12 +96,12 @@ class UITestSimulatorTest < Minitest::Test
 
   def test_test_plan_reuses_products_and_preserves_flags_and_failure_without_retry
     output, status = run_script("test", "owned-device", "Locales", "results/locales.xcresult",
-                                "-test-timeouts-enabled", "YES", TEST_EXIT: "65")
+                                "-test-timeouts-enabled", "YES", TEST_EXIT: "65", watchdog_timeout: 5)
     assert_equal 65, status.exitstatus, output
     assert_equal [["xcodebuild", "test-without-building", "-testProductsPath",
                    ".build/SampleUITests.xctestproducts", "-testPlan", "Locales", "-destination",
                    "id=owned-device", "-test-timeouts-enabled", "YES", "-resultBundlePath",
-                   "results/locales.xcresult"]], calls
+                   "results/locales.xcresult", "-resultStreamPath", "results/locales.events.jsonl"]], calls
   end
 
   def test_named_configuration_is_forwarded_as_one_argument
@@ -98,7 +109,28 @@ class UITestSimulatorTest < Minitest::Test
                                 "-test-timeouts-enabled", "YES", UI_TEST_CONFIGURATION: "English (US)")
     assert status.success?, output
     assert_equal 1, calls.count
-    assert_equal ["-only-test-configuration", "English (US)"], calls.first[-4, 2]
+    assert_equal ["-only-test-configuration", "English (US)"], calls.first[-6, 2]
+  end
+
+  def test_suite_filter_includes_each_requested_suite_and_creates_live_stream
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
+                                UI_TEST_SUITES: "HeaderControlUITests\n\nDynamicTypeUITests\n")
+    assert status.success?, output
+    filters = calls.first.select { |argument| argument.start_with?("-only-testing:") }
+    assert_equal ["-only-testing:SwiftUICalendarSampleUITests/HeaderControlUITests",
+                  "-only-testing:SwiftUICalendarSampleUITests/DynamicTypeUITests"], filters
+    assert File.file?(File.join(@directory, "results/tests.events.jsonl"))
+  end
+
+  def test_watchdog_stops_a_hung_test_command_and_retains_output_without_retry
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
+                                TEST_HANG: "1", watchdog_timeout: 2)
+    assert_equal 124, status.exitstatus, output
+    assert_equal 1, calls.count
+    assert_includes File.read(File.join(@directory, "results/watchdog/test-output.log")),
+                    "test runner stalled"
+    assert File.file?(File.join(@directory, "results/watchdog/processes.txt"))
+    assert File.file?(File.join(@directory, "results/tests.events.jsonl"))
   end
 
   def test_deletes_only_owned_device_even_if_shutdown_fails

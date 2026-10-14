@@ -8,7 +8,8 @@
 #   ui-test-simulator.sh test <udid> <plan> <result bundle> [xcodebuild flags...]
 #   ui-test-simulator.sh delete <udid>            Shut down and remove the owned device.
 #
-# Set UI_TEST_CONFIGURATION to run one named configuration from the selected plan.
+# Set UI_TEST_CONFIGURATION to select a configuration, and UI_TEST_SUITES to a newline-delimited
+# list of test classes. An empty suite list runs the complete plan.
 
 set -euo pipefail
 
@@ -41,8 +42,16 @@ case "${1:-}" in
     if [[ -n "${UI_TEST_CONFIGURATION:-}" ]]; then
       set -- "$@" -only-test-configuration "$UI_TEST_CONFIGURATION"
     fi
+    while IFS= read -r suite; do
+      [[ -z "$suite" ]] && continue
+      set -- "$@" "-only-testing:SwiftUICalendarSampleUITests/$suite"
+    done <<< "${UI_TEST_SUITES:-}"
+    # Unlike xcodebuild's buffered console summary, this records test progress as it happens.
+    stream="${result%.xcresult}.events.jsonl"
+    : > "$stream"
     xcodebuild test-without-building -testProductsPath .build/SampleUITests.xctestproducts \
-      -testPlan "${plan}" -destination "id=${udid}" "$@" -resultBundlePath "${result}"
+      -testPlan "${plan}" -destination "id=${udid}" "$@" -resultBundlePath "${result}" \
+      -resultStreamPath "$stream"
     ;;
   delete)
     # Xcode may already have shut down the device after testing.

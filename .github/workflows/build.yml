@@ -83,7 +83,7 @@ jobs:
       - name: Build DocC documentation
         run: bash ./scripts/build-docs.sh
 
-  # Export one relocatable build. The default plan and each language reuse these exact products
+  # Export one relocatable build. Default test groups and each language reuse these exact products
   # on independent runners, so cold simulator setup does not contend across configurations.
   ui-test-build:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
@@ -127,16 +127,32 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     needs: ui-test-build
     runs-on: xcode-27
-    timeout-minutes: 40
+    timeout-minutes: 30
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Default
+          - name: Dynamic Type
             plan: SwiftUICalendarSample
             configuration: ""
+            suites: DynamicTypeUITests
+          - name: Layout
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: |
+              FixedCalendarRotationUITests
+              RotationUITests
+              RotationScrollUITests
+              VerticalLandscapeUITests
+              WeekdayColumnsReachableUITests
+          - name: Navigation
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: |
+              HeaderControlUITests
+              VerticalScrollDateUpdateReproUITests
           - name: English
             plan: SwiftUICalendarSampleLocales
             configuration: English
@@ -159,6 +175,7 @@ jobs:
       DEVICE_NAME: iPhone 17
       UI_TEST_PLAN: ${{ matrix.plan }}
       UI_TEST_CONFIGURATION: ${{ matrix.configuration }}
+      UI_TEST_SUITES: ${{ matrix.suites }}
     steps:
       - name: Checkout SwiftUICalendar
         uses: actions/checkout@v7.0.1
@@ -192,9 +209,10 @@ jobs:
         run: bash ./scripts/ui-test-simulator.sh wait "$SIMULATOR_UDID"
 
       - name: Run UI test plan
-        timeout-minutes: 30
+        timeout-minutes: 20
         # Leave worker scheduling to Xcode; retain the existing individual test limits.
         # Full simulator diagnostics collection hangs here; keep XCTest result bundles instead.
+        # The process watchdog exits before GitHub cancels the step, leaving time to upload evidence.
         run: |
           flags=(
             -test-timeouts-enabled YES
@@ -202,8 +220,9 @@ jobs:
             -maximum-test-execution-time-allowance 300
             -collect-test-diagnostics never
           )
-          bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" "$UI_TEST_PLAN" \
-            .build/results/tests.xcresult "${flags[@]}"
+          ruby ./scripts/test-watchdog.rb --timeout 900 --diagnostics .build/results/watchdog -- \
+            bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" "$UI_TEST_PLAN" \
+              .build/results/tests.xcresult "${flags[@]}"
 
       - name: Delete UI test simulator
         if: always() && env.SIMULATOR_UDID != ''
