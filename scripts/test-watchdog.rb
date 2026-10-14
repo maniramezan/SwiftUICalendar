@@ -61,11 +61,22 @@ end
 begin
   writer.close
   stream = Thread.new do
+    console_open = true
     reader.each_line do |line|
-      STDOUT.write(line)
-      STDOUT.flush
       log.write(line)
       log.flush
+      next unless console_open
+      # Keep the complete output on disk. Console delivery is best effort under backpressure.
+      begin
+        offset = 0
+        while offset < line.bytesize
+          written = STDOUT.write_nonblock(line.byteslice(offset..-1), exception: false)
+          break unless written.is_a?(Integer)
+          offset += written
+        end
+      rescue IOError, Errno::EPIPE
+        console_open = false
+      end
     end
   rescue IOError
     raise unless reader.closed?
@@ -106,7 +117,14 @@ begin
     end
     if @cancelled_signal || now >= deadline
       reason = @cancelled_signal ? "received #{@cancelled_signal}" : "exceeded #{options[:timeout]} seconds"
-      warn "Test command #{reason}; collecting diagnostics in #{directory}"
+      message = "Test command #{reason}; collecting diagnostics in #{directory}"
+      File.write(File.join(directory, "termination.txt"), "#{message}\n")
+      # A stalled console consumer must not block termination before signals are delivered.
+      begin
+        STDERR.write_nonblock("#{message}\n", exception: false)
+      rescue IOError, Errno::EPIPE
+        # The diagnostics file remains available if the console is closed.
+      end
       # ps emits executable names, not command arguments or unrelated processes' data.
       processes = refresh_owned.call.map { |process_id, entry| [process_id, entry[:name]] }
       File.write(File.join(directory, "processes.txt"), processes.map { |entry| entry.join(" ") }.join("\n"))
@@ -128,7 +146,8 @@ begin
       signal_group.call("KILL")
       Process.waitpid(pid) unless status
       unless stream.join(1)
-        reader.close unless reader.closed?
+        # The stream may be blocked writing to the console, not reading the child pipe.
+        stream.kill
         stream.join
       end
       exit(@cancelled_signal ? 128 + Signal.list.fetch(@cancelled_signal) : 124)
@@ -142,7 +161,7 @@ begin
   unless stream.join(1)
     signal_owned.call("KILL")
     signal_group.call("KILL")
-    reader.close unless reader.closed?
+    stream.kill
     stream.join
   end
   exit(status.exitstatus || 128 + status.termsig)

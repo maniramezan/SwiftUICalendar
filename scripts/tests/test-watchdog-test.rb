@@ -95,4 +95,37 @@ class TestWatchdogTest < Minitest::Test
       end
     end
   end
+
+  def test_timeout_is_bounded_when_the_console_consumer_stops_reading
+    Dir.mktmpdir("calendar-watchdog-backpressure-") do |directory|
+      pid_file = File.join(directory, "command.pid")
+      command = 'File.write(ARGV.fetch(0), Process.pid); STDOUT.sync = true; loop { puts "x" * 4096 }'
+      Open3.popen2e(
+        RbConfig.ruby, SCRIPT, "--timeout", "0.5", "--diagnostics", directory,
+        "--", RbConfig.ruby, "-e", command, pid_file
+      ) do |input, output, process|
+        input.close
+        # Deliberately leave the console pipe full until the watchdog has exited.
+        assert process.join(8), "A blocked console must not block the watchdog timeout"
+        assert_equal 124, process.value.exitstatus
+        assert File.file?(File.join(directory, "processes.txt"))
+        console = output.read
+        assert_operator File.size(File.join(directory, "test-output.log")), :>, console.bytesize,
+                        "The artifact must retain output that could not fit in the console pipe"
+        assert_includes File.read(File.join(directory, "termination.txt")), "exceeded 0.5 seconds"
+      ensure
+        if process.alive?
+          Process.kill("KILL", process.pid)
+          process.join
+        end
+        if File.file?(pid_file)
+          begin
+            Process.kill("KILL", Integer(File.read(pid_file)))
+          rescue Errno::ESRCH
+            # The watchdog already stopped its owned command.
+          end
+        end
+      end
+    end
+  end
 end

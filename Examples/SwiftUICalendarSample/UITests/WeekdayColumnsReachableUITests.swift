@@ -33,7 +33,7 @@ final class WeekdayColumnsReachableUITests: SampleUITestCase {
     // MARK: - Helpers
 
     private func assertAllWeekdayColumnsInWindow(orientation: UIDeviceOrientation) {
-        let app = XCUIApplication()
+        let app = sampleApplication()
         app.launch()
         for mode in CalendarScrollMode.allCases {
             XCUIDevice.shared.orientation = .portrait

@@ -1,23 +1,30 @@
 import SwiftUICalendarAccessibility
 import XCTest
 
-/// Base class for every sample UI test. Each test starts and ends in the same known state, so a
-/// failure in one test (which `continueAfterFailure = false` cuts short mid-body) cannot leave the
-/// device rotated or the app running for the next one — on any device, in any run order.
+/// Owns the application proxy for one test and resets device orientation at test boundaries.
+/// Cleanup uses the proxy that launched the app, preserving its process and debug-session identity.
 class SampleUITestCase: XCTestCase {
+    private var application: XCUIApplication?
+
     override func setUpWithError() throws {
         continueAfterFailure = false
-        Self.resetDeviceAndApp()
+        XCUIDevice.shared.orientation = .portrait
     }
 
     override func tearDownWithError() throws {
-        Self.resetDeviceAndApp()
+        // Restore orientation before termination, so a termination failure cannot skip the reset.
+        XCUIDevice.shared.orientation = .portrait
+        application?.terminate()
+        application = nil
     }
 
-    /// Terminates any running instance of the app and returns the device to portrait.
-    private static func resetDeviceAndApp() {
-        XCUIApplication().terminate()
-        XCUIDevice.shared.orientation = .portrait
+    /// Every launch in this test shares one proxy, which teardown retains until cleanup completes.
+    /// `launch()` terminates any existing app instance and starts it with fresh process state.
+    func sampleApplication() -> XCUIApplication {
+        if let application { return application }
+        let app = XCUIApplication.calendarSample()
+        application = app
+        return app
     }
 }
 
@@ -30,6 +37,17 @@ extension XCUIElementSnapshot {
 }
 
 extension XCUIApplication {
+    /// XCTest injects its query engine into the app. In CI run 38522651721, the timeout
+    /// spindump showed that engine blocking the app main thread in
+    /// `_os_log_impl_mirror_to_stderr` / `writev` while resolving a settings option.
+    /// Suppress OS activity logging only in the UI-test app; XCTest activities, screenshots,
+    /// assertions, and crash reports remain available in the result bundle.
+    fileprivate static func calendarSample() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchEnvironment["OS_ACTIVITY_MODE"] = "disable"
+        return app
+    }
+
     /// Longest the settings panel is given to appear before the toggle is tapped again.
     fileprivate static let settingsPresentationTimeout: TimeInterval = 6
     fileprivate static let settingsRetryTaps = 2
@@ -97,7 +115,8 @@ extension XCUIApplication {
     ) -> XCUIElement {
         let option = buttons.matching(identifier: optionIdentifier).firstMatch
         let form = scrollViews.firstMatch
-        for _ in 0..<4 where !option.waitForExistence(timeout: 1) {
+        for _ in 0..<4 {
+            if option.waitForExistence(timeout: 1) { return option }
             form.swipeUp()
         }
         // `openSettings` has already confirmed the panel is up; give a slow form time to render.

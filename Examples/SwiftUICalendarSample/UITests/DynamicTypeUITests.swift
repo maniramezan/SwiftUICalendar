@@ -47,29 +47,34 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     @MainActor
     func testAccessibilityTextKeepsEdgeColumnsReachable() throws {
+        // CI run 38569309941 spent 80s and 45s relaunching between modes. Exercise the same
+        // user session instead, restoring the leading column through real scrolling each time.
+        let app = launch(size: "UICTContentSizeCategoryAccessibilityXXXL")
         for mode in CalendarScrollMode.allCases {
-            // Each mode starts at the leading edge; retained overflow offsets are valid UI state.
-            let app = launch(size: "UICTContentSizeCategoryAccessibilityXXXL")
-            app.chooseScrollMode(mode)
-            let row = try visibleFullRow(in: app)
-            let leading = try XCTUnwrap(row.first)
-            let trailing = try XCTUnwrap(row.last)
-            XCTAssertTrue(leading.isHittable)
-            let window = app.windows.firstMatch.frame
-            // Maximum text can require more than one viewport of horizontal travel.
-            // Swipe inside the visible row, not on a leading cell that is now offscreen.
-            for _ in 0..<4 where trailing.frame.maxX > window.maxX + Self.frameTolerance {
-                let visibleY = max(window.minY + 1, min(window.maxY - 1, leading.frame.midY))
-                let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
-                let start = origin.withOffset(
-                    CGVector(dx: window.width * 0.85, dy: visibleY - window.minY))
-                let end = origin.withOffset(
-                    CGVector(dx: window.width * 0.15, dy: visibleY - window.minY))
-                start.press(forDuration: 0.05, thenDragTo: end)
+            try XCTContext.runActivity(named: "\(mode): both edge columns are reachable") { _ in
+                app.chooseScrollMode(mode)
+                let row = try visibleFullRow(in: app)
+                let leading = try XCTUnwrap(row.first)
+                let trailing = try XCTUnwrap(row.last)
+                let window = app.windows.firstMatch.frame
+                let rowY = leading.frame.midY
+                // Switching modes may retain a valid horizontal overflow offset. Bring the leading
+                // date back into view without relaunching or changing the displayed month.
+                for _ in 0..<4 where leading.frame.minX < window.minX - Self.frameTolerance {
+                    dragHorizontally(in: app, window: window, rowY: rowY, from: 0.15, to: 0.85)
+                }
+                XCTAssertTrue(leading.isHittable)
+                XCTAssertGreaterThanOrEqual(leading.frame.minX, window.minX - Self.frameTolerance)
+                // Maximum text can require more than one viewport of horizontal travel. Use the
+                // visible row's coordinates even after the leading date moves offscreen.
+                for _ in 0..<4 where trailing.frame.maxX > window.maxX + Self.frameTolerance {
+                    dragHorizontally(in: app, window: window, rowY: rowY, from: 0.85, to: 0.15)
+                }
+                XCTAssertTrue(
+                    trailing.isHittable,
+                    "The trailing date must be reachable without changing months")
+                XCTAssertLessThanOrEqual(trailing.frame.maxX, window.maxX + Self.frameTolerance)
             }
-            XCTAssertTrue(
-                trailing.isHittable, "The trailing date must be reachable without changing months")
-            XCTAssertLessThanOrEqual(trailing.frame.maxX, window.maxX + Self.frameTolerance)
         }
     }
 
@@ -130,12 +135,13 @@ final class DynamicTypeUITests: SampleUITestCase {
             let rows = Dictionary(grouping: populated) { Int($0.frame.minY.rounded()) }
             for y in rows.keys.sorted() {
                 let row = rows[y, default: []].sorted { $0.frame.minX < $1.frame.minX }
-                guard row.count == Self.weekdayColumnCount, let first = row.first,
-                    window.contains(first.frame)
+                guard row.count == Self.weekdayColumnCount,
+                    let visible = row.first(where: { window.contains($0.frame) })
                 else { continue }
-                let elements = row.map { app.buttons[$0.identifier] }
-                guard elements[0].isHittable else { continue }
-                return elements
+                // A retained horizontal offset can hide the leading cell. Find a visible anchor
+                // first; the test then scrolls the same row back to its leading edge.
+                guard app.buttons[visible.identifier].isHittable else { continue }
+                return row.map { app.buttons[$0.identifier] }
             }
             // Full Dynamic Type may put the first full week below the viewport. Reveal it;
             // never confuse an offscreen cached row with a clipped or unreachable date.
@@ -146,8 +152,21 @@ final class DynamicTypeUITests: SampleUITestCase {
     }
 
     @MainActor
+    private func dragHorizontally(
+        in app: XCUIApplication, window: CGRect, rowY: CGFloat, from: CGFloat, to: CGFloat
+    ) {
+        let visibleY = max(window.minY + 1, min(window.maxY - 1, rowY))
+        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+        let start = origin.withOffset(
+            CGVector(dx: window.width * from, dy: visibleY - window.minY))
+        let end = origin.withOffset(
+            CGVector(dx: window.width * to, dy: visibleY - window.minY))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    @MainActor
     private func launch(size: String) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = sampleApplication()
         app.launchArguments += [Self.sizeFlag, size]
         app.launch()
         return app

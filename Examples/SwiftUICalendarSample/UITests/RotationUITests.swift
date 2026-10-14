@@ -7,7 +7,7 @@ import XCTest
 /// during a genuine live rotation.
 final class RotationUITests: SampleUITestCase {
     func testHorizontalCalendarAdaptsAfterLandscapeToPortraitRotation() throws {
-        let app = XCUIApplication()
+        let app = sampleApplication()
         app.launch()
 
         // Switch to horizontal scroll mode via the settings sheet.
@@ -45,7 +45,7 @@ final class RotationUITests: SampleUITestCase {
     /// the exact "switching to portrait" transition the user reports as broken.
     func testHorizontalCalendarAdaptsWhenLaunchedInLandscape() throws {
         XCUIDevice.shared.orientation = .landscapeLeft
-        let app = XCUIApplication()
+        let app = sampleApplication()
         app.launch()
         Thread.sleep(forTimeInterval: 1.5)
 
