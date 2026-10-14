@@ -94,6 +94,19 @@ class UITestSimulatorTest < Minitest::Test
     assert_equal [["xcrun", "simctl", "bootstatus", "owned-device", "-b"]], calls
   end
 
+  def test_preparation_shuts_down_the_template_after_first_boot
+    output, status = run_script("prepare", "owned-device")
+    assert status.success?, output
+    assert_equal [["xcrun", "simctl", "bootstatus", "owned-device", "-b"],
+                  ["xcrun", "simctl", "shutdown", "owned-device"]], calls
+  end
+
+  def test_preparation_does_not_hide_a_boot_failure
+    output, status = run_script("prepare", "owned-device", SIM_EXIT: "1")
+    refute status.success?, output
+    assert_equal [["xcrun", "simctl", "bootstatus", "owned-device", "-b"]], calls
+  end
+
   def test_test_plan_reuses_products_and_preserves_flags_and_failure_without_retry
     output, status = run_script("test", "owned-device", "Locales", "results/locales.xcresult",
                                 "-test-timeouts-enabled", "YES", TEST_EXIT: "65", watchdog_timeout: 5)
