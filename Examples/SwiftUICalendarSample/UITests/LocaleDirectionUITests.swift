@@ -13,6 +13,7 @@ import XCTest
 /// right to left.
 ///
 /// Run with `xcodebuild test -testPlan SwiftUICalendarSampleLocales`.
+@MainActor
 final class LocaleDirectionUITests: SampleUITestCase {
     // MARK: Helpers
 
@@ -35,16 +36,18 @@ final class LocaleDirectionUITests: SampleUITestCase {
         let days = dayButtons(app)
         XCTAssertTrue(days.firstMatch.waitForExistence(timeout: 10), "no days are rendered")
         var byNumber: [Int: CGRect] = [:]
-        for element in days.allElementsBoundByIndex {
-            guard let number = element.identifier.split(separator: "-").last.flatMap({ Int($0) }),
-                element.isHittable
+        let snapshot = try app.snapshot()
+        for element in snapshot.flattened {
+            guard element.elementType == .button,
+                element.identifier.hasPrefix(CalendarAccessibilityID.dayPrefix),
+                let number = element.identifier.split(separator: "-").last.flatMap({ Int($0) }),
+                !element.frame.isEmpty, snapshot.frame.contains(element.frame)
             else { continue }
             byNumber[number] = element.frame
         }
-        if let pair = ReadingOrder.firstAdjacentPair(in: byNumber, successor: { $0 + 1 }) {
-            return pair
-        }
-        throw XCTSkip("no two adjacent days share a row")
+        return try XCTUnwrap(
+            ReadingOrder.firstAdjacentPair(in: byNumber, successor: { $0 + 1 }),
+            "no two adjacent days share a visible row")
     }
 
     private func assertReadingOrder(_ app: XCUIApplication, rightToLeft: Bool) throws {
@@ -69,28 +72,46 @@ final class LocaleDirectionUITests: SampleUITestCase {
         app.dismissSettings()
     }
 
-    // MARK: Writing direction
+    // MARK: Locale journeys
 
-    func testGregorianGridReadsLeftToRight() throws {
-        try assertReadingOrder(launchApp(), rightToLeft: false)
+    func testGregorianNavigationAndReadingDirection() throws {
+        let app = launchApp()
+        try XCTContext.runActivity(named: "Gregorian grid reads left to right") { _ in
+            try assertReadingOrder(app, rightToLeft: false)
+        }
+        try XCTContext.runActivity(named: "Next month updates the grid") { _ in
+            try assertNextMonthAdvancesTheGrid(app)
+        }
+        XCTContext.runActivity(named: "Year picker opens and dismisses") { _ in
+            assertYearPickerOpensAndDismisses(app)
+        }
+        XCTContext.runActivity(named: "Gregorian horizontal paging") { _ in
+            app.chooseScrollMode(.horizontal)
+            assertSwipePagesToNextMonth(app, rightToLeft: false)
+        }
     }
 
-    func testPersianCalendarMirrorsTheGrid() throws {
+    func testPersianNavigationAndReadingDirection() throws {
         let app = launchApp()
         choosePersianCalendar(app)
-        try assertReadingOrder(app, rightToLeft: true)
+        try XCTContext.runActivity(named: "Persian grid reads right to left") { _ in
+            try assertReadingOrder(app, rightToLeft: true)
+        }
+        XCTContext.runActivity(named: "Persian horizontal paging") { _ in
+            app.chooseScrollMode(.horizontal)
+            assertSwipePagesToNextMonth(app, rightToLeft: true)
+        }
     }
 
     // MARK: Header controls
 
-    func testNextMonthButtonAdvancesTheGrid() throws {
+    private func assertNextMonthAdvancesTheGrid(_ app: XCUIApplication) throws {
         let calendar = Calendar(identifier: .gregorian)
         let now = Date()
         let thisMonth = calendar.dateComponents([.year, .month], from: now)
         let nextMonth = calendar.dateComponents(
             [.year, .month], from: try XCTUnwrap(calendar.date(byAdding: .month, value: 1, to: now))
         )
-        let app = launchApp()
         let thisFirst = app.buttons[
             CalendarAccessibilityID.day(
                 year: try XCTUnwrap(thisMonth.year), month: try XCTUnwrap(thisMonth.month),
@@ -106,15 +127,14 @@ final class LocaleDirectionUITests: SampleUITestCase {
         XCTAssertTrue(nextFirst.waitForExistence(timeout: 15), "next month did not render")
     }
 
-    func testYearPickerOpensAndDismisses() throws {
-        let app = launchApp()
+    private func assertYearPickerOpensAndDismisses(_ app: XCUIApplication) {
         let yearButton = app.buttons[CalendarAccessibilityID.yearButton]
         XCTAssertTrue(yearButton.waitForExistence(timeout: 20), "year button not found")
         yearButton.tap()
         let done = app.buttons[CalendarAccessibilityID.yearPickerDoneButton]
         XCTAssertTrue(done.waitForExistence(timeout: 15), "year picker did not present")
         done.tap()
-        XCTAssertFalse(done.waitForExistence(timeout: 2), "Done did not dismiss the year picker")
+        XCTAssertTrue(done.waitForNonExistence(timeout: 5), "Done did not dismiss the year picker")
     }
 
     // MARK: Horizontal paging direction
@@ -143,16 +163,4 @@ final class LocaleDirectionUITests: SampleUITestCase {
             "a swipe toward the leading edge should page to the next month")
     }
 
-    func testHorizontalSwipePagesGregorianLeftToRight() throws {
-        let app = launchApp()
-        app.chooseScrollMode(.horizontal)
-        assertSwipePagesToNextMonth(app, rightToLeft: false)
-    }
-
-    func testHorizontalSwipePagesPersianRightToLeft() throws {
-        let app = launchApp()
-        choosePersianCalendar(app)
-        app.chooseScrollMode(.horizontal)
-        assertSwipePagesToNextMonth(app, rightToLeft: true)
-    }
 }

@@ -4,7 +4,7 @@ import XCTest
 /// Drives the header with the shared identifiers instead of localized labels, so the same query
 /// works in any locale and stays in step with the identifiers the views actually apply.
 final class HeaderControlUITests: SampleUITestCase {
-    func testNextMonthButtonAdvancesTheGrid() throws {
+    func testMonthNavigationAndYearPicker() throws {
         let app = XCUIApplication()
         app.launch()
         // The sample opens in `.none` scroll mode, which shows a single month grid.
@@ -32,11 +32,6 @@ final class HeaderControlUITests: SampleUITestCase {
             "the next month did not render after tapping the next month button")
         XCTAssertFalse(
             app.buttons[thisFirst].exists, "the previous month is still rendered after paging")
-    }
-
-    func testYearButtonOpensTheYearPicker() throws {
-        let app = XCUIApplication()
-        app.launch()
 
         let yearButton = app.buttons[CalendarAccessibilityID.yearButton]
         XCTAssertTrue(yearButton.waitForExistence(timeout: 5), "year button not found")
@@ -45,7 +40,7 @@ final class HeaderControlUITests: SampleUITestCase {
         let done = app.buttons[CalendarAccessibilityID.yearPickerDoneButton]
         XCTAssertTrue(done.waitForExistence(timeout: 5), "the year picker did not present its Done")
         done.tap()
-        XCTAssertFalse(
-            done.waitForExistence(timeout: 2), "Done did not dismiss the year picker")
+        XCTAssertTrue(
+            done.waitForNonExistence(timeout: 5), "Done did not dismiss the year picker")
     }
 }

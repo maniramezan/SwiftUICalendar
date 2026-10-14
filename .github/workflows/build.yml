@@ -52,8 +52,10 @@ jobs:
       - name: Validate Swift formatting
         run: bash ./scripts/lint.sh
 
-      - name: Validate test watchdog
-        run: ruby ./scripts/tests/test-watchdog-test.rb
+      - name: Validate CI scripts
+        run: |
+          ruby ./scripts/tests/test-watchdog-test.rb
+          ruby ./scripts/tests/ui-test-simulator-test.rb
 
       - name: Build package
         run: swift build -c debug
@@ -73,14 +75,7 @@ jobs:
           path: SwiftUICalendar/.build/test-diagnostics
           if-no-files-found: ignore
 
-      - name: Build iOS sample
-        # Allow the locked TCA dependency macros on fresh, noninteractive CI runners.
-        run: >-
-          xcodebuild -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
-          -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
-          -skipMacroValidation
-          -derivedDataPath .build/SampleRelease CODE_SIGNING_ALLOWED=NO build
-
+      # The ui-tests job compiles the iOS sample with build-for-testing; do not build it again here.
       - name: Compile public API examples
         run: bash ./scripts/check-examples.sh
 
@@ -100,16 +95,13 @@ jobs:
     env:
       PROJECT: Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
       DEVICE_NAME: iPhone 17
-      # A cold simulator clone can take minutes to launch an app in landscape, and an app that is
-      # starved that long answers no accessibility query (build 37137076097 spent 10 minutes in one
-      # test). Run serially so clones do not starve each other, fail a stuck test in minutes rather
-      # than the default, and retry once in a fresh process before calling it a regression.
+      # Let the test plans and Xcode choose parallelism for the available hardware. Keep individual
+      # tests bounded; report failures directly rather than hiding slow tests behind retries.
       # Simulator diagnostics collection never finishes on this runner: it waits out its 600-second
       # timeout after any failure (run 38346060741) and adds nothing to the result bundle.
       UI_TEST_FLAGS: >-
-        -parallel-testing-enabled NO -test-timeouts-enabled YES
+        -test-timeouts-enabled YES
         -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 300
-        -retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES
         -collect-test-diagnostics never
     steps:
       - name: Checkout SwiftUICalendar
@@ -127,17 +119,21 @@ jobs:
           -destination "platform=iOS Simulator,name=$DEVICE_NAME" -skipMacroValidation
           -testProductsPath .build/SampleUITests.xctestproducts
 
-      # Left to xcodebuild, a cold boot overlaps the test runner's launch, and the runner can stay
-      # suspended until the plan fails (run 38346060741). Boot after the build, not during it: on
-      # this 3-CPU runner a concurrent first boot slowed the build from 3 to 16 minutes (run
-      # 38404918337). The wait then holds until the simulator's first-boot background work goes
-      # quiet, which otherwise starved the app under test into timeouts (run 38411339964).
-      - name: Boot UI test simulator
-        timeout-minutes: 15
+      - name: Record runner resources
         run: |
-          udid="$(bash ./scripts/ui-test-simulator.sh boot "$DEVICE_NAME")"
+          sysctl hw.ncpu hw.memsize
+          df -h .
+
+      # Build once above, then test on a new device with no retained application data. Never erase
+      # the runner's shared device; Xcode may clone this owned device for parallel workers.
+      - name: Create UI test simulator
+        run: |
+          udid="$(bash ./scripts/ui-test-simulator.sh create "$DEVICE_NAME")"
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
-          bash ./scripts/ui-test-simulator.sh wait "$udid"
+
+      - name: Boot UI test simulator
+        timeout-minutes: 5
+        run: bash ./scripts/ui-test-simulator.sh wait "$SIMULATOR_UDID"
 
       - name: Run default UI test plan
         timeout-minutes: 60
@@ -151,6 +147,10 @@ jobs:
         run: >-
           bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" SwiftUICalendarSampleLocales
           .build/results/locales.xcresult $UI_TEST_FLAGS
+
+      - name: Delete UI test simulator
+        if: always() && env.SIMULATOR_UDID != ''
+        run: bash ./scripts/ui-test-simulator.sh delete "$SIMULATOR_UDID"
 
       - name: Upload test results
         if: always()
@@ -196,8 +196,10 @@ jobs:
       - name: Validate Swift formatting
         run: bash ./scripts/lint.sh
 
-      - name: Validate test watchdog
-        run: ruby ./scripts/tests/test-watchdog-test.rb
+      - name: Validate CI scripts
+        run: |
+          ruby ./scripts/tests/test-watchdog-test.rb
+          ruby ./scripts/tests/ui-test-simulator-test.rb
 
       - name: Build package
         run: swift build -c debug
