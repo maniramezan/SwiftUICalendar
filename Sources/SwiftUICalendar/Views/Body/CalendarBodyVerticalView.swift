@@ -12,6 +12,8 @@ struct CalendarBodyVerticalView: View {
     private let logger = Logger.swiftUICalendar(for: CalendarBodyVerticalView.self)
 
     @State private var anchor: MonthIdentifier?
+    @State private var requestedAnchor: MonthIdentifier?
+    @State private var navigationRevision = 0
     @State private var months: [MonthIdentifier] = []
     @State private var scrollPosition: MonthIdentifier?
     @State private var realizedMonths: Set<MonthIdentifier> = []
@@ -73,7 +75,9 @@ struct CalendarBodyVerticalView: View {
                 .padding(.vertical, metrics.itemSpacing)
                 .padding(.horizontal, metrics.monthInset)
             }
-            .scrollTargetBehavior(CalendarVerticalScrollTargetBehavior())
+            .scrollTargetBehavior(
+                CalendarVerticalScrollTargetBehavior(alignsMonths: requestedAnchor == nil)
+            )
             .calendarVerticalScrollPosition(navigation: $navigationPosition, month: $scrollPosition)
             .onScrollTargetVisibilityChange(
                 idType: MonthIdentifier.self, threshold: VerticalMonthWindow.visibilityThreshold
@@ -87,10 +91,22 @@ struct CalendarBodyVerticalView: View {
             .onAppear {
                 initializeWindow()
             }
-            .onChange(of: anchor) { _, target in
-                #if os(macOS)
-                if let target { proxy.scrollTo(target, anchor: .top) }
+            .task(id: requestedAnchor) {
+                guard let target = requestedAnchor else { return }
+                #if !os(macOS)
+                await Task.yield()
+                guard !Task.isCancelled else { return }
                 #endif
+                // Resolve the ID after the replacement window has entered the view tree. Issuing
+                // ScrollPosition.scrollTo in the same transaction as replacing the lazy rows can
+                // leave UIKit's placement estimates on the preceding month in a narrow viewport.
+                withTransaction(Transaction(animation: nil)) {
+                    #if os(macOS)
+                    proxy.scrollTo(target, anchor: .top)
+                    #else
+                    navigationPosition.scrollTo(id: target, anchor: .top)
+                    #endif
+                }
             }
             .onChange(of: contentWidth) { _, _ in
                 initializeWindow()
@@ -103,6 +119,7 @@ struct CalendarBodyVerticalView: View {
             .onScrollPhaseChange { _, newPhase in
                 if newPhase == .tracking || newPhase == .interacting {
                     pendingDayReveal = nil
+                    requestedAnchor = nil
                 }
                 settle.recordPhase(newPhase)
                 if newPhase == .idle {
@@ -154,6 +171,9 @@ struct CalendarBodyVerticalView: View {
                 scheduleScrollSettlement()
             }
         }
+        // Recreate the reader with the UIKit scroll view so its proxy cannot retain stale
+        // placement estimates. Native scrolling and window recentering keep this identity.
+        .id(navigationRevision)
     }
 
     private var currentMonthIdentifier: MonthIdentifier {
@@ -221,6 +241,7 @@ struct CalendarBodyVerticalView: View {
             return
         }
         pendingDayReveal = nil
+        requestedAnchor = nil
         logger.debug("Revealing the requested day in the visible month")
         withTransaction(Transaction(animation: nil)) {
             #if os(macOS)
@@ -318,9 +339,11 @@ struct CalendarBodyVerticalView: View {
         logger.debug(
             "Scrolling to anchor \(target.year, privacy: .public)-\(target.month, privacy: .public)"
         )
-        withTransaction(Transaction(animation: nil)) {
-            navigationPosition.scrollTo(id: target, anchor: .top)
-        }
+        #if !os(macOS)
+        navigationPosition = ScrollPosition(id: target, anchor: .top)
+        navigationRevision += 1
+        #endif
+        requestedAnchor = target
     }
 }
 

@@ -150,6 +150,44 @@ struct CalendarBodyVerticalViewLayoutTests {
         }
     }
 
+    @Test(
+        "narrow vertical viewport aligns consecutive month jumps",
+        arguments: [Calendar.Identifier.gregorian, .persian], [CGFloat(44), 72])
+    func hostedNarrowConsecutiveMonthJumps(
+        identifier: Calendar.Identifier, minimumDayHeight: CGFloat
+    ) throws {
+        let gregorian = Calendar(identifier: .gregorian)
+        let end = try #require(gregorian.date(from: DateComponents(year: 2026, month: 10, day: 14)))
+        let model = CalendarViewModel(
+            state: try CalendarState(
+                calendarIdentifier: identifier, currentDate: end, selection: .single(end),
+                dateRange: .onOrBefore(end)))
+        let original = model.visibleMonth
+        let frames = MeasuredDayFrames(calendar: model.engine.calendar)
+        let theme = Theme()
+        theme.day.setDayContent(
+            minimumSize: { _ in CGSize(width: 44, height: minimumDayHeight) },
+            { MeasuringDayView(context: $0, frames: frames) }
+        )
+        let size = CGSize(width: 359, height: 494)
+        let hosted = hostView(
+            CalendarView(model: model, theme: theme, configuration: .init(scrollMode: .vertical)),
+            size: size)
+        defer { hosted.window.contentView = nil }
+        #expect(waitForStableRender(hosted.hosting))
+
+        for offset in [-1, -2, -3, 0] {
+            let month = try #require(model.monthIdentifier(offset: offset, from: original))
+            let day = try #require(model.engine.navigationDate(in: month, preferredDay: 1))
+            try model.navigate(to: day)
+            #expect(waitForStableRender(hosted.hosting))
+            let frame = try #require(frames.inMonth[model.engine.calendar.startOfDay(for: day)])
+            #expect(
+                CGRect(origin: .zero, size: size).contains(frame),
+                "Requested month is outside the narrow viewport: \(month), \(frame)")
+        }
+    }
+
     @Test("hosted vertical view follows external navigation without crashing")
     func hostedVerticalViewFollowsExternalNavigation() throws {
         let viewModel = CalendarViewModel.snapshot(selection: .single(nil))

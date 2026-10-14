@@ -14,6 +14,18 @@ struct CalendarBodyVerticalViewSnapshotTests {
             .date(from: DateComponents(year: year, month: month, day: day))!
     }
 
+    @Test("consecutive month navigation preserves the narrow vertical structure")
+    func narrowConsecutiveMonthNavigation() throws {
+        let vm = CalendarViewModel.snapshot(selection: .single(nil))
+        try vm.navigate(to: makeDate(year: 2026, month: 10, day: 14))
+        for month in [9, 8] {
+            try vm.navigate(toMonth: month, year: 2026)
+            assertCalendarStructure(
+                model: vm, configuration: config, width: 359, monthSpan: 1,
+                named: "narrow-month-\(month)")
+        }
+    }
+
     @Test("Gregorian, no selection")
     func gregorianNoSelection() {
         let vm = CalendarViewModel.snapshot(selection: .single(nil))

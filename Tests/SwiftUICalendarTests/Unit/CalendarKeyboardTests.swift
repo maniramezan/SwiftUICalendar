@@ -381,7 +381,8 @@ struct CalendarDayActivationTests {
         #expect(cursor.scrollRequest == nil, "selection never asks a container to scroll")
 
         // What `CalendarView` does once focus lands, and what a key press then adds.
-        cursor.date = try #require(cursor.takePendingFocusDate())
+        let pendingDate = try #require(cursor.takePendingFocusDate())
+        cursor.date = pendingDate
         #expect(cursor.date == dayStart, "focus lands on the tapped day")
         cursor.isActive = true
         cursor.hasSeenKeyInput = true
