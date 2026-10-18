@@ -22,9 +22,12 @@ struct CalendarHeaderChevronRow<Content: View>: View {
         HStack(spacing: metrics.chevronSpacing) {
             Button(action: onPrevious) {
                 Image(systemName: "chevron.backward")
-                    .font(.body.weight(.semibold))
-                    .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
+                    .imageScale(.small)
+                    .scaleEffect(0.7)
+                    .frame(width: metrics.compactControlSize, height: metrics.compactControlSize)
                     .adaptiveGlass(shape: .circle, interactive: true)
+                    .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
+                    .contentShape(Rectangle())
             }
             // Plain style so the glass circle is the only chrome; macOS otherwise draws a bordered
             // push-button background around it.
@@ -42,9 +45,12 @@ struct CalendarHeaderChevronRow<Content: View>: View {
 
             Button(action: onNext) {
                 Image(systemName: "chevron.forward")
-                    .font(.body.weight(.semibold))
-                    .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
+                    .imageScale(.small)
+                    .scaleEffect(0.7)
+                    .frame(width: metrics.compactControlSize, height: metrics.compactControlSize)
                     .adaptiveGlass(shape: .circle, interactive: true)
+                    .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
+                    .contentShape(Rectangle())
             }
             // Plain style so the glass circle is the only chrome; macOS otherwise draws a bordered
             // push-button background around it.

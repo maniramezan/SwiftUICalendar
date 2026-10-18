@@ -48,6 +48,24 @@ struct CalendarBodyHorizontalViewSnapshotTests {
             model: vm, configuration: sixRows, monthSpan: 1, named: "range-crossing-month-boundary")
     }
 
+    @Test(
+        "Cross-month range preserves roles in every mode and writing direction",
+        arguments: CalendarConfiguration.ScrollMode.allCases,
+        [Calendar.Identifier.gregorian, .persian])
+    func crossMonthRange(mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier)
+        throws
+    {
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .range(nil, nil))
+        let calendar = model.engine.calendar
+        let month = try #require(calendar.dateInterval(of: .month, for: model.currentDate))
+        let start = try #require(calendar.date(byAdding: .day, value: -3, to: month.end))
+        let end = try #require(calendar.date(byAdding: .day, value: 4, to: month.end))
+        model.selection = .range(start, end)
+        assertCalendarStructure(
+            model: model, configuration: .init(scrollMode: mode), monthSpan: 1,
+            named: "cross-month-\(mode)-\(identifier)")
+    }
+
     @Test("Square day borders fill full cells in horizontal mode")
     func squareDayBordersFillFullCellsInHorizontalMode() {
         let vm = CalendarViewModel.snapshot(selection: .single(nil))

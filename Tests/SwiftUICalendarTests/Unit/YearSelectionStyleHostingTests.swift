@@ -10,6 +10,47 @@ import Testing
 @Suite("Year Selection Style Hosting Tests")
 struct YearSelectionStyleHostingTests {
 
+    @Test(
+        "Month navigation preserves measured header bounds",
+        arguments: [Font.caption, .title, .largeTitle])
+    func monthHeaderBounds(font: Font) {
+        let items = [MonthItem(id: 5, title: "May"), MonthItem(id: 9, title: "September")]
+        let sizes = items.map { selected in
+            let hosted = hostView(
+                CalendarNavigationHeaderView(
+                    items: items, selectedItem: .constant(selected), onPrevious: {}, onNext: {}
+                )
+                .font(font)
+                .fixedSize())
+            defer { hosted.window.contentView = nil }
+            return hosted.hosting.fittingSize
+        }
+        #expect(abs(sizes[0].width - sizes[1].width) < 0.5)
+        #expect(sizes.allSatisfy { $0.height >= 44 })
+        #expect(sizes[0].width >= 132)
+    }
+
+    @Test("macOS wheel fallback inherits the same font and bounds as the year menu")
+    func wheelFallbackTypography() {
+        let item = YearItem(id: 2026, title: "2026")
+        let items = [item]
+        var widths: [CGFloat] = []
+        for font in [Font.caption, .largeTitle] {
+            let wheel = hostView(
+                YearWheelPickerView(items: items, currentValue: .constant(item))
+                    .font(font).fixedSize())
+            let menu = hostView(
+                YearMenuPickerView(items: items, currentValue: .constant(item))
+                    .font(font).fixedSize())
+            #expect(abs(wheel.hosting.fittingSize.width - menu.hosting.fittingSize.width) < 0.5)
+            #expect(abs(wheel.hosting.fittingSize.height - menu.hosting.fittingSize.height) < 0.5)
+            widths.append(wheel.hosting.fittingSize.width)
+            wheel.window.contentView = nil
+            menu.window.contentView = nil
+        }
+        #expect(widths[1] > widths[0])
+    }
+
     @Test("Wheel style year picker renders without crashing")
     func wheelStylePickerRendersWithoutCrashing() {
         let viewModel = CalendarViewModel.snapshot(identifier: .gregorian)

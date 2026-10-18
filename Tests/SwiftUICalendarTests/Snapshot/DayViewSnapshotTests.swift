@@ -41,6 +41,22 @@ struct DayViewSnapshotTests {
         )
     }
 
+    @Test(
+        "Built-in range roles distinguish endpoints and interior",
+        arguments: [
+            CalendarRangePosition.start, .interior, .end, .startAndEnd,
+        ], [false, true])
+    func rangeRoles(position: CalendarRangePosition, square: Bool) {
+        let theme = square ? squareTheme() : circleTheme()
+        let context = CalendarDayContext(
+            date: pinnedDate, day: 15, dayLabel: "15", isToday: false,
+            isSelected: true, isInCurrentMonth: true, theme: theme.day,
+            typography: .default, onSelect: { _ in }, rangePosition: position)
+        assertDayContextStructure(
+            context, rendererFor: theme,
+            named: "range-\(square ? "square" : "circle")-\(position.rawValue)")
+    }
+
     // MARK: - Circle renderer
 
     @Test("Circle day: normal state")

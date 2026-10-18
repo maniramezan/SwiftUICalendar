@@ -35,6 +35,30 @@ struct CalendarAccessibilitySnapshotTests {
         }
     }
 
+    @Test("Today keeps a two-unit trailing inset")
+    func todayTrailingInset() {
+        let metrics = CalendarMetrics.default
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(
+                of:
+                    "outerMargin: \(metrics.calendarMargin)\nadditionalPadding: \(metrics.todayTrailingPadding)\ntotalInset: \(metrics.todayTrailingInset)",
+                as: .lines, named: "today-trailing-inset")
+        }
+    }
+
+    @Test("Header arrow chrome stays compact inside the full touch target")
+    func headerArrowSizing() {
+        let metrics = CalendarMetrics.default
+        #expect(metrics.compactControlSize < metrics.minimumHitTarget)
+        #expect(metrics.minimumHitTarget >= 44)
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(
+                of:
+                    "visibleCircle: \(metrics.compactControlSize)\ntouchTarget: \(metrics.minimumHitTarget)",
+                as: .lines, named: "header-arrow-sizing")
+        }
+    }
+
     @Test("Header descriptions distinguish controls without repeating system gestures")
     func headerControlDescriptions() {
         let item = MonthItem(id: 6, title: "June")

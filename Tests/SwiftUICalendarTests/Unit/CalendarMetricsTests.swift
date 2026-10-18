@@ -6,6 +6,18 @@ import Testing
 
 @Suite("CalendarMetrics Tests")
 struct CalendarMetricsTests {
+    @MainActor
+    @Test("Today keeps two spacing units at the trailing edge as viewport margins shrink")
+    func todayTrailingInset() {
+        let metrics = CalendarMetrics.default
+        #expect(metrics.todayTrailingInset == 16)
+        #expect(metrics.todayTrailingPadding == 8)
+        for factor in [0.0, 0.25, 1.0] {
+            let scaled = metrics.scalingSoftMargins(by: factor)
+            #expect(scaled.calendarMargin + scaled.todayTrailingPadding == 16)
+        }
+    }
+
     @Test("grid layout centralizes width, cell size, and seven fixed columns")
     func gridLayoutResolvesCalendarGeometry() {
         let metrics = CalendarMetrics.default

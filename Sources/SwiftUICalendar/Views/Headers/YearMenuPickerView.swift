@@ -4,18 +4,34 @@ import SwiftUICalendarAccessibility
 
 /// A trigger button that presents a native dropdown menu listing every selectable year.
 ///
-/// Uses the shared picker's explicit menu presentation so even a long year list stays a dropdown.
+/// Inherits the calendar header font and keeps even a long year list in a dropdown.
 struct YearMenuPickerView: View {
+    @Environment(\.calendarMetrics) private var metrics
+
     let items: [YearItem]
     @Binding var currentValue: YearItem
 
     var body: some View {
-        MenuPicker(items: items, currentValue: $currentValue, preferredStyle: .menu)
-            .accessibilityLabel(
-                "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
-            )
-            .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
-            .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
+        Menu {
+            Picker(selection: $currentValue) {
+                ForEach(items) { item in
+                    Text(item.title).tag(item)
+                }
+            } label: {
+                Text(currentValue.title)
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Text(currentValue.title)
+                .fixedSize()
+                .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
+        )
+        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+        .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
     }
 }
 

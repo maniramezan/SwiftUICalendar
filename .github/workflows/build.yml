@@ -161,6 +161,10 @@ jobs:
             suites: |
               HeaderControlUITests
               VerticalScrollDateUpdateReproUITests
+          - name: Selection
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: SelectionUITests
           - name: English
             plan: SwiftUICalendarSampleLocales
             configuration: English

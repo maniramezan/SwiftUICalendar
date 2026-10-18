@@ -26,6 +26,9 @@ final class DynamicTypeUITests: SampleUITestCase {
         XCTAssertGreaterThanOrEqual(month.frame.height, 44)
         let settings = app.buttons[CalendarSampleAccessibilityID.settings]
         XCTAssertTrue(settings.exists)
+        XCTAssertTrue(
+            app.navigationBars["Calendar"].buttons[CalendarSampleAccessibilityID.settings].exists,
+            "Settings must be in the calendar navigation bar")
         XCTAssertGreaterThanOrEqual(settings.frame.width, 44)
         XCTAssertGreaterThanOrEqual(settings.frame.height, 44)
     }

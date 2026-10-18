@@ -1,6 +1,7 @@
 import OSLog
 import SwiftCommons
 import SwiftUI
+import SwiftUICalendarAccessibility
 
 /// A configurable SwiftUI calendar view with calendar-system aware layout, selection, and theming.
 ///
@@ -231,12 +232,10 @@ private struct CalendarSurface: View {
             GeometryReader { geometry in
                 // The outer surface only scrolls when the header and one readable row cannot fit.
                 // The body retains its own month scrolling and identity across that boundary.
-                ScrollView(
-                    headerHeight + metrics.rowSpacing + metrics.minRowHeight
-                        + metrics.weekdayHeaderMinHeight > geometry.size.height
-                        ? .vertical : [],
-                    showsIndicators: CalendarScrollChrome.showsIndicators
-                ) {
+                // Keep the scroll axis stable. Switching it to [] in a tall host leaves UIKit's
+                // nested scroll content offset out of sync with rendered day positions on iOS.
+                // Content fits exactly when the header and a row fit; only shorter hosts overflow.
+                ScrollView(.vertical, showsIndicators: CalendarScrollChrome.showsIndicators) {
                     VStack(spacing: metrics.rowSpacing) {
                         CalendarPinnedHeader(
                             viewModel: viewModel, configuration: configuration,
@@ -359,7 +358,9 @@ private struct CalendarTodayControl: View {
             }
             // Today can fall outside `dateRange` (for example, a past-only calendar).
             .disabled(!viewModel.canGoToToday)
+            .accessibilityIdentifier(CalendarAccessibilityID.todayButton)
         }
+        .padding(.trailing, metrics.todayTrailingPadding)
         .frame(
             width: viewportWidth,
             alignment: .trailing
