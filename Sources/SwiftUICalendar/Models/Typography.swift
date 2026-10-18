@@ -120,7 +120,7 @@ public final class Typography {
     /// - Parameters:
     ///   - headerFont: Font for the primary calendar header (e.g., month title).
     ///   - monthHeaderFont: Font for month titles in vertical scrolling mode.
-    ///   - monthYearFont: Font for year labels in vertical scrolling mode.
+    ///   - monthYearFont: Font for year labels in vertical scrolling mode. Defaults to the month title font.
     ///   - weekdayHeaderFont: Font for weekday header labels.
     ///   - dayFont: Font for day numbers in the calendar grid.
     ///   - allowsScaling: Enables optional text downscaling for tight layouts. Defaults to `true`.
@@ -136,7 +136,7 @@ public final class Typography {
     ) {
         self.headerFont = headerFont
         self.monthHeaderFont = monthHeaderFont ?? headerFont
-        self.monthYearFont = monthYearFont ?? headerFont
+        self.monthYearFont = monthYearFont ?? monthHeaderFont ?? headerFont
         self.weekdayHeaderFont = weekdayHeaderFont
         self.dayFont = dayFont
         self.allowsScaling = allowsScaling
@@ -199,7 +199,6 @@ public final class Typography {
         let typography = Typography(
             headerFont: .title2.bold(),
             monthHeaderFont: .title.bold(),
-            monthYearFont: .title2.bold(),
             weekdayHeaderFont: .title2.bold(),
             dayFont: .system(.title2, weight: .semibold),
             allowsScaling: true,
@@ -214,7 +213,6 @@ public final class Typography {
         let typography = Typography(
             headerFont: .title3,
             monthHeaderFont: .title2.weight(.semibold),
-            monthYearFont: .title3.weight(.semibold),
             weekdayHeaderFont: .subheadline,
             dayFont: .body,
             allowsScaling: true,

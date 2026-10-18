@@ -7,6 +7,32 @@ import Testing
 @Suite("Typography Tests")
 struct TypographyTests {
 
+    @Test("Default month and year titles use the same font")
+    func defaultMonthAndYearFontsMatch() {
+        let typography = Typography.default
+        #expect(typography.monthYearFont == typography.monthHeaderFont)
+    }
+
+    @Test("Year font follows the resolved month font unless overridden")
+    func yearFontDefaultsToMonthFont() {
+        let typography = Typography(
+            headerFont: .title3,
+            monthHeaderFont: .title2.bold(),
+            weekdayHeaderFont: .caption,
+            dayFont: .body
+        )
+        #expect(typography.monthYearFont == typography.monthHeaderFont)
+
+        let custom = Typography(
+            headerFont: .title3,
+            monthHeaderFont: .title2.bold(),
+            monthYearFont: .caption,
+            weekdayHeaderFont: .caption,
+            dayFont: .body
+        )
+        #expect(custom.monthYearFont == .caption)
+    }
+
     @Test("dayViewTypography returns fallback for unknown type")
     func dayViewTypographyReturnsFallback() {
         let typography = Typography(
