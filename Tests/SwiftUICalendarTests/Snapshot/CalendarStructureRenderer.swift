@@ -182,7 +182,8 @@ enum CalendarStructure {
         // `x` marks a day outside `dateRange` (rendered disabled). Absent for unrestricted calendars,
         // so existing baselines are unaffected.
         if !day.isEnabled { flags += "x" }
-        if day.isToday { flags += "T" }
+        // Whole-calendar snapshots exclude the live clock's today marker so their baselines
+        // stay stable across dates. Day-context snapshots cover isToday explicitly.
         // `*` always reflects `MonthSnapshot.Day.isSelected` — the resolved flag the day views render —
         // for every selection mode. Range roles (`[` start, `]` end, `=` interior) are layered on top so
         // a range still fails the snapshot if the model marks its days unselected.
