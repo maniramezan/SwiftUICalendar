@@ -55,12 +55,7 @@ struct YearWheelPickerView: View {
         #else
         // The wheel picker style is unavailable outside iOS; fall back to a native dropdown menu so
         // the control is still usable.
-        MenuPicker(items: items, currentValue: $currentValue, preferredStyle: .wheel)
-            .accessibilityLabel(
-                "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
-            )
-            .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
-            .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
+        YearMenuPickerView(items: items, currentValue: $currentValue)
         #endif
     }
 }

@@ -6,5 +6,10 @@ struct SwiftUICalendarSampleApp: App {
         WindowGroup {
             ContentView()
         }
+        #if os(macOS)
+        .commands {
+            CalendarSettingsCommands()
+        }
+        #endif
     }
 }

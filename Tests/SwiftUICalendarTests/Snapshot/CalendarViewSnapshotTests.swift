@@ -43,6 +43,16 @@ struct CalendarViewSnapshotTests {
             width: snapshotWidth, named: "shared-menu-header-\(identifier)")
     }
 
+    @Test(
+        "Header controls preserve calendar structure",
+        arguments: CalendarConfiguration.ScrollMode.allCases)
+    func headerControls(mode: CalendarConfiguration.ScrollMode) {
+        let model = CalendarViewModel.snapshot(selection: .single(nil))
+        assertCalendarStructure(
+            model: model, configuration: .init(scrollMode: mode, showsHeader: true),
+            width: snapshotWidth, named: "header-controls-\(mode)")
+    }
+
     @Test("Fixed calendar without header")
     func fixedCalendarWithoutHeader() {
         let vm = CalendarViewModel.snapshot(selection: .single(nil))

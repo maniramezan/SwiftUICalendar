@@ -78,6 +78,10 @@ struct CalendarBodyView: View {
     }
 
     var body: some View {
+        let days = snapshot.days
+        let columnWidth =
+            (gridWidth - metrics.itemSpacing * CalendarGrid.columnGapCount)
+            / CalendarGrid.columnWidthDivisor
         let rangePosition = viewModel.state.selection.rangePositionMatcher(
             in: viewModel.engine.calendar)
         // Resolved once for the month; resolving it per cell repeated the calendar and locale
@@ -110,7 +114,7 @@ struct CalendarBodyView: View {
                 // Days stay in reading order. A right-to-left calendar inherits `.rightToLeft`,
                 // and the grid mirrors itself, putting each week's first day on the right. Reversing
                 // rows by hand as well flipped them back, so Persian and Hebrew weeks read backwards.
-                ForEach(snapshot.days) { item in
+                ForEach(Array(days.enumerated()), id: \.element.id) { index, item in
                     if let date = item.date, !(hideOverflowDays && !item.isInDisplayedMonth) {
                         let context = CalendarDayContext(
                             date: date,
@@ -160,6 +164,21 @@ struct CalendarBodyView: View {
                                 }
                             }
                             .frame(maxWidth: .infinity)
+                            .background {
+                                if usesBuiltInRenderer, item.isSelected,
+                                    let position = context.rangePosition
+                                {
+                                    CalendarRangeBand(
+                                        position: position, columnWidth: columnWidth,
+                                        gap: metrics.itemSpacing, height: cellSize,
+                                        joinsLeading: index % CalendarGrid.columnCount > 0
+                                            && isVisibleSelectedDay(days[index - 1]),
+                                        joinsTrailing: index % CalendarGrid.columnCount
+                                            < CalendarGrid.columnCount - 1 && index + 1 < days.count
+                                            && isVisibleSelectedDay(days[index + 1]),
+                                        color: theme.day.selectedBackgroundColor)
+                                }
+                            }
                             // Days outside `dateRange` share the overflow-day styling and are
                             // disabled, which also disables buttons inside custom day views and
                             // makes VoiceOver announce them as dimmed.
@@ -188,6 +207,17 @@ struct CalendarBodyView: View {
             guard layoutWidth == nil, containerWidth != width else { return }
             containerWidth = width
         }
+    }
+
+    private var usesBuiltInRenderer: Bool {
+        switch theme.day.renderer {
+        case .circle, .square: true
+        case .custom: false
+        }
+    }
+
+    private func isVisibleSelectedDay(_ day: MonthSnapshot.Day) -> Bool {
+        day.isSelected && day.isEnabled && (!hideOverflowDays || day.isInDisplayedMonth)
     }
 
     init(

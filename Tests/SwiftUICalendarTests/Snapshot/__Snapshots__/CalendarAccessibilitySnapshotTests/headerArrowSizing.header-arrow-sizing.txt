@@ -1,0 +1,2 @@
+visibleCircle: 28.0
+touchTarget: 44.0

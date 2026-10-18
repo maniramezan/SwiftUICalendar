@@ -20,7 +20,9 @@ struct CircleDayView: CalendarDayView {
     }
 
     private var backgroundColor: Color {
-        if context.isSelected {
+        if context.isSelected && context.rangePosition == .interior {
+            Color.clear
+        } else if context.isSelected {
             dayTheme.selectedBackgroundColor
         } else if context.isToday {
             dayTheme.todayBackgroundColor

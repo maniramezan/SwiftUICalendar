@@ -33,6 +33,14 @@ struct CalendarMetrics: Equatable, Sendable {
     private(set) var monthInset: CGFloat
     /// Margin between the calendar and the edges of its container.
     private(set) var calendarMargin: CGFloat
+    /// Total trailing inset for Today, including the viewport's horizontal margin.
+    let todayTrailingInset: CGFloat
+
+    /// Additional inset inside the viewport so Today keeps its full spacing when margins shrink.
+    var todayTrailingPadding: CGFloat {
+        max(0, todayTrailingInset - calendarMargin)
+    }
+
     /// Corner radius of the keyboard focus ring drawn around a day cell.
     let focusRingRadius: CGFloat
     /// Height of the navigation header row.
@@ -110,6 +118,7 @@ struct CalendarMetrics: Equatable, Sendable {
         // that keeps the bare grid fitting on a 375pt phone: 375 − 2 × 8 = 359 ≥ the 356pt minimum,
         // where 10pt (355) and `oneAndHalfUnits` (351) both come up short.
         calendarMargin = spacing.oneUnit
+        todayTrailingInset = spacing.twoUnits
         focusRingRadius = theme.radius.oneUnit
         // A row of tappable chevrons and pickers, so it takes the touch floor directly.
         headerRowHeight = motion.minimumHitTarget

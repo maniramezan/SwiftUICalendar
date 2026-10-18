@@ -28,6 +28,7 @@
       "path": "Sources",
       "children": [
         { "path": "SwiftUICalendarSampleApp.swift", "target-membership": [ "SwiftUICalendarSample/compile-sources" ] },
+        { "path": "CalendarSettingsCommands.swift", "target-membership": [ "SwiftUICalendarSample/compile-sources" ] },
         { "path": "ContentView.swift", "target-membership": [ "SwiftUICalendarSample/compile-sources" ] },
       ],
     }, {
@@ -68,6 +69,7 @@
     { "path": "UITests/VerticalScrollDateUpdateReproUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/VerticalLandscapeUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/UITestSupport.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
+    { "path": "UITests/SelectionUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/HeaderControlUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/LocaleDirectionUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },
     { "path": "UITests/WeekdayColumnsReachableUITests.swift", "index": true, "target-membership": [ "SwiftUICalendarSampleUITests/compile-sources" ] },

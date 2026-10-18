@@ -213,6 +213,12 @@ enum CalendarStructure {
         lines.append("secondaryLabel: \(context.secondaryLabel ?? "none")")
         lines.append("isToday: \(context.isToday)")
         lines.append("isSelected: \(context.isSelected)")
+        if let position = context.rangePosition {
+            lines.append("rangePosition: \(position.rawValue)")
+            lines.append(
+                "rangeAppearance: \(position == .interior ? "light connecting band" : "solid endpoint")"
+            )
+        }
         lines.append("builtInSelectionAnnouncement: traitOnly")
         lines.append("isInCurrentMonth: \(context.isInCurrentMonth)")
         // `accessibilityLabel` is intentionally omitted: it resolves localized strings, which differ

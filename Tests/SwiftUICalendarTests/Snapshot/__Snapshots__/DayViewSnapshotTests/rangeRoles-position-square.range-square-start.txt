@@ -1,0 +1,14 @@
+dayRenderer: square
+dayLabel: 15
+cellSize: 44x44
+secondaryLabel: none
+isToday: false
+isSelected: true
+rangePosition: start
+rangeAppearance: solid endpoint
+builtInSelectionAnnouncement: traitOnly
+isInCurrentMonth: true
+emptyDayBorderColor: clear
+emptyDayBorderColorWidth: 0
+todayBorderColor: pink
+selectedBackgroundColor: blue

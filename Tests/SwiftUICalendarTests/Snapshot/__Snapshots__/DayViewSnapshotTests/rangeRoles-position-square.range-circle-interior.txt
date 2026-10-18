@@ -1,0 +1,14 @@
+dayRenderer: circle
+dayLabel: 15
+cellSize: 44x44
+secondaryLabel: none
+isToday: false
+isSelected: true
+rangePosition: interior
+rangeAppearance: light connecting band
+builtInSelectionAnnouncement: traitOnly
+isInCurrentMonth: true
+emptyDayBorderColor: clear
+emptyDayBorderColorWidth: 0
+todayBorderColor: pink
+selectedBackgroundColor: blue

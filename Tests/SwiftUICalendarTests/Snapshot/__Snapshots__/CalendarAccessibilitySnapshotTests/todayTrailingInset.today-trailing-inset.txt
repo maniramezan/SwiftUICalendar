@@ -1,0 +1,3 @@
+outerMargin: 8.0
+additionalPadding: 8.0
+totalInset: 16.0

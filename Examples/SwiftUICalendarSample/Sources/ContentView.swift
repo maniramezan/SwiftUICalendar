@@ -35,32 +35,30 @@ struct ContentView: View {
                 .horizontal, max(0, UserDefaults.standard.double(forKey: "calendar-host-inset"))
             )
             .navigationTitle("Calendar")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                HStack {
-                    Spacer()
-                    // A toggle: in regular width the inspector sits beside the calendar, and the
-                    // same button is how it closes.
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isSettingsPresented.toggle()
                     } label: {
                         Label("Settings", systemImage: "gearshape")
-                            .labelStyle(.iconOnly)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
+                        .labelStyle(.iconOnly)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Choose calendar display settings")
                     .accessibilityIdentifier(CalendarSampleAccessibilityID.settings)
                 }
-                .padding(.horizontal)
             }
+            #endif
             .modifier(
                 SettingsPresentation(
                     isPresented: $isSettingsPresented,
                     // Keep the presentation kind stable when a phone rotates to regular width.
-                    usesSheet: UIDevice.current.userInterfaceIdiom == .phone
+                    usesSheet: usesSettingsSheet
                 ) { showsDone in
                     ConfigurationView(
                         architecture: $architecture,
@@ -75,6 +73,9 @@ struct ContentView: View {
                 }
             )
         }
+        #if os(macOS)
+        .focusedSceneValue(\.calendarSettingsPresentation, $isSettingsPresented)
+        #endif
         .onChange(of: architecture) { _, _ in
             resettleArchitecture()
         }
@@ -87,6 +88,14 @@ struct ContentView: View {
         .onChange(of: dayViewMode) { _, _ in
             applyDayConfiguration()
         }
+    }
+
+    private var usesSettingsSheet: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
     }
 
     // MARK: - Architecture switching
