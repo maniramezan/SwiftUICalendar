@@ -3,7 +3,6 @@ import SwiftUICalendarAccessibility
 
 struct CalendarHeaderView: View {
 
-    @Environment(CalendarViewModel.self) var model
     @Environment(Typography.self) var typography
     @Environment(\.calendarMetrics) private var metrics
 
@@ -14,21 +13,25 @@ struct CalendarHeaderView: View {
                     .id("row-month")
                 CalendarHeaderYearView()
                     .id("row-year")
-                macOSTodayButton
+                CalendarHeaderTodayButton()
             }
             VStack {
                 CalendarHeaderMonthView()
                     .id("stack-month")
                 CalendarHeaderYearView()
                     .id("stack-year")
-                macOSTodayButton
+                CalendarHeaderTodayButton()
             }
         }
         .font(typography.headerFont)
     }
+}
 
-    @ViewBuilder
-    private var macOSTodayButton: some View {
+/// The header's Today button, shown only on macOS where the header owns it.
+private struct CalendarHeaderTodayButton: View {
+    @Environment(CalendarViewModel.self) private var model
+
+    var body: some View {
         #if os(macOS)
         // Today selects the current day in single-selection mode on both platforms.
         Button("Calendar.Today".localized) {
@@ -42,7 +45,7 @@ struct CalendarHeaderView: View {
 
 #Preview("Default") {
     CalendarHeaderView()
-        .environment(CalendarViewModel.test(identifier: .persian))
+        .environment(CalendarViewModel.test(identifier: .gregorian))
         .environment(Typography.default)
 }
 

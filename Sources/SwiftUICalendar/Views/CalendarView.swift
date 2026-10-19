@@ -230,11 +230,10 @@ private struct CalendarSurface: View {
                 allowsPaging: allowsPaging, keyboard: keyboard)
         } else {
             GeometryReader { geometry in
-                // The outer surface only scrolls when the header and one readable row cannot fit.
-                // The body retains its own month scrolling and identity across that boundary.
-                // Keep the scroll axis stable. Switching it to [] in a tall host leaves UIKit's
-                // nested scroll content offset out of sync with rendered day positions on iOS.
-                // Content fits exactly when the header and a row fit; only shorter hosts overflow.
+                // The body owns month scrolling. This outer view only moves when the header and one
+                // readable row cannot fit; otherwise its content fits exactly and it stays still.
+                // The axis stays `.vertical` even then: switching it to [] in a tall host leaves
+                // UIKit's nested scroll offset out of sync with the rendered day positions on iOS.
                 ScrollView(.vertical, showsIndicators: CalendarScrollChrome.showsIndicators) {
                     VStack(spacing: metrics.rowSpacing) {
                         CalendarPinnedHeader(
