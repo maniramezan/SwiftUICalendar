@@ -14,7 +14,8 @@ struct CalendarViewport<Content: View>: View {
         CalendarViewportSize(
             idealWidth: metrics.minCalendarWidth,
             idealHeight:
-                metrics.resolvedHeight(rowCount: 6, layoutWidth: metrics.minCalendarWidth)
+                metrics.resolvedHeight(
+                    rowCount: CalendarGrid.maximumRowCount, layoutWidth: metrics.minCalendarWidth)
                 + metrics.weekdayHeaderMinHeight + 3 * metrics.headerRowHeight
         ) {
             GeometryReader { geometry in
@@ -24,11 +25,11 @@ struct CalendarViewport<Content: View>: View {
         .safeAreaPadding(.vertical, metrics.calendarMargin)
         .frame(
             minWidth: configuration.layout.overflow == .minimumSize
-                ? 7 * metrics.minCellSize
-                    + 6
-                    * min(
-                        configuration.layout.minimumColumnSpacing,
-                        configuration.layout.preferredColumnSpacing ?? metrics.itemSpacing)
+                ? CalendarViewportLayout.minimumWidth(
+                    cellWidth: metrics.minCellSize,
+                    preferredSpacing: configuration.layout.preferredColumnSpacing
+                        ?? metrics.itemSpacing,
+                    minimumSpacing: configuration.layout.minimumColumnSpacing)
                 : nil)
     }
 }
