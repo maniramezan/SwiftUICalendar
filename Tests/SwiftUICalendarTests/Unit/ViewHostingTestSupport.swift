@@ -49,10 +49,10 @@ func renderPNGData(_ view: NSView) -> Data? {
 @MainActor
 func waitForStableRender(
     _ view: NSView,
-    timeout: TimeInterval = 5,
+    timeout: Duration = .seconds(5),
     minimumFrames: Int = 8,
     requiredStableFrames: Int = 4,
-    pollInterval: TimeInterval = 1.0 / 60.0
+    pollInterval: Duration = .seconds(1.0 / 60)
 ) -> Bool {
     ViewRendering.waitForStableRender(
         view, timeout: timeout, minimumFrames: minimumFrames,

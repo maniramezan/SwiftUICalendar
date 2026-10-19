@@ -70,7 +70,7 @@ struct ControlledCalendarRenderingTests {
     private func mount<V: View>(_ view: V, size: CGSize) {
         let hosted = hostView(view, size: size)
         defer { hosted.window.contentView = nil }
-        waitForStableRender(hosted.hosting, timeout: 2)
+        waitForStableRender(hosted.hosting, timeout: .seconds(2))
         #expect(hosted.hosting.fittingSize.width >= 0)
     }
 
@@ -100,7 +100,7 @@ struct ControlledCalendarRenderingTests {
             store: store, configuration: CalendarConfiguration(scrollMode: .vertical))
         let hosted = hostView(view, size: CGSize(width: 390, height: 620))
         defer { hosted.window.contentView = nil }
-        waitForStableRender(hosted.hosting, timeout: 2)
+        waitForStableRender(hosted.hosting, timeout: .seconds(2))
 
         // Each of these rebuilds the rendering projection, which is the path that regressed.
         for _ in 0..<6 {
