@@ -1,19 +1,24 @@
+import OSLog
+import SwiftCommons
 import SwiftUI
 
 // Geometry is an input to layout, never state written by that same layout's callbacks.
 struct CalendarViewportContent<Content: View>: View {
     let size: CGSize
+    var model: CalendarViewModel? = nil
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarLayoutObserver) private var layoutObserver
     private var width: CGFloat { size.width }
     private var height: CGFloat { size.height }
     @State private var dateRevealer = CalendarDateRevealer()
+    @State private var horizontalPosition = ScrollPosition(edge: .leading)
     var keyboard: CalendarKeyboardCursor? = nil
     @Environment(\.calendarFoldRanges) private var injectedFoldRanges
     // The hinge the system reports; empty unless built with the iOS 27.1 SDK on a folding device.
     @State private var systemFoldRanges: [ClosedRange<CGFloat>] = []
     @Environment(\.layoutDirection) private var layoutDirection
+    private let logger = Logger.swiftUICalendar(for: Self.self)
 
     private var foldRanges: [ClosedRange<CGFloat>] {
         injectedFoldRanges + systemFoldRanges
@@ -94,6 +99,7 @@ struct CalendarViewportContent<Content: View>: View {
                     }
                 }
                 .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                .scrollPosition($horizontalPosition)
                 .defaultScrollAnchor(.leading)
                 .onAppear {
                     dateRevealer.action = { proxy.scrollTo($0, anchor: .center) }
@@ -111,10 +117,24 @@ struct CalendarViewportContent<Content: View>: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Measured on the same view as `width`, so the bands share its coordinate space.
                 .modifier(SystemFoldReader(ranges: $systemFoldRanges))
-                // Only keyboard-initiated movement asks to scroll; see `CalendarKeyboardCursor`.
                 .onChange(of: keyboard?.scrollRequest) { _, request in
                     guard layout.overflows, let request, keyboard?.isActive == true else { return }
                     proxy.scrollTo(request.identity, anchor: .center)
+                }
+                .onChange(of: model?.todayScrollRequest) { _, _ in
+                    guard let model, layout.overflows, configuration.layout.overflow == .automatic
+                    else {
+                        return
+                    }
+                    let calendar = model.engine.calendar
+                    let weekday = calendar.component(.weekday, from: model.currentDate)
+                    let column =
+                        (weekday - calendar.firstWeekday + CalendarGrid.columnCount)
+                        % CalendarGrid.columnCount
+                    logger.debug("Revealing Today in horizontal overflow")
+                    horizontalPosition.scrollTo(
+                        x: layout.horizontalOffsetToReveal(
+                            column: column, viewportWidth: width - fold.total))
                 }
             }
         }

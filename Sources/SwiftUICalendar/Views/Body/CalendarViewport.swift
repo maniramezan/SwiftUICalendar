@@ -5,6 +5,7 @@ import SwiftUI
 /// Keeps every date reachable without reducing the grid's minimum touch targets.
 /// The same scroll container remains mounted across the overflow boundary.
 struct CalendarViewport<Content: View>: View {
+    var model: CalendarViewModel? = nil
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarConfiguration) private var configuration
     var keyboard: CalendarKeyboardCursor? = nil
@@ -19,7 +20,8 @@ struct CalendarViewport<Content: View>: View {
                 + metrics.weekdayHeaderMinHeight + 3 * metrics.headerRowHeight
         ) {
             GeometryReader { geometry in
-                CalendarViewportContent(size: geometry.size, keyboard: keyboard, content: content)
+                CalendarViewportContent(
+                    size: geometry.size, model: model, keyboard: keyboard, content: content)
             }
         }
         .safeAreaPadding(.vertical, metrics.calendarMargin)
