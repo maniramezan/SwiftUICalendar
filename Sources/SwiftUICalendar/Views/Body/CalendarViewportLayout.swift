@@ -16,6 +16,16 @@ struct CalendarViewportLayout: Equatable {
     let columnSpacing: CGFloat
     let minimumWidth: CGFloat
 
+    func horizontalOffsetToReveal(column: Int, viewportWidth: CGFloat) -> CGFloat {
+        let cellWidth =
+            (minimumWidth - CalendarGrid.columnGapCount * columnSpacing)
+            / CalendarGrid.columnWidthDivisor
+        let center =
+            (contentWidth - minimumWidth) / 2 + cellWidth / 2
+            + CGFloat(column) * (cellWidth + columnSpacing)
+        return max(0, min(contentWidth - viewportWidth, center - viewportWidth / 2))
+    }
+
     /// Seven readable columns separated by the narrowest gap the configuration allows.
     static func minimumWidth(
         cellWidth: CGFloat, preferredSpacing: CGFloat, minimumSpacing: CGFloat

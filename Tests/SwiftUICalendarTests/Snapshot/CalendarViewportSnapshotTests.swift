@@ -7,6 +7,22 @@ import Testing
 @MainActor
 @Suite("Calendar viewport snapshots", .enabled(if: snapshotsEnabled))
 struct CalendarViewportSnapshotTests {
+    @Test("Today column offsets preserve readable cells and edge margins")
+    func todayColumnOffsets() {
+        let lines = [240.0, 320.0, 600.0].flatMap { width in
+            let layout = CalendarViewportLayout(
+                width: width, cellWidth: 100, margins: 32,
+                preferredSpacing: 8, minimumSpacing: 4)
+            return (0..<7).map { column in
+                let offset = layout.horizontalOffsetToReveal(column: column, viewportWidth: width)
+                return "viewport=\(width) column=\(column) offset=\(offset)"
+            }
+        }
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(of: lines.joined(separator: "\n"), as: .lines)
+        }
+    }
+
     @Test("Narrow and wide layouts preserve touch targets")
     func viewport() {
         let metrics = CalendarMetrics.default

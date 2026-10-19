@@ -113,7 +113,7 @@ public struct CalendarView: View {
     /// You normally do not call this property directly. SwiftUI evaluates it as part of the
     /// standard `View` lifecycle.
     public var body: some View {
-        CalendarViewport(keyboard: keyboard) { allowsPaging in
+        CalendarViewport(model: viewModel, keyboard: keyboard) { allowsPaging in
             CalendarSurface(
                 viewModel: viewModel, configuration: configuration,
                 allowsPaging: allowsPaging, keyboard: keyboard)
