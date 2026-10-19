@@ -27,7 +27,7 @@ These images are generated from the package snapshot references for the actual `
 Add SwiftUICalendar with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "1.0.0")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "1.1.0")
 ```
 
 Then add the product to your target:
@@ -54,10 +54,11 @@ app.buttons[CalendarAccessibilityID.nextMonthButton]
 ```
 
 Scope queries to a specific calendar when displaying multiple calendars or repeated dates. The
-sample app shares `CalendarSampleAccessibilityID`, `SampleArchitecture`, `SampleSelectionMode`,
-`SampleDayViewMode`, `CalendarScrollMode`, and `CalendarHorizontalHeightMode` with its UI tests;
-`CalendarConfiguration.ScrollMode` and `CalendarConfiguration.HorizontalHeightMode` remain available
-as aliases, so a host app configures the calendar with the same cases its tests name.
+product also defines `CalendarScrollMode` and `CalendarHorizontalHeightMode`;
+`CalendarConfiguration.ScrollMode` and `CalendarConfiguration.HorizontalHeightMode` are aliases of
+them, so a host app configures the calendar with the same cases its tests name. The sample app
+keeps its own settings identifiers in `Examples/SwiftUICalendarSample/Shared`, compiled into both
+the app and its UI tests.
 
 ## Quick Start
 
@@ -113,6 +114,10 @@ let configuration = CalendarConfiguration(
 
 CalendarView(model: calendar, theme: theme, configuration: configuration)
 ```
+
+With range selection, the built-in cells join the selected days with a band. It uses a translucent
+`selectedBackgroundColor` unless you set `theme.day.rangeBackgroundColor`. Custom day views read
+`context.rangePosition` to draw their own; see the DocC article *Customizing Day Views*.
 
 ## Grid Sizing
 
@@ -298,7 +303,7 @@ Both MVVM and TCA are available without package traits. Link `SwiftUICalendar` f
 or `SwiftUICalendarTCA` for reducer-owned state:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "1.0.0")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "1.1.0")
 ```
 
 ```swift

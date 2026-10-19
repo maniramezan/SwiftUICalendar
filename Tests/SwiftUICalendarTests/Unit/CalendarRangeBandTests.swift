@@ -74,6 +74,24 @@ struct CalendarRangeBandTests {
     }
     #endif
 
+    @Test("The band follows the selection color until the theme overrides it")
+    func bandColor() {
+        let day = Theme.Day()
+        day.selectedBackgroundColor = .indigo
+        #expect(
+            day.resolvedRangeBackgroundColor
+                == Color.indigo.opacity(Theme.Day.defaultRangeBackgroundOpacity))
+
+        day.rangeBackgroundColor = .mint
+        #expect(day.resolvedRangeBackgroundColor == .mint)
+
+        day.rangeBackgroundColor = nil
+        day.selectedBackgroundColor = .orange
+        #expect(
+            day.resolvedRangeBackgroundColor
+                == Color.orange.opacity(Theme.Day.defaultRangeBackgroundOpacity))
+    }
+
     private func geometry(
         _ position: CalendarRangePosition, leading: Bool = false, trailing: Bool = false,
         rtl: Bool = false

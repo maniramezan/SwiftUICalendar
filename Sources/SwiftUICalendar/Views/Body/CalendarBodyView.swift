@@ -176,7 +176,7 @@ struct CalendarBodyView: View {
                                         joinsTrailing: index % CalendarGrid.columnCount
                                             < CalendarGrid.columnCount - 1 && index + 1 < days.count
                                             && isVisibleSelectedDay(days[index + 1]),
-                                        color: theme.day.selectedBackgroundColor)
+                                        color: theme.day.resolvedRangeBackgroundColor)
                                 }
                             }
                             // Days outside `dateRange` share the overflow-day styling and are

@@ -64,7 +64,7 @@ resolve optional dependency metadata.
 ```swift
 .package(
     url: "https://github.com/maniramezan/SwiftUICalendar",
-    from: "1.0.0"
+    from: "1.1.0"
 )
 ```
 

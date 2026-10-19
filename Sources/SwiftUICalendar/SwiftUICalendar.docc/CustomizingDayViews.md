@@ -91,6 +91,43 @@ theme.day.secondaryLabelMode = .custom { date in
 }
 ```
 
+When the visible label is an abbreviation, set the spoken form separately with
+``CalendarDayContext/secondaryAccessibilityLabel``. An empty string keeps the label on screen but
+leaves it out of VoiceOver, which avoids repeating what the date already says.
+
+## Style Ranges
+
+With range selection, the built-in cells draw a band behind the selected days that joins them
+across the grid's gutters and rounds off at each end and at row breaks. Its color is
+`theme.day.rangeBackgroundColor`; leave it `nil` to use a translucent `selectedBackgroundColor`.
+
+A custom day view draws its own range styling. ``CalendarDayContext/rangePosition`` tells each day
+where it sits in the selected range, and is `nil` outside one:
+
+```swift
+var body: some View {
+    Button { context.onSelect(context.date) } label: {
+        Text(context.dayLabel)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                switch context.rangePosition {
+                case .start, .end, .startAndEnd:
+                    Circle().fill(.indigo)
+                case .interior:
+                    Rectangle().fill(.indigo.opacity(0.2))
+                case nil:
+                    EmptyView()
+                }
+            }
+    }
+    .buttonStyle(.plain)
+}
+```
+
+Positions come from dates, not from the grid, so a range that starts in March shows `.interior` on
+April 1 rather than a second `.start`. While the user has picked only the first day, that day is
+`.start`; a range that begins and ends on one day is `.startAndEnd`.
+
 ## Accessibility Checklist
 
 Custom day cells should:

@@ -40,7 +40,7 @@ struct CalendarVariantRenderingTests {
     private func mountNonBlank<V: View>(_ view: V, size: CGSize, _ label: String) {
         let hosted = hostView(view, size: size)
         defer { hosted.window.contentView = nil }
-        waitForStableRender(hosted.hosting, timeout: 2)
+        waitForStableRender(hosted.hosting, timeout: .seconds(2))
         #expect(hosted.hosting.fittingSize.width >= 0, "\(label)")
         #expect(renderPNGData(hosted.hosting) != nil, "\(label): no frame")
     }

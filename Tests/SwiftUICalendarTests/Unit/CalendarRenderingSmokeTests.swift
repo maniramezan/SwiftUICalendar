@@ -17,7 +17,7 @@ struct CalendarRenderingSmokeTests {
     private func mount<V: View>(_ view: V, size: CGSize = CGSize(width: 390, height: 560)) {
         let hosted = hostView(view, size: size)
         defer { hosted.window.contentView = nil }
-        waitForStableRender(hosted.hosting, timeout: 2)
+        waitForStableRender(hosted.hosting, timeout: .seconds(2))
         #expect(hosted.hosting.fittingSize.width >= 0)
     }
 

@@ -33,27 +33,9 @@ struct CalendarAccessibilityIDTests {
         #expect(mode.accessibilityIdentifier == "horizontal-height-\(mode.rawValue.lowercased())")
     }
 
-    @Test(
-        "Control identifiers are unique",
-        arguments: [
-            Calendar.Identifier.gregorian, .persian,
-        ])
-    func uniqueControls(calendar: Calendar.Identifier) {
-        let identifiers =
-            Self.allIdentifiers + [
-                CalendarSampleAccessibilityID.calendarOption(calendar)
-            ]
-        #expect(Set(identifiers).count == identifiers.count)
-    }
-
-    @Test(
-        "Calendar options cannot be confused with the calendar's own day cells",
-        arguments: [Calendar.Identifier.gregorian, .persian, .buddhist, .hebrew])
-    func calendarOptions(identifier: Calendar.Identifier) {
-        let option = CalendarSampleAccessibilityID.calendarOption(identifier)
-        #expect(option.hasPrefix("calendar-option-"))
-        #expect(option != CalendarSampleAccessibilityID.calendarPicker)
-        #expect(!option.hasPrefix(CalendarAccessibilityID.dayPrefix))
+    @Test("Control identifiers are unique")
+    func uniqueControls() {
+        #expect(Set(Self.allIdentifiers).count == Self.allIdentifiers.count)
     }
 
     @Test("Year options key off the year alone", arguments: [1900, 2025, 2100])
@@ -110,17 +92,6 @@ struct CalendarAccessibilityIDTests {
             CalendarAccessibilityID.yearPagePreviousButton,
             CalendarAccessibilityID.yearPageNextButton,
             CalendarAccessibilityID.yearPickerDoneButton,
-            CalendarSampleAccessibilityID.settings,
-            CalendarSampleAccessibilityID.done,
-            CalendarSampleAccessibilityID.stateOwnerPicker,
-            CalendarSampleAccessibilityID.calendarPicker,
-            CalendarSampleAccessibilityID.selectionPicker,
-            CalendarSampleAccessibilityID.scrollModePicker,
-            CalendarSampleAccessibilityID.dayViewPicker,
-            CalendarSampleAccessibilityID.horizontalHeightPicker,
         ] + CalendarScrollMode.allCases.map(\.accessibilityIdentifier)
-        + SampleArchitecture.allCases.map(\.accessibilityIdentifier)
-        + SampleSelectionMode.allCases.map(\.accessibilityIdentifier)
-        + SampleDayViewMode.allCases.map(\.accessibilityIdentifier)
         + CalendarHorizontalHeightMode.allCases.map(\.accessibilityIdentifier)
 }

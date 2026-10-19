@@ -78,7 +78,10 @@ struct CalendarBodyVerticalView: View {
             .scrollTargetBehavior(
                 CalendarVerticalScrollTargetBehavior(alignsMonths: requestedAnchor == nil)
             )
-            .calendarVerticalScrollPosition(navigation: $navigationPosition, month: $scrollPosition)
+            .modifier(
+                CalendarVerticalScrollPosition(
+                    navigation: $navigationPosition, month: $scrollPosition)
+            )
             .onScrollTargetVisibilityChange(
                 idType: MonthIdentifier.self, threshold: VerticalMonthWindow.visibilityThreshold
             ) { visible in
@@ -619,15 +622,16 @@ enum VerticalMonthWindow {
         .environment(Typography.default)
 }
 
-extension View {
-    @ViewBuilder
-    fileprivate func calendarVerticalScrollPosition(
-        navigation: Binding<ScrollPosition>, month: Binding<MonthIdentifier?>
-    ) -> some View {
+/// Binds the list's scroll position: by month id on macOS, by `ScrollPosition` elsewhere.
+private struct CalendarVerticalScrollPosition: ViewModifier {
+    @Binding var navigation: ScrollPosition
+    @Binding var month: MonthIdentifier?
+
+    func body(content: Content) -> some View {
         #if os(macOS)
-        scrollPosition(id: month, anchor: .top)
+        content.scrollPosition(id: $month, anchor: .top)
         #else
-        scrollPosition(navigation, anchor: .top)
+        content.scrollPosition($navigation, anchor: .top)
         #endif
     }
 }

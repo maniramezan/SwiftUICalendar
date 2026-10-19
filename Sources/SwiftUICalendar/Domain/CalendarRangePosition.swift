@@ -2,9 +2,13 @@ import Foundation
 
 /// A day's role in a selected range, independent of its selected accessibility trait.
 public enum CalendarRangePosition: String, Sendable, Equatable {
+    /// The first day of a range, including one whose end has not been chosen yet.
     case start
+    /// The last day of a range that began on an earlier day.
     case end
+    /// A day strictly between the first and last days.
     case interior
+    /// The only day of a range that starts and ends on the same day.
     case startAndEnd
 }
 

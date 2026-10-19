@@ -39,7 +39,7 @@ struct CalendarRangeBand: View {
                 control: CGPoint(x: rect.minX, y: rect.minY))
             path.closeSubpath()
         }
-        .fill(color.opacity(0.18))
+        .fill(color)
         // The geometry above has already mirrored. Path itself must render in physical coordinates.
         .environment(\.layoutDirection, .leftToRight)
         .frame(width: columnWidth, height: height)

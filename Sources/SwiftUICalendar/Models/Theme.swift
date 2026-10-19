@@ -71,9 +71,19 @@ extension Theme {
         /// Assign a closure when your app provides a custom ``CalendarDayView`` implementation.
         var renderer: Renderer = .circle
         /// Minimum readable size of custom content, evaluated once per calendar layout.
-        public var minimumContentSize: ((CalendarDaySizingContext) -> CGSize)?
+        ///
+        /// Set it through the `minimumSize` parameter of
+        /// ``setDayContent(minimumSize:_:)``, which installs it together with the renderer it
+        /// measures. It is `nil` for the built-in renderers, which size themselves.
+        public internal(set) var minimumContentSize: ((CalendarDaySizingContext) -> CGSize)?
 
         /// Installs a custom day-cell renderer.
+        ///
+        /// - Parameters:
+        ///   - minimumSize: The smallest size the content stays readable at, given the current
+        ///     Dynamic Type size, typography, and calendar. The calendar grows its rows and, when
+        ///     needed, its width to honor it. `nil` lets the calendar use its default cell size.
+        ///   - content: Builds the view for one day from its ``CalendarDayContext``.
         public func setDayContent<Content: CalendarDayView>(
             minimumSize: ((CalendarDaySizingContext) -> CGSize)? = nil,
             @ViewBuilder _ content: @escaping (CalendarDayContext) -> Content
@@ -87,6 +97,12 @@ extension Theme {
 
         /// Background color for selected days.
         public var selectedBackgroundColor: Color = .blue
+        /// Fill for the band that joins the days of a selected range in the built-in renderers.
+        ///
+        /// `nil`, the default, uses a translucent ``selectedBackgroundColor`` so the band follows
+        /// it. Custom renderers draw their own range styling from
+        /// ``CalendarDayContext/rangePosition``.
+        public var rangeBackgroundColor: Color?
         /// Border color for the current day.
         public var todayBorderColor: Color = .pink
         /// Border width for the current day.
@@ -111,6 +127,15 @@ extension Theme {
         ///
         /// The default day theme uses circular cells, blue selection fill, and a pink outline for today.
         public init() {}
+
+        /// Opacity applied to ``selectedBackgroundColor`` when ``rangeBackgroundColor`` is `nil`.
+        static let defaultRangeBackgroundOpacity = 0.18
+
+        /// The range band fill after resolving the `nil` default.
+        var resolvedRangeBackgroundColor: Color {
+            rangeBackgroundColor
+                ?? selectedBackgroundColor.opacity(Self.defaultRangeBackgroundOpacity)
+        }
     }
 }
 

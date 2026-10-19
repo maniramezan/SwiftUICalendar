@@ -98,7 +98,7 @@ struct CircleDayView: CalendarDayView {
         isInCurrentMonth: true,
         theme: Theme.default.day,
         typography: Typography.default,
-        onSelect: { _ in print("Day selected") }
+        onSelect: { _ in }
     )
     return CircleDayView(context: context)
         .environment(Theme.default)

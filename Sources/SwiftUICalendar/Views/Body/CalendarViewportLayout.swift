@@ -16,15 +16,32 @@ struct CalendarViewportLayout: Equatable {
     let columnSpacing: CGFloat
     let minimumWidth: CGFloat
 
+    /// Seven readable columns separated by the narrowest gap the configuration allows.
+    static func minimumWidth(
+        cellWidth: CGFloat, preferredSpacing: CGFloat, minimumSpacing: CGFloat
+    ) -> CGFloat {
+        CalendarGrid.columnWidthDivisor * cellWidth
+            + CalendarGrid.columnGapCount * min(minimumSpacing, preferredSpacing)
+    }
+
     init(
         width: CGFloat, cellWidth: CGFloat, margins: CGFloat, preferredSpacing: CGFloat,
         minimumSpacing: CGFloat
     ) {
         let minimumGap = min(minimumSpacing, preferredSpacing)
-        minimumWidth = 7 * cellWidth + 6 * minimumGap
-        let preferredWidth = 7 * cellWidth + 6 * preferredSpacing
+        minimumWidth = Self.minimumWidth(
+            cellWidth: cellWidth, preferredSpacing: preferredSpacing, minimumSpacing: minimumSpacing
+        )
+        let preferredWidth =
+            CalendarGrid.columnWidthDivisor * cellWidth + CalendarGrid.columnGapCount
+            * preferredSpacing
         overflows = width < minimumWidth
-        columnSpacing = min(preferredSpacing, max(minimumGap, (width - 7 * cellWidth) / 6))
+        columnSpacing = min(
+            preferredSpacing,
+            max(
+                minimumGap,
+                (width - CalendarGrid.columnWidthDivisor * cellWidth) / CalendarGrid.columnGapCount)
+        )
         if overflows {
             // The content scrolls, so the margins can no longer push the grid below its floor.
             marginScale = 1
