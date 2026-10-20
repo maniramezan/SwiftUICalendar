@@ -10,6 +10,8 @@ final class DynamicTypeUITests: SampleUITestCase {
     private static let dayCellTimeout: TimeInterval = 10
     private static let frameTolerance: CGFloat = 0.5
     private static let sizeFlag = "-UIPreferredContentSizeCategoryName"
+    private static let hostInsetFlag = "-calendar-host-inset"
+    private static let narrowHostWidth: CGFloat = 343
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -50,35 +52,19 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     @MainActor
     func testAccessibilityTextKeepsEdgeColumnsReachable() throws {
-        // CI run 38569309941 spent 80s and 45s relaunching between modes. Exercise the same
-        // user session instead, restoring the leading column through real scrolling each time.
-        let app = launch(size: "UICTContentSizeCategoryAccessibilityXXXL")
-        for mode in CalendarScrollMode.allCases {
-            try XCTContext.runActivity(named: "\(mode): both edge columns are reachable") { _ in
-                app.chooseScrollMode(mode)
-                let row = try visibleFullRow(in: app)
-                let leading = try XCTUnwrap(row.first)
-                let trailing = try XCTUnwrap(row.last)
-                let window = app.windows.firstMatch.frame
-                let rowY = leading.frame.midY
-                // Switching modes may retain a valid horizontal overflow offset. Bring the leading
-                // date back into view without relaunching or changing the displayed month.
-                for _ in 0..<4 where leading.frame.minX < window.minX - Self.frameTolerance {
-                    dragHorizontally(in: app, window: window, rowY: rowY, from: 0.15, to: 0.85)
-                }
-                XCTAssertTrue(leading.isHittable)
-                XCTAssertGreaterThanOrEqual(leading.frame.minX, window.minX - Self.frameTolerance)
-                // Maximum text can require more than one viewport of horizontal travel. Use the
-                // visible row's coordinates even after the leading date moves offscreen.
-                for _ in 0..<4 where trailing.frame.maxX > window.maxX + Self.frameTolerance {
-                    dragHorizontally(in: app, window: window, rowY: rowY, from: 0.85, to: 0.15)
-                }
-                XCTAssertTrue(
-                    trailing.isHittable,
-                    "The trailing date must be reachable without changing months")
-                XCTAssertLessThanOrEqual(trailing.frame.maxX, window.maxX + Self.frameTolerance)
-            }
-        }
+        try assertEdgeColumnsReachable(size: "UICTContentSizeCategoryAccessibilityXXXL")
+    }
+
+    @MainActor
+    func testNarrowHostKeepsNormalTextEdgeColumnsReachable() throws {
+        try assertEdgeColumnsReachable(
+            size: "UICTContentSizeCategoryL", hostWidth: Self.narrowHostWidth)
+    }
+
+    @MainActor
+    func testNarrowHostKeepsAccessibilityTextEdgeColumnsReachable() throws {
+        try assertEdgeColumnsReachable(
+            size: "UICTContentSizeCategoryAccessibilityXXXL", hostWidth: Self.narrowHostWidth)
     }
 
     @MainActor
@@ -120,8 +106,49 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     // MARK: - Helpers
 
+    // The host width bounds the calendar, not the window, so reachability is judged inside it.
     @MainActor
-    private func visibleFullRow(in app: XCUIApplication) throws -> [XCUIElement] {
+    private func assertEdgeColumnsReachable(size: String, hostWidth: CGFloat? = nil) throws {
+        // CI run 38569309941 spent 80s and 45s relaunching between modes. Exercise the same
+        // user session instead, restoring the leading column through real scrolling each time.
+        let app = launch(size: size, hostWidth: hostWidth)
+        let window = app.windows.firstMatch.frame
+        let bounds =
+            hostWidth.map { width in
+                window.insetBy(dx: max(0, (window.width - width) / 2), dy: 0)
+            } ?? window
+        if let hostWidth {
+            XCTAssertLessThanOrEqual(bounds.width, hostWidth + Self.frameTolerance)
+        }
+        for mode in CalendarScrollMode.allCases {
+            try XCTContext.runActivity(named: "\(mode): both edge columns are reachable") { _ in
+                app.chooseScrollMode(mode)
+                let row = try visibleFullRow(in: app, bounds: bounds)
+                let leading = try XCTUnwrap(row.first)
+                let trailing = try XCTUnwrap(row.last)
+                let rowY = leading.frame.midY
+                // Switching modes may retain a valid horizontal overflow offset. Bring the leading
+                // date back into view without relaunching or changing the displayed month.
+                for _ in 0..<4 where leading.frame.minX < bounds.minX - Self.frameTolerance {
+                    dragHorizontally(in: app, bounds: bounds, rowY: rowY, from: 0.15, to: 0.85)
+                }
+                XCTAssertTrue(leading.isHittable)
+                XCTAssertGreaterThanOrEqual(leading.frame.minX, bounds.minX - Self.frameTolerance)
+                // Maximum text can require more than one viewport of horizontal travel. Use the
+                // visible row's coordinates even after the leading date moves offscreen.
+                for _ in 0..<4 where trailing.frame.maxX > bounds.maxX + Self.frameTolerance {
+                    dragHorizontally(in: app, bounds: bounds, rowY: rowY, from: 0.85, to: 0.15)
+                }
+                XCTAssertTrue(
+                    trailing.isHittable,
+                    "The trailing date must be reachable without changing months")
+                XCTAssertLessThanOrEqual(trailing.frame.maxX, bounds.maxX + Self.frameTolerance)
+            }
+        }
+    }
+
+    @MainActor
+    private func visibleFullRow(in app: XCUIApplication, bounds: CGRect) throws -> [XCUIElement] {
         let days = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))
         XCTAssertTrue(days.firstMatch.waitForExistence(timeout: Self.dayCellTimeout))
@@ -129,7 +156,6 @@ final class DynamicTypeUITests: SampleUITestCase {
             // Find the row in one snapshot rather than querying every day cell's frame; only the
             // chosen row's cells are resolved as live elements.
             let snapshot = try app.snapshot()
-            let window = snapshot.frame
             let populated = snapshot.flattened.filter {
                 $0.elementType == .button
                     && $0.identifier.hasPrefix(CalendarAccessibilityID.dayPrefix)
@@ -139,7 +165,7 @@ final class DynamicTypeUITests: SampleUITestCase {
             for y in rows.keys.sorted() {
                 let row = rows[y, default: []].sorted { $0.frame.minX < $1.frame.minX }
                 guard row.count == Self.weekdayColumnCount,
-                    let visible = row.first(where: { window.contains($0.frame) })
+                    let visible = row.first(where: { bounds.contains($0.frame) })
                 else { continue }
                 // A retained horizontal offset can hide the leading cell. Find a visible anchor
                 // first; the test then scrolls the same row back to its leading edge.
@@ -156,21 +182,30 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     @MainActor
     private func dragHorizontally(
-        in app: XCUIApplication, window: CGRect, rowY: CGFloat, from: CGFloat, to: CGFloat
+        in app: XCUIApplication, bounds: CGRect, rowY: CGFloat, from: CGFloat, to: CGFloat
     ) {
+        let window = app.windows.firstMatch.frame
         let visibleY = max(window.minY + 1, min(window.maxY - 1, rowY))
         let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
         let start = origin.withOffset(
-            CGVector(dx: window.width * from, dy: visibleY - window.minY))
+            CGVector(
+                dx: bounds.minX - window.minX + bounds.width * from, dy: visibleY - window.minY))
         let end = origin.withOffset(
-            CGVector(dx: window.width * to, dy: visibleY - window.minY))
+            CGVector(dx: bounds.minX - window.minX + bounds.width * to, dy: visibleY - window.minY))
         start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     @MainActor
-    private func launch(size: String) -> XCUIApplication {
+    private func launch(size: String, hostWidth: CGFloat? = nil) -> XCUIApplication {
         let app = sampleApplication()
         app.launchArguments += [Self.sizeFlag, size]
+        if let hostWidth {
+            // The fixture insets the host symmetrically, so the window width must be known first.
+            app.launch()
+            let inset = max(0, (app.windows.firstMatch.frame.width - hostWidth) / 2)
+            app.terminate()
+            app.launchArguments += [Self.hostInsetFlag, String(Double(inset))]
+        }
         app.launch()
         return app
     }
