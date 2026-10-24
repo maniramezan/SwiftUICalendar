@@ -127,6 +127,20 @@ struct CalendarBodyViewSnapshotTests {
         assertCalendarStructure(model: vm, named: "chinese-no-selection")
     }
 
+    @Test("Month ending at an era transition")
+    func monthEndingAtEraTransition() {
+        let model = CalendarViewModel.snapshot(identifier: .japanese, selection: .single(nil))
+        model.currentDate = makeGregorianDate(year: 1989, month: 1, day: 1)
+        assertCalendarStructure(model: model, named: "month-ending-at-era-transition")
+    }
+
+    @Test("Month starting at an era transition")
+    func monthStartingAtEraTransition() {
+        let model = CalendarViewModel.snapshot(identifier: .japanese, selection: .single(nil))
+        model.currentDate = makeGregorianDate(year: 1989, month: 1, day: 8)
+        assertCalendarStructure(model: model, named: "month-starting-at-era-transition")
+    }
+
     // MARK: - Width variants
 
     @Test("Narrow width (320pt — iPhone SE)")
