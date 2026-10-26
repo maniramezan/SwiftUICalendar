@@ -11,7 +11,7 @@
 # test allowance, a different test each run. Once settled, every test takes 15 to 80 seconds. The
 # matrix already spreads the plans across runners, so one worker per runner costs little.
 #
-#   ui-test-simulator.sh create <device name>     Print a fresh device's UDID on the newest runtime.
+#   ui-test-simulator.sh create <device name>     Print a fresh device's UDID on the newest supported runtime.
 #   ui-test-simulator.sh prepare <udid>           Boot and wait for first-boot setup to finish.
 #   ui-test-simulator.sh test <udid> <plan> <result bundle> [xcodebuild flags...]
 #   ui-test-simulator.sh delete <udid>            Shut down and remove the owned device.
@@ -22,15 +22,20 @@
 set -euo pipefail
 
 create_device() {
-  xcrun simctl list devices available -j | ruby -rjson -e '
+  xcrun simctl list runtimes -j | ruby -rjson -e '
     name = ARGV.fetch(0)
-    runtimes = JSON.parse($stdin.read).fetch("devices").select { |runtime, _| runtime.include?("iOS") }
-    newest = runtimes.max_by { |runtime, _| Gem::Version.new(runtime[/iOS-([\d-]+)/, 1].tr("-", ".")) }
-    device = newest&.last&.find { |candidate| candidate["name"] == name }
-    abort "error: no available #{name} simulator on #{newest&.first || "any iOS runtime"}" unless device
-    # Create instead of clone: cloning would also copy application data from the template.
+    runtimes = JSON.parse($stdin.read).fetch("runtimes").select do |runtime|
+      runtime["isAvailable"] && runtime.fetch("identifier").start_with?("com.apple.CoreSimulator.SimRuntime.iOS-")
+    end
+    candidates = runtimes.map do |runtime|
+      device_type = runtime.fetch("supportedDeviceTypes").find { |candidate| candidate["name"] == name }
+      [runtime, device_type] if device_type
+    end.compact
+    newest = candidates.max_by { |runtime, _| Gem::Version.new(runtime.fetch("version")) }
+    abort "error: no available iOS runtime supports #{name}" unless newest
+    runtime, device_type = newest
     exec "xcrun", "simctl", "create", "SwiftUICalendar CI #{Process.pid}",
-      device.fetch("deviceTypeIdentifier"), newest.first
+      device_type.fetch("identifier"), runtime.fetch("identifier")
   ' "$1"
 }
 
