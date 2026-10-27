@@ -40,7 +40,10 @@ final class SelectionUITests: SampleUITestCase {
         XCTAssertFalse(day(20, month: month.current, in: app).isSelected)
     }
 
-    func testHorizontalSwipeDoesNotSelectRange() throws { try horizontalSwipeSelectsNothing(.range) }
+    func testHorizontalSwipeDoesNotSelectRange() throws {
+        try horizontalSwipeSelectsNothing(.range)
+    }
+
     func testHorizontalSwipeDoesNotSelectMultipleDates() throws {
         try horizontalSwipeSelectsNothing(.multiple)
     }
