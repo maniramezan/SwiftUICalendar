@@ -230,8 +230,12 @@ jobs:
         # The script runs one worker on the settled simulator; retain the existing individual test limits.
         # Full simulator diagnostics collection hangs here; keep XCTest result bundles instead.
         # The process watchdog exits before GitHub cancels the step, leaving time to upload evidence.
+        # A test that fails is rerun once: the loaded simulator sometimes cannot terminate the app at
+        # teardown, which fails whichever test happens to be running. A real failure fails both runs.
         run: |
           flags=(
+            -retry-tests-on-failure
+            -test-iterations 2
             -test-timeouts-enabled YES
             -default-test-execution-time-allowance 180
             -maximum-test-execution-time-allowance 300
