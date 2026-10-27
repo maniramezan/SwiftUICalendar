@@ -1,0 +1,17 @@
+calendar: japanese
+locale: ja_JP@calendar=japanese
+layoutDirection: leftToRight
+scrollMode: none
+gridSizing: adaptive
+horizontalHeightMode: sixRows
+showsHeader: true
+dayRenderer: circle
+secondaryLabel: none
+selection: single(none)
+viewport: minimum=332 overflow=false gap=8 marginScale=1
+cell: 46.57x46.57 weekdayHeight=24
+layout(width=390): cell=46.57 gridWidth=374 compactWidth=false
+weekdayHeader: 日 月 火 水 木 金 土
+
+month: 1月 [japanese y64 m1 era234] rows=1
+  1            2            3            4            5            6            7

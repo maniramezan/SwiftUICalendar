@@ -10,22 +10,18 @@ class UITestSimulatorTest < Minitest::Test
   def setup
     @directory = Dir.mktmpdir("calendar-simulator-")
     @log = File.join(@directory, "calls.jsonl")
-    @devices = {
-      "devices" => {
-        "com.apple.CoreSimulator.SimRuntime.iOS-26-0" => [
-          {"name" => "iPhone 17", "deviceTypeIdentifier" => "old-type"}
-        ],
-        "com.apple.CoreSimulator.SimRuntime.iOS-27-0" => [
-          {"name" => "iPhone 17", "deviceTypeIdentifier" => "new-type"}
-        ]
-      }
+    @inventory = {
+      "runtimes" => [
+        runtime("26.0", "old-type"),
+        runtime("27.0", "new-type")
+      ]
     }
     File.symlink(RbConfig.ruby, File.join(@directory, "ruby"))
     executable = "#!#{RbConfig.ruby}\n" + <<~'RUBY'
       require "json"
       File.open(ENV.fetch("CALL_LOG"), "a") { |file| file.puts JSON.generate([File.basename($0, ".rb"), *ARGV]) }
-      if ARGV[0, 3] == ["simctl", "list", "devices"]
-        puts ENV.fetch("DEVICE_JSON")
+      if ARGV[0, 3] == ["simctl", "list", "runtimes"]
+        puts ENV.fetch("RUNTIME_JSON")
       elsif ARGV[0, 2] == ["simctl", "create"]
         puts "owned-device"
       end
@@ -51,6 +47,15 @@ class UITestSimulatorTest < Minitest::Test
     end
   end
 
+  def runtime(version, device_type, available: true, platform: "iOS")
+    {
+      "identifier" => "com.apple.CoreSimulator.SimRuntime.#{platform}-#{version.tr('.', '-')}",
+      "version" => version,
+      "isAvailable" => available,
+      "supportedDeviceTypes" => [{"name" => "iPhone 17", "identifier" => device_type}]
+    }
+  end
+
   def teardown
     FileUtils.remove_entry(@directory)
   end
@@ -63,7 +68,7 @@ class UITestSimulatorTest < Minitest::Test
     end
     Open3.capture2e(
       {"PATH" => "#{@directory}:#{ENV.fetch('PATH')}", "CALL_LOG" => @log,
-       "DEVICE_JSON" => JSON.generate(@devices)}.merge(environment.transform_keys(&:to_s)),
+       "RUNTIME_JSON" => JSON.generate(@inventory)}.merge(environment.transform_keys(&:to_s)),
       *command, chdir: @directory
     )
   end
@@ -72,13 +77,51 @@ class UITestSimulatorTest < Minitest::Test
     File.readlines(@log).map { |line| JSON.parse(line) }
   end
 
-  def test_creates_fresh_device_on_newest_runtime_without_erasing_existing_devices
+  def test_creates_fresh_device_on_newest_supported_runtime_without_a_template
     output, status = run_script("create", "iPhone 17")
     assert status.success?, output
     assert_equal "owned-device\n", output
     assert_equal ["xcrun", "simctl", "create"], calls.last[0, 3]
     assert_equal ["new-type", "com.apple.CoreSimulator.SimRuntime.iOS-27-0"], calls.last.last(2)
     assert_equal 2, calls.count
+  end
+
+  def test_newest_runtime_without_the_requested_device_type_is_skipped
+    @inventory["runtimes"] << runtime("27.1", "duo-type").merge(
+      "supportedDeviceTypes" => [{"name" => "iPhone Duo", "identifier" => "duo-type"}]
+    )
+    output, status = run_script("create", "iPhone 17")
+    assert status.success?, output
+    assert_equal ["new-type", "com.apple.CoreSimulator.SimRuntime.iOS-27-0"], calls.last.last(2)
+  end
+
+  def test_unavailable_runtime_is_skipped
+    @inventory["runtimes"] << runtime("27.1", "unavailable-type", available: false)
+    output, status = run_script("create", "iPhone 17")
+    assert status.success?, output
+    assert_equal ["new-type", "com.apple.CoreSimulator.SimRuntime.iOS-27-0"], calls.last.last(2)
+  end
+
+  def test_other_platforms_are_skipped
+    @inventory["runtimes"] << runtime("28.0", "other-platform-type", platform: "tvOS")
+    output, status = run_script("create", "iPhone 17")
+    assert status.success?, output
+    assert_equal ["new-type", "com.apple.CoreSimulator.SimRuntime.iOS-27-0"], calls.last.last(2)
+  end
+
+  def test_runtime_versions_are_compared_numerically
+    @inventory["runtimes"] = [runtime("27.10", "latest-type"), runtime("27.9", "earlier-type")]
+    output, status = run_script("create", "iPhone 17")
+    assert status.success?, output
+    assert_equal ["latest-type", "com.apple.CoreSimulator.SimRuntime.iOS-27-10"], calls.last.last(2)
+  end
+
+  def test_no_installed_runtimes_fails_without_mutating_devices
+    @inventory["runtimes"] = []
+    output, status = run_script("create", "iPhone 17")
+    refute status.success?
+    assert_includes output, "no available iOS runtime supports iPhone 17"
+    assert_equal 1, calls.count
   end
 
   def test_prepare_boots_and_settles_the_device_and_leaves_it_running
@@ -99,10 +142,10 @@ class UITestSimulatorTest < Minitest::Test
     assert_equal "NO", arguments[arguments.index("-parallel-testing-enabled") + 1]
   end
 
-  def test_missing_template_fails_without_mutating_devices
+  def test_missing_device_type_fails_without_mutating_devices
     output, status = run_script("create", "missing")
     refute status.success?
-    assert_includes output, "no available missing simulator"
+    assert_includes output, "no available iOS runtime supports missing"
     assert_equal 1, calls.count
   end
 

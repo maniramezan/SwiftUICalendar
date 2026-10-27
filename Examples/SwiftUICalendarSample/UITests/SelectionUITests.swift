@@ -40,23 +40,34 @@ final class SelectionUITests: SampleUITestCase {
         XCTAssertFalse(day(20, month: month.current, in: app).isSelected)
     }
 
-    func testHorizontalSwipesDoNotSelectRangeOrMultipleDates() throws {
-        for selection in [SampleSelectionMode.range, .multiple] {
-            let app = configured(selection, mode: .horizontal, architecture: .mvvm)
-            let month = try monthDates()
-            let first = day(10, month: month.current, in: app)
-            let last = day(15, month: month.current, in: app)
-            first.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-                .press(
-                    forDuration: 0.05,
-                    thenDragTo: last.coordinate(
-                        withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
-            // Return with Today rather than selecting a day to navigate.
-            app.buttons[CalendarAccessibilityID.todayButton].tap()
-            for number in 1...28 {
-                XCTAssertFalse(day(number, month: month.current, in: app).isSelected)
-            }
-        }
+    func testHorizontalSwipeDoesNotSelectRange() throws {
+        try horizontalSwipeSelectsNothing(.range)
+    }
+
+    func testHorizontalSwipeDoesNotSelectMultipleDates() throws {
+        try horizontalSwipeSelectsNothing(.multiple)
+    }
+
+    /// One launch per test keeps each case short, so a slow CI simulator has less time to stall
+    /// teardown. Selection is read from a single snapshot instead of one query per day.
+    private func horizontalSwipeSelectsNothing(_ selection: SampleSelectionMode) throws {
+        let app = configured(selection, mode: .horizontal, architecture: .mvvm)
+        let month = try monthDates()
+        let first = day(10, month: month.current, in: app)
+        let last = day(15, month: month.current, in: app)
+        first.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(
+                forDuration: 0.05,
+                thenDragTo: last.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+        // Return with Today rather than selecting a day to navigate.
+        app.buttons[CalendarAccessibilityID.todayButton].tap()
+        let parts = Calendar(identifier: .gregorian).dateComponents(
+            [.year, .month], from: month.current)
+        let prefix = CalendarAccessibilityID.dayMonthPrefix(
+            year: try XCTUnwrap(parts.year), month: try XCTUnwrap(parts.month))
+        let days = try app.snapshot().flattened.filter { $0.identifier.hasPrefix(prefix) }
+        XCTAssertFalse(days.isEmpty, "Current month days not found")
+        XCTAssertTrue(days.filter(\.isSelected).isEmpty, "A horizontal swipe selected days")
     }
 
     private func crossMonthRanges(architecture: SampleArchitecture) throws {

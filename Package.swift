@@ -34,7 +34,7 @@ let package = Package(
         .package(url: "https://github.com/maniramezan/SwiftTestCommons.git", from: "0.4.0"),
         .package(
             url: "https://github.com/maniramezan/SwiftCommons",
-            .upToNextMajor(from: "0.13.0")
+            .upToNextMajor(from: "0.17.0")
         ),
         .package(
             url: "https://github.com/maniramezan/SwiftUIComponents",

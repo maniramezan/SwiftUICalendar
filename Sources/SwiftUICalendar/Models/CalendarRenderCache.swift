@@ -215,40 +215,24 @@ final class CalendarRenderCache {
         for month: MonthIdentifier, calendar: Calendar, engine: CalendarEngine
     ) -> MonthGeometry? {
         CalendarSignpost.rendering.measure("resolveMonthGeometry") {
-            guard let start = engine.start(of: month),
-                let count = calendar.range(of: .day, in: .month, for: start)?.count
+            guard let interval = engine.interval(of: month),
+                let dates = CalendarArithmetic(calendar: calendar).gridDates(in: month)
             else {
                 return nil
             }
 
             let locale = calendar.locale ?? Locale(calendarIdentifier: calendar.identifier)
-            // Columns start on the locale's first weekday — Saturday for Persian, Monday across
-            // most of Europe — not always Sunday.
-            let leading =
-                (calendar.component(.weekday, from: start) - calendar.firstWeekday
-                    + CalendarGrid.columnCount)
-                % CalendarGrid.columnCount
-            let total =
-                ((leading + count + CalendarGrid.gapCount) / CalendarGrid.columnCount)
-                * CalendarGrid.columnCount
-            let days = (0..<total).compactMap { index -> MonthGeometry.Day? in
-                guard let date = calendar.date(byAdding: .day, value: index - leading, to: start)
-                else {
-                    return nil
-                }
+            let days = dates.map { date in
                 let day = calendar.component(.day, from: date)
-                let dayStart = calendar.startOfDay(for: date)
                 return MonthGeometry.Day(
-                    // Keyed on `dayStart` so a cursor holding a normalized date resolves the same
-                    // id the cell was tagged with. See `MonthSnapshot.Day.identity(for:)`.
-                    id: MonthSnapshot.Day.identity(for: dayStart),
+                    id: MonthSnapshot.Day.identity(for: date),
                     date: date,
-                    dayStart: dayStart,
+                    dayStart: date,
                     day: day,
                     dayLabel: NumberFormatter.formatDay(day, locale: locale),
                     month: calendar.component(.month, from: date),
                     year: calendar.component(.year, from: date),
-                    isInDisplayedMonth: index >= leading && index < leading + count)
+                    isInDisplayedMonth: date >= interval.start && date < interval.end)
             }
 
             return MonthGeometry(days: days)
