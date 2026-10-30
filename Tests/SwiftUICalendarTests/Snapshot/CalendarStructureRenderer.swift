@@ -76,7 +76,9 @@ enum CalendarStructure {
         theme: Theme,
         width: CGFloat,
         monthSpan: Int,
-        minimumCellSize: CGSize = CGSize(width: 44, height: 44)
+        minimumCellSize: CGSize = CGSize(width: 44, height: 44),
+        months: [MonthIdentifier]? = nil,
+        hideOverflowDays: Bool = false
     ) -> String {
         let calendar = model.state.calendar
         var lines: [String] = []
@@ -124,12 +126,16 @@ enum CalendarStructure {
         lines.append("")
 
         let center = model.visibleMonth
-        let identifiers = (-monthSpan...monthSpan).compactMap {
-            $0 == 0 ? center : model.monthIdentifier(offset: $0, from: center)
-        }
+        let identifiers =
+            months
+            ?? (-monthSpan...monthSpan).compactMap {
+                $0 == 0 ? center : model.monthIdentifier(offset: $0, from: center)
+            }
         for identifier in identifiers {
             lines.append(
-                contentsOf: renderMonth(identifier, model: model, theme: theme, calendar: calendar))
+                contentsOf: renderMonth(
+                    identifier, model: model, theme: theme, calendar: calendar,
+                    hideOverflowDays: hideOverflowDays))
             lines.append("")
         }
 
@@ -141,7 +147,8 @@ enum CalendarStructure {
         _ identifier: MonthIdentifier,
         model: CalendarViewModel,
         theme: Theme,
-        calendar: Calendar
+        calendar: Calendar,
+        hideOverflowDays: Bool
     ) -> [String] {
         guard let snapshot = model.monthSnapshot(for: identifier) else {
             return ["month: <unresolved m\(identifier.month) y\(identifier.year)>"]
@@ -159,7 +166,9 @@ enum CalendarStructure {
         for start in stride(from: 0, to: snapshot.days.count, by: 7) {
             let week = snapshot.days[start..<min(start + 7, snapshot.days.count)]
             let cells = week.map {
-                cell($0, secondary: secondary, rangeBounds: bounds, calendar: calendar)
+                hideOverflowDays && !$0.isInDisplayedMonth
+                    ? String(repeating: " ", count: 12)
+                    : cell($0, secondary: secondary, rangeBounds: bounds, calendar: calendar)
             }
             lines.append(rstrip("  " + cells.joined(separator: " ")))
         }

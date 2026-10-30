@@ -10,6 +10,7 @@ struct CalendarBodyView: View {
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarPagingGuard) private var pagingGuard
+    @Environment(\.calendarHasCompanionMonth) private var hasCompanionMonth
     @State private var containerWidth: CGFloat = 0
     private let logger = Logger.swiftUICalendar(for: CalendarBodyView.self)
     private let layoutWidth: CGFloat?
@@ -22,6 +23,8 @@ struct CalendarBodyView: View {
     /// When `true`, tapping a day outside the displayed month navigates the calendar to that month.
     /// Set to `false` for scroll modes where the adjacent month is already visible.
     private let navigatesOnOverflowTap: Bool
+
+    private var hidesOverflowDays: Bool { hideOverflowDays || hasCompanionMonth }
 
     private var gridLayout: CalendarGridLayout {
         CalendarGridLayout(
@@ -115,7 +118,7 @@ struct CalendarBodyView: View {
                 // and the grid mirrors itself, putting each week's first day on the right. Reversing
                 // rows by hand as well flipped them back, so Persian and Hebrew weeks read backwards.
                 ForEach(Array(days.enumerated()), id: \.element.id) { index, item in
-                    if let date = item.date, !(hideOverflowDays && !item.isInDisplayedMonth) {
+                    if let date = item.date, !(hidesOverflowDays && !item.isInDisplayedMonth) {
                         let context = CalendarDayContext(
                             date: date,
                             day: item.day,
@@ -217,7 +220,7 @@ struct CalendarBodyView: View {
     }
 
     private func isVisibleSelectedDay(_ day: MonthSnapshot.Day) -> Bool {
-        day.isSelected && day.isEnabled && (!hideOverflowDays || day.isInDisplayedMonth)
+        day.isSelected && day.isEnabled && (!hidesOverflowDays || day.isInDisplayedMonth)
     }
 
     init(
