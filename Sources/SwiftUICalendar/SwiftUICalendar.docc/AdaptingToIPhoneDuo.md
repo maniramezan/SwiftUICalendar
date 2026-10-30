@@ -27,8 +27,8 @@ mode shows a single month in its primary panel instead of repeating the companio
 continuous list; use the navigation header to change the spread. Each month still scrolls vertically
 when its weeks exceed the panel height. The companion presents the following month as a fixed
 month. Navigating the primary month updates the companion to match. Both panels use the same
-selection, including ranges that cross the month boundary, and the same custom day renderer. Overflow days are hidden while the companion is visible
-to avoid presenting the same dates in both panels.
+selection, including ranges that cross the month boundary, and the same custom day renderer. Overflow
+days are hidden while the companion is visible to avoid presenting the same dates in both panels.
 
 Folding, rotating the fold, and unfolding keep the primary viewport mounted. These layout changes do
 not navigate the model or clear its selection.

@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 // MARK: - Viewport
@@ -11,6 +12,7 @@ struct CalendarViewport<Content: View>: View {
     @Environment(\.calendarFoldRegions) private var foldRegions
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var panelHeaders = CalendarPanelHeaders()
+    private let logger = Logger.swiftUICalendar(for: Self.self)
     var keyboard: CalendarKeyboardCursor? = nil
     @ViewBuilder let content: (Bool) -> Content
 
@@ -55,7 +57,12 @@ struct CalendarViewport<Content: View>: View {
                 }
                 .environment(\.layoutDirection, .leftToRight)
                 .environment(\.calendarPanelHeaders, panelHeaders)
+                .onChange(of: fold.mode, initial: true) { _, mode in
+                    logger.info("Fold layout changed to \(mode.rawValue, privacy: .public)")
+                }
                 .onChange(of: fold.secondary == nil ? nil : nextMonth, initial: true) { _, month in
+                    logger.debug(
+                        "Companion month \(month == nil ? "hidden" : "shown", privacy: .public)")
                     keyboard?.companionMonth = month
                 }
             }
