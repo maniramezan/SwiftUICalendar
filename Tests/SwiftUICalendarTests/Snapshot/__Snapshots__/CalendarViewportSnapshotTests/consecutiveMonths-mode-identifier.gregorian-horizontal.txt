@@ -1,0 +1,47 @@
+requestedScrollMode: horizontal
+
+primary panel
+calendar: gregorian
+locale: en_US@calendar=gregorian
+layoutDirection: leftToRight
+scrollMode: horizontal
+gridSizing: adaptive
+horizontalHeightMode: sixRows
+showsHeader: true
+dayRenderer: circle
+secondaryLabel: none
+selection: range(2025-06-30 … 2025-07-01)
+viewport: minimum=332 overflow=false gap=8 marginScale=1
+cell: 46.08x46.08 weekdayHeight=24
+layout(width=430): cell=46.08 gridWidth=370.54 compactWidth=false
+weekdayHeader: S M T W T F S
+
+month: June [gregorian y2025 m6 era1] rows=5
+  1            2            3            4            5            6            7
+  8            9            10           11           12           13           14
+  15           16           17           18           19           20           21
+  22           23           24           25           26           27           28
+  29           30(*[)
+
+companion panel
+calendar: gregorian
+locale: en_US@calendar=gregorian
+layoutDirection: leftToRight
+scrollMode: none
+gridSizing: adaptive
+horizontalHeightMode: sixRows
+showsHeader: true
+dayRenderer: circle
+secondaryLabel: none
+selection: range(2025-06-30 … 2025-07-01)
+viewport: minimum=332 overflow=false gap=8 marginScale=1
+cell: 52.29x52.29 weekdayHeight=24
+layout(width=430): cell=52.29 gridWidth=414 compactWidth=false
+weekdayHeader: S M T W T F S
+
+month: July [gregorian y2025 m7 era1] rows=5
+                            1(*])        2            3            4            5
+  6            7            8            9            10           11           12
+  13           14           15           16           17           18           19
+  20           21           22           23           24           25           26
+  27           28           29           30           31

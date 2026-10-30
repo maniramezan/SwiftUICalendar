@@ -1,12 +1,10 @@
-direction=leftToRight viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
-direction=leftToRight viewport=520.0 leading=0.0 trailing=380.0 content=520.0 overflow=false
-direction=leftToRight viewport=300.0 leading=0.0 trailing=600.0 content=348.0 overflow=true
-direction=leftToRight viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
-direction=leftToRight viewport=500.0 leading=400.0 trailing=0.0 content=500.0 overflow=false
-direction=leftToRight viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
-direction=rightToLeft viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
-direction=rightToLeft viewport=520.0 leading=380.0 trailing=0.0 content=520.0 overflow=false
-direction=rightToLeft viewport=300.0 leading=0.0 trailing=600.0 content=348.0 overflow=true
-direction=rightToLeft viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
-direction=rightToLeft viewport=500.0 leading=0.0 trailing=400.0 content=500.0 overflow=false
-direction=rightToLeft viewport=900.0 leading=0.0 trailing=0.0 content=900.0 overflow=false
+direction=leftToRight mode=single primary=(0.0, 0.0, 900.0, 800.0) secondary=none content=900.0 overflow=false
+direction=leftToRight mode=book primary=(0.0, 0.0, 430.0, 800.0) secondary=(470.0, 0.0, 430.0, 800.0) content=430.0 overflow=false
+direction=leftToRight mode=tabletop primary=(0.0, 0.0, 900.0, 380.0) secondary=(0.0, 420.0, 900.0, 380.0) content=900.0 overflow=false
+direction=leftToRight mode=single primary=(0.0, 0.0, 520.0, 800.0) secondary=none content=520.0 overflow=false
+direction=leftToRight mode=single primary=(0.0, 0.0, 900.0, 800.0) secondary=none content=900.0 overflow=false
+direction=rightToLeft mode=single primary=(0.0, 0.0, 900.0, 800.0) secondary=none content=900.0 overflow=false
+direction=rightToLeft mode=book primary=(470.0, 0.0, 430.0, 800.0) secondary=(0.0, 0.0, 430.0, 800.0) content=430.0 overflow=false
+direction=rightToLeft mode=tabletop primary=(0.0, 0.0, 900.0, 380.0) secondary=(0.0, 420.0, 900.0, 380.0) content=900.0 overflow=false
+direction=rightToLeft mode=single primary=(0.0, 0.0, 520.0, 800.0) secondary=none content=520.0 overflow=false
+direction=rightToLeft mode=single primary=(0.0, 0.0, 900.0, 800.0) secondary=none content=900.0 overflow=false

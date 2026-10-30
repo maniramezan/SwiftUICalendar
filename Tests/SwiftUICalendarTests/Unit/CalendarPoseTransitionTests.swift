@@ -145,7 +145,13 @@ private struct PoseCalendar: View {
 
     var body: some View {
         CalendarView(model: model, theme: theme, configuration: .init(scrollMode: mode))
-            .environment(\.calendarFoldRanges, pose.foldRanges)
+            .environment(
+                \.calendarFoldRegions,
+                pose.foldRanges.map {
+                    CGRect(
+                        x: $0.lowerBound, y: 0, width: $0.upperBound - $0.lowerBound, height: 800)
+                }
+            )
             .environment(\.horizontalSizeClass, pose.sizeClass)
     }
 }

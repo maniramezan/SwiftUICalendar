@@ -221,12 +221,13 @@ private struct CalendarSurface: View {
     let allowsPaging: Bool
     let keyboard: CalendarKeyboardCursor
     @Environment(\.calendarMetrics) private var metrics
+    @Environment(\.calendarHasCompanionMonth) private var hasCompanionMonth
     @State private var headerHeight: CGFloat = 0
 
     var body: some View {
-        if configuration.scrollMode != .vertical {
+        if configuration.scrollMode != .vertical || hasCompanionMonth {
             CalendarFixedSurface(
-                viewModel: viewModel, configuration: configuration,
+                viewModel: viewModel, configuration: fixedConfiguration,
                 allowsPaging: allowsPaging, keyboard: keyboard)
         } else {
             GeometryReader { geometry in
@@ -252,6 +253,12 @@ private struct CalendarSurface: View {
                 .scrollBounceBehavior(.basedOnSize)
             }
         }
+    }
+
+    private var fixedConfiguration: CalendarConfiguration {
+        var fixed = configuration
+        if hasCompanionMonth && fixed.scrollMode == .vertical { fixed.scrollMode = .none }
+        return fixed
     }
 }
 
@@ -300,6 +307,7 @@ private struct CalendarPinnedHeader: View {
     var onHeightChange: ((CGFloat) -> Void)? = nil
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarViewportWidth) private var viewportWidth
+    @Environment(\.calendarPanelHeaders) private var panelHeaders
 
     var body: some View {
         VStack(spacing: metrics.rowSpacing) {
@@ -319,6 +327,7 @@ private struct CalendarPinnedHeader: View {
         .onGeometryChange(for: CGFloat.self) {
             $0.size.height
         } action: {
+            panelHeaders?.primaryHeight = $0
             onHeightChange?($0)
         }
     }
