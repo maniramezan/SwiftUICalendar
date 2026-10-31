@@ -73,10 +73,10 @@ CalendarView(
 - ``CalendarConfiguration/GridSizing/flexible`` always fills the container, growing day spacing
   with the window.
 
-On a regular-width iPad the maximum cell size itself grows, up to twice the phone-sized maximum
-and no further than keeps the whole month on screen, so portrait fills the width and landscape
-still shows every week without scrolling. Compact widths, iPhone, macOS, and a two-month fold keep the
-standard maximum.
+On a regular-width iPad and in a macOS window the maximum cell size itself grows, up to twice the
+phone-sized maximum and no further than keeps the whole month on screen, so a tall window fills the
+width and a short one still shows every week without scrolling. Compact widths, iPhone, a two-month
+fold, and the vertically scrolling list on macOS keep the standard maximum.
 
 ## Switch Calendars
 

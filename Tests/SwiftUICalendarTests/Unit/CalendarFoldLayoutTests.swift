@@ -127,6 +127,10 @@ import AppKit
 @Suite("Calendar fold displacement", .serialized)
 struct CalendarFoldDisplacementTests {
     private static let size = CGSize(width: 900, height: 800)
+    /// Too short for cells to grow past the standard ceiling, which is the sizing the displacement
+    /// test reasons about. A taller window grows the unfolded grid, and the narrower folded pane
+    /// then legitimately resolves smaller cells.
+    private static let shortWindow = CGSize(width: 900, height: 420)
 
     @Test(
         "Overflow scroll viewport stays inside the free fold band",
@@ -232,7 +236,7 @@ struct CalendarFoldDisplacementTests {
                                 x: $0.lowerBound, y: 0, width: $0.upperBound - $0.lowerBound,
                                 height: 800)
                         }),
-                size: Self.size)
+                size: Self.shortWindow)
             defer { hosted.window.contentView = nil }
             #expect(waitForStableRender(hosted.hosting))
             let minX = try #require(frames.inMonth.values.map(\.minX).min())

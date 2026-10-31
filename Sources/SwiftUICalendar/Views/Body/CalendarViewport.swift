@@ -88,11 +88,10 @@ struct CalendarViewport<Content: View>: View {
     }
 
     private var idealHeight: CalendarIdealHeight {
-        #if os(iOS)
-        let grows = horizontalSizeClass == .regular && configuration.scrollMode != .vertical
-        #else
-        let grows = false
-        #endif
+        let grows =
+            CalendarCellGrowth.isAllowed(
+                sizeClass: horizontalSizeClass, scrollMode: configuration.scrollMode)
+            && configuration.scrollMode != .vertical
         return CalendarIdealHeight(
             metrics: metrics, showsHeader: configuration.showsHeader, growsCells: grows,
             hostHeight: hostHeight)
