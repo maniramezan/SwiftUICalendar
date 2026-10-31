@@ -22,6 +22,8 @@ struct CalendarMetrics: Equatable, Sendable {
     private(set) var minCellSize: CGFloat
     /// Upper bound for a day cell's row height; stops cells ballooning on wide (macOS) windows.
     private(set) var maxCellSize: CGFloat
+    /// How far ``maxCellSize`` may grow on a regular-width iPad, as a multiple of its base value.
+    let regularCellScale: CGFloat
     /// Lower bound for a day row's height; grows with Dynamic Type but never drops below the touch floor.
     private(set) var minRowHeight: CGFloat
     /// The platform touch floor, from `motion.minimumHitTarget`. Controls that must stay tappable
@@ -112,6 +114,9 @@ struct CalendarMetrics: Equatable, Sendable {
         // Derived ceiling: the minimum hit target plus a roomy spacing step. See the type doc for why
         // this is computed here instead of being a global design token.
         maxCellSize = motion.minimumHitTarget + spacing.twoAndHalfUnits
+        // Doubling the phone-sized ceiling fills an iPad's portrait width while a height-bound
+        // layout still decides how large the cells actually get.
+        regularCellScale = 2
         monthSpacing = spacing.threeUnits
         monthInset = spacing.twoUnits
         // Previously a raw 10pt with no matching token. `oneUnit` is the nearest step, and the one
@@ -181,6 +186,55 @@ extension CalendarMetrics {
         result.minRowHeight = max(minCellSize, cell.height)
         result.weekdayHeaderMinHeight = max(weekdayHeaderMinHeight, weekday.height)
         return result
+    }
+
+    /// Height of the Today row and navigation header above the grid, with the gaps around them.
+    func controlsHeight(showsHeader: Bool) -> CGFloat {
+        let header = showsHeader ? headerRowHeight : 0
+        let sections: CGFloat = showsHeader ? 2 : 1
+        return minimumHitTarget + header + sections * rowSpacing
+    }
+
+    /// Height of six rows of `cell`-sized days, the weekday header, and `controls` above them.
+    ///
+    /// The pager rounds its measured heights up, so the slack it reserves for that is counted
+    /// twice: once for its own padding and once for the rounding it guards against.
+    func sixRowHeight(cell: CGFloat, controls: CGFloat) -> CGFloat {
+        let rows = CGFloat(CalendarGrid.maximumRowCount)
+        return controls + rows * rowSpacing + 2 * pager.heightCeilingPadding
+            + (rows + pager.headerHeightRatio) * cell
+    }
+
+    /// Metrics whose cell ceiling grows into space a regular-width iPad has to spare.
+    ///
+    /// Pass `height` when the grid must fit without scrolling (fixed and paged months): the ceiling
+    /// rises only as far as six rows, the weekday header, and `controls` fit inside it, and never
+    /// below the base ceiling, so a short window keeps the phone-sized cells. Pass `nil` when
+    /// months scroll and only width bounds them. Sizing for six rows keeps the cell size from
+    /// changing between five- and six-row months.
+    func growingCells(toFitHeight height: CGFloat?, controls: CGFloat) -> CalendarMetrics {
+        var result = self
+        let ceiling = maxCellSize * regularCellScale
+        let rows = CGFloat(CalendarGrid.maximumRowCount)
+        let fitted =
+            height.map { height in
+                (height - sixRowHeight(cell: 0, controls: controls))
+                    / (rows + pager.headerHeightRatio)
+            } ?? ceiling
+        result.maxCellSize = max(maxCellSize, min(ceiling, fitted))
+        return result
+    }
+
+    /// The height a host that proposes none gives a regular-width iPad's fixed month at `width`.
+    ///
+    /// `hostHeight` is the visible height of the scroll view hosting the calendar, when there is
+    /// one: the month grows only as far as it stays on screen there, instead of to its width-only
+    /// ceiling, which in landscape would run past the bottom of the screen.
+    func idealGrownHeight(width: CGFloat, hostHeight: CGFloat?, controls: CGFloat) -> CGFloat {
+        let grown = growingCells(toFitHeight: hostHeight, controls: controls)
+        let cell = CalendarGridLayout.cellSize(
+            containerWidth: width - 2 * calendarMargin, metrics: grown)
+        return grown.sixRowHeight(cell: cell, controls: controls)
     }
 
     func resolvingSpacing(_ spacing: CGFloat) -> CalendarMetrics {

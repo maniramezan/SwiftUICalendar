@@ -11,7 +11,11 @@ struct CalendarViewport<Content: View>: View {
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarFoldRegions) private var foldRegions
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var panelHeaders = CalendarPanelHeaders()
+    /// Visible height of the scroll view hosting the calendar, `nil` outside one. It does not depend
+    /// on the calendar's own size, so measuring it cannot feed back into the layout it informs.
+    @State private var hostHeight: CGFloat?
     private let logger = Logger.swiftUICalendar(for: Self.self)
     var keyboard: CalendarKeyboardCursor? = nil
     @ViewBuilder let content: (Bool) -> Content
@@ -19,10 +23,7 @@ struct CalendarViewport<Content: View>: View {
     var body: some View {
         CalendarViewportSize(
             idealWidth: metrics.minCalendarWidth,
-            idealHeight:
-                metrics.resolvedHeight(
-                    rowCount: CalendarGrid.maximumRowCount, layoutWidth: metrics.minCalendarWidth)
-                + metrics.weekdayHeaderMinHeight + 3 * metrics.headerRowHeight
+            idealHeight: idealHeight
         ) {
             GeometryReader { geometry in
                 let nextMonth = model?.monthIdentifier(offset: 1)
@@ -67,6 +68,14 @@ struct CalendarViewport<Content: View>: View {
                 }
             }
         }
+        .onGeometryChange(for: CGFloat?.self) { proxy in
+            proxy.bounds(of: .scrollView).map {
+                $0.height - proxy.safeAreaInsets.top - proxy.safeAreaInsets.bottom
+            }
+        } action: { height in
+            logger.debug("Host viewport height changed")
+            hostHeight = height
+        }
         .safeAreaPadding(.vertical, metrics.calendarMargin)
         .frame(
             minWidth: configuration.layout.overflow == .minimumSize
@@ -76,6 +85,17 @@ struct CalendarViewport<Content: View>: View {
                         ?? metrics.itemSpacing,
                     minimumSpacing: configuration.layout.minimumColumnSpacing)
                 : nil)
+    }
+
+    private var idealHeight: CalendarIdealHeight {
+        #if os(iOS)
+        let grows = horizontalSizeClass == .regular && configuration.scrollMode != .vertical
+        #else
+        let grows = false
+        #endif
+        return CalendarIdealHeight(
+            metrics: metrics, showsHeader: configuration.showsHeader, growsCells: grows,
+            hostHeight: hostHeight)
     }
 
     private var companionConfiguration: CalendarConfiguration {
