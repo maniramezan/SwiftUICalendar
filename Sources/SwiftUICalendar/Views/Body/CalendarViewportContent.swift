@@ -44,17 +44,17 @@ struct CalendarViewportContent<Content: View>: View {
             .resolvingSpacing(layout.columnSpacing)
         guard growsCells else { return resolved }
         return resolved.growingCells(
-            toFitHeight: height,
+            toFitHeight: configuration.scrollMode == .vertical ? nil : height,
             controls: resolved.controlsHeight(showsHeader: configuration.showsHeader))
     }
 
-    /// Cells grow only on a regular-width iPad showing a single fixed or paged month. A two-month
-    /// fold sizes its panels together, a compact width keeps the phone-sized cells, and the vertical
-    /// list keeps them too: larger months moved where it rests on launch, hiding the month title.
+    /// Cells grow only on a regular-width iPad showing a single month grid. A two-month fold sizes its
+    /// panels together and a compact width keeps the phone-sized cells. The vertical list is bound by
+    /// width alone, since it scrolls; it re-anchors on the current month when a resize changes the
+    /// month heights.
     private var growsCells: Bool {
         #if os(iOS)
-        horizontalSizeClass == .regular && configuration.scrollMode != .vertical
-            && !hasCompanionMonth && !isCompanionPanel
+        horizontalSizeClass == .regular && !hasCompanionMonth && !isCompanionPanel
         #else
         false
         #endif

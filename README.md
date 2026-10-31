@@ -129,7 +129,7 @@ On a regular-width iPad the maximum grows with the space available: up to twice 
 maximum, and no larger than keeps six rows, the weekday header, and the Today and navigation
 controls on screen. Portrait fills the width; landscape grows until the month still fits without
 scrolling, and a window too short for that keeps the standard maximum. A compact width, an iPhone,
-macOS, a two-month fold, and the vertically scrolling calendar keep the standard maximum.
+macOS, and a two-month fold keep the standard maximum.
 
 ```swift
 let configuration = CalendarConfiguration(gridSizing: .compact)

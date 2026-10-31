@@ -6,6 +6,8 @@ import XCTest
 /// the calendar opened at the start of the window — twenty years in the past. Landscape, where the
 /// first layout pass is already final, is where it happened.
 final class VerticalLandscapeUITests: SampleUITestCase {
+    private static let dayCellTimeout: TimeInterval = 10
+
     func testVerticalCalendarOpensOnTheCurrentMonthInLandscape() throws {
         XCUIDevice.shared.orientation = .landscapeLeft
         let app = sampleApplication()
@@ -39,5 +41,32 @@ final class VerticalLandscapeUITests: SampleUITestCase {
         XCTAssertTrue(
             ancientVisible.isEmpty,
             "the vertical calendar opened \(twentyYearsAgo), at the start of its window")
+    }
+
+    /// On a regular-width iPad the month heights follow the width, so a rotation changes them while
+    /// the scroll view keeps its offset in points. Without re-anchoring, the list came to rest on the
+    /// end of the previous month and the current month's title was out of view.
+    func testVerticalCalendarKeepsTheCurrentMonthTitleVisibleAfterRotation() throws {
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let app = sampleApplication()
+        app.launch()
+        app.chooseScrollMode(.vertical)
+        Thread.sleep(forTimeInterval: 1.5)
+
+        XCUIDevice.shared.orientation = .portrait
+        Thread.sleep(forTimeInterval: 1.5)
+
+        let now = Date()
+        let calendar = Calendar(identifier: .gregorian)
+        let header = app.descendants(matching: .any)[
+            CalendarAccessibilityID.verticalMonthHeader(
+                year: calendar.component(.year, from: now),
+                month: calendar.component(.month, from: now))
+        ].firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: Self.dayCellTimeout))
+        let window = app.windows.firstMatch.frame
+        XCTAssertLessThan(
+            header.frame.minY, window.height / 3,
+            "the current month is not at the top of the list after rotating to portrait")
     }
 }

@@ -52,11 +52,11 @@ struct CalendarRegularWidthGrowthTests {
         #expect(widest <= CalendarMetrics.default.maxCellSize + 0.5)
     }
 
-    @Test("The vertical list keeps the phone-sized ceiling at a regular width")
-    func regularVerticalKeepsCeiling() throws {
+    @Test("A regular-width vertical list grows past the phone-sized ceiling")
+    func regularVerticalGrows() throws {
         let widest = try widestCell(
             mode: .vertical, sizeClass: .regular, size: CGSize(width: 820, height: 1180))
-        #expect(widest <= CalendarMetrics.default.maxCellSize + 0.5)
+        #expect(widest > CalendarMetrics.default.maxCellSize)
     }
 
     @Test("A regular-width window too short to fit a grown month keeps the old sizing")

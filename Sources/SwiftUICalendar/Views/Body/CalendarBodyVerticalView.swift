@@ -112,7 +112,11 @@ struct CalendarBodyVerticalView: View {
                 }
             }
             .onChange(of: contentWidth) { _, _ in
-                initializeWindow()
+                guard anchor != nil else {
+                    initializeWindow()
+                    return
+                }
+                restoreCurrentMonthAfterResize()
             }
             .onDisappear {
                 settle.cancel()
@@ -192,6 +196,23 @@ struct CalendarBodyVerticalView: View {
         // Observe visibility separately from the explicit navigation request, so initial
         // positioning does not race a user-position binding within the same layout pass.
         resetWindow(to: current)
+    }
+
+    /// Puts the current month back at the top after the list's width changed.
+    ///
+    /// Month heights follow the width wherever cells grow with it (a regular-width iPad), and the
+    /// scroll view keeps its offset in points, so a rotation or window resize would leave the list
+    /// resting on a neighboring month with the current month's title scrolled out of view.
+    private func restoreCurrentMonthAfterResize() {
+        #if !os(macOS)
+        let target = currentMonthIdentifier
+        logger.info(
+            "Content width changed; restoring \(target.year, privacy: .public)-\(target.month, privacy: .public) to the top"
+        )
+        withTransaction(Transaction(animation: nil)) {
+            navigationPosition.scrollTo(id: target, anchor: .top)
+        }
+        #endif
     }
 
     /// Rebuilds the window when navigation arrives from outside the vertical scroll.
