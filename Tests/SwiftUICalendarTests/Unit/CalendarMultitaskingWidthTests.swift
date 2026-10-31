@@ -20,7 +20,7 @@ struct CalendarMultitaskingWidthTests {
     ]
     nonisolated private static let sizeClasses: [UIUserInterfaceSizeClass] = [.compact, .regular]
     nonisolated private static let widths: [CGFloat] = [
-        320, 375, 507, 678, 820, 1180,
+        320, 375, 507, 551, 678, 820, 1180,
     ]
     nonisolated private static let heights: [CGFloat] = [420, 1180]
 
@@ -48,6 +48,7 @@ struct CalendarMultitaskingWidthTests {
             mode == .vertical
             ? MeasuredDayFrames()
             : MeasuredDayFrames(month: month, calendar: model.engine.calendar)
+        frames.forgetsDisappearedDays = true
         let theme = Theme()
         theme.day.setDayContent { MeasuringDayView(context: $0, frames: frames) }
         let hosted = hostView(
