@@ -354,6 +354,27 @@ private struct CalendarTodayControl: View {
     let viewModel: CalendarViewModel
     @Environment(\.calendarViewportWidth) private var viewportWidth
 
+    /// The width of the month grid beneath, resolved the way each body resolves its own.
+    ///
+    /// Once a day cell saturates `maxCellSize` the grid stops filling the viewport and sits centered
+    /// in it, as on an iPad. Today follows the grid's trailing edge rather than the viewport's, so it
+    /// stays over the calendar it controls.
+    private var gridWidth: CGFloat? {
+        guard let viewportWidth else { return nil }
+        let containerWidth =
+            switch configuration.scrollMode {
+            case .vertical:
+                viewportWidth - 2 * metrics.monthInset
+            case .horizontal:
+                metrics.pageWidth(containerWidth: viewportWidth)
+            case .none:
+                viewportWidth
+            }
+        let grid = CalendarGridLayout(
+            containerWidth: containerWidth, metrics: metrics, sizing: configuration.gridSizing)
+        return min(viewportWidth, grid.gridWidth)
+    }
+
     var body: some View {
         HStack {
             Spacer()
@@ -369,10 +390,8 @@ private struct CalendarTodayControl: View {
             .accessibilityIdentifier(CalendarAccessibilityID.todayButton)
         }
         .padding(.trailing, metrics.todayTrailingPadding)
-        .frame(
-            width: viewportWidth,
-            alignment: .trailing
-        )
+        .frame(width: gridWidth, alignment: .trailing)
+        .frame(width: viewportWidth)
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
     }

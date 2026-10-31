@@ -9,6 +9,9 @@ struct CalendarViewportContent<Content: View>: View {
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarLayoutObserver) private var layoutObserver
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.calendarHasCompanionMonth) private var hasCompanionMonth
+    @Environment(\.calendarIsCompanionPanel) private var isCompanionPanel
     private var width: CGFloat { size.width }
     private var height: CGFloat { size.height }
     @State private var dateRevealer = CalendarDateRevealer()
@@ -37,7 +40,24 @@ struct CalendarViewportContent<Content: View>: View {
     }
 
     private var resolvedMetrics: CalendarMetrics {
-        metrics.scalingSoftMargins(by: layout.marginScale).resolvingSpacing(layout.columnSpacing)
+        let resolved = metrics.scalingSoftMargins(by: layout.marginScale)
+            .resolvingSpacing(layout.columnSpacing)
+        guard growsCells else { return resolved }
+        return resolved.growingCells(
+            toFitHeight: configuration.scrollMode == .vertical ? nil : height,
+            controls: resolved.controlsHeight(showsHeader: configuration.showsHeader))
+    }
+
+    /// Cells grow only on a regular-width iPad showing a single month grid. A two-month fold sizes its
+    /// panels together and a compact width keeps the phone-sized cells. The vertical list is bound by
+    /// width alone, since it scrolls; it re-anchors on the current month when a resize changes the
+    /// month heights.
+    private var growsCells: Bool {
+        #if os(iOS)
+        horizontalSizeClass == .regular && !hasCompanionMonth && !isCompanionPanel
+        #else
+        false
+        #endif
     }
 
     private var layoutInfo: CalendarLayoutInfo {

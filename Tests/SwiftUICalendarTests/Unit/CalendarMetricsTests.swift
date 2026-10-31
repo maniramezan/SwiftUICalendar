@@ -267,4 +267,35 @@ struct CalendarMetricsTests {
         #expect(resolved.minimumHitTarget == metrics.minimumHitTarget)
         #expect(resolved.minRowHeight == metrics.minimumHitTarget)
     }
+
+    @Test("a regular iPad's cell ceiling grows to the width, never past its ceiling")
+    func growingCellsWithoutHeightBound() {
+        let metrics = CalendarMetrics.default
+        let grown = metrics.growingCells(toFitHeight: nil, controls: 0)
+        #expect(grown.maxCellSize == metrics.maxCellSize * metrics.regularCellScale)
+    }
+
+    @Test("a short height keeps the phone-sized ceiling, a tall one grows into it")
+    func growingCellsFitsHeight() {
+        let metrics = CalendarMetrics.default
+        let controls = metrics.controlsHeight(showsHeader: true)
+        let short = metrics.growingCells(toFitHeight: 200, controls: controls)
+        #expect(short.maxCellSize == metrics.maxCellSize)
+
+        let height = metrics.sixRowHeight(cell: 90, controls: controls)
+        let fitted = metrics.growingCells(toFitHeight: height, controls: controls)
+        #expect(abs(fitted.maxCellSize - 90) < 0.0001)
+    }
+
+    @Test("the ideal height of a fixed month follows the grown cell")
+    func idealGrownHeightFollowsCell() {
+        let metrics = CalendarMetrics.default
+        let controls = metrics.controlsHeight(showsHeader: true)
+        let ideal = metrics.idealGrownHeight(width: 820, hostHeight: nil, controls: controls)
+        let phone = metrics.sixRowHeight(cell: metrics.maxCellSize, controls: controls)
+        #expect(ideal > phone)
+
+        let bounded = metrics.idealGrownHeight(width: 820, hostHeight: 600, controls: controls)
+        #expect(bounded <= 600 + 0.0001 || bounded == phone)
+    }
 }
