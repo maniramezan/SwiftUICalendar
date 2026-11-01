@@ -23,6 +23,8 @@ final class CalendarKeyboardCursor {
     /// The focused day, always snapped to the start of the day so per-cell checks are plain `==`.
     var date: Date?
     var isActive = false
+    /// A second visible month in a folded layout; movement within the spread keeps it in place.
+    var companionMonth: MonthIdentifier?
 
     /// Set only by keyboard-initiated movement.
     ///
@@ -92,6 +94,15 @@ final class CalendarKeyboardCursor {
     /// Returns `false` when there is no such month inside the calendar's date range.
     @discardableResult
     func moveMonths(_ months: Int, model: CalendarViewModel) throws -> Bool {
+        if companionMonth != nil {
+            var projected = model.state
+            try projected.apply(.navigate(date ?? model.currentDate))
+            guard let month = model.monthIdentifier(offset: months, from: projected.visibleMonth)
+            else { return false }
+            try projected.apply(.navigateMonth(month))
+            try navigate(to: projected.currentDate, model: model)
+            return true
+        }
         guard let month = model.monthIdentifier(offset: months) else { return false }
         let destination = try Self.projectedDate(after: .navigateMonth(month), in: model)
         try model.navigate(toMonth: month)
@@ -139,7 +150,10 @@ final class CalendarKeyboardCursor {
     private func navigate(to destination: Date, model: CalendarViewModel) throws {
         let calendar = model.engine.calendar
         let target = model.engine.clamped(destination)
-        try model.navigate(to: target)
+        let month = model.engine.month(containing: target)
+        if companionMonth == nil || (month != model.visibleMonth && month != companionMonth) {
+            try model.navigate(to: target)
+        }
         requestScroll(to: target, calendar: calendar)
     }
 

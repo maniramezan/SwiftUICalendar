@@ -40,42 +40,27 @@ struct CalendarViewportSnapshotTests {
     }
     @Test("Fold bands retain overflow geometry in both reading directions")
     func foldedViewport() {
-        let metrics = CalendarMetrics.default
         let lines = [LayoutDirection.leftToRight, .rightToLeft].map { direction in
-            let span = CalendarFoldSpan.resolve(
-                containerWidth: 700,
-                blocked: CalendarFoldSpan.leadingOrigin(
-                    [300...400], containerWidth: 700, layoutDirection: direction))
-            let width = 700 - span.total
-            let viewport = CalendarViewportLayout(
-                width: width, cellWidth: metrics.minCellSize,
-                margins: 2 * metrics.calendarMargin,
-                preferredSpacing: metrics.itemSpacing, minimumSpacing: metrics.itemSpacing)
-            return
-                "direction=\(direction) viewport=\(width) leading=\(span.leading) trailing=\(span.trailing) content=\(viewport.contentWidth) overflow=\(viewport.overflows)"
+            describeFold(
+                size: CGSize(width: 700, height: 800),
+                blocked: [CGRect(x: 300, y: 0, width: 100, height: 800)], direction: direction)
         }
         withSnapshotTesting(record: globalRecordMode) {
             assertSnapshot(of: lines.joined(separator: "\n"), as: .lines)
         }
     }
 
-    @Test("Live geometry resolves each fold transition without a previous measurement")
+    @Test("Live geometry resolves book, tabletop, and flat transitions")
     func liveGeometry() {
-        let metrics = CalendarMetrics.default
-        let folds: [[ClosedRange<CGFloat>]] = [[], [520...580], [300...600], [], [300...400], []]
+        let folds: [[CGRect]] = [
+            [], [CGRect(x: 430, y: 0, width: 40, height: 800)],
+            [CGRect(x: 0, y: 380, width: 900, height: 40)],
+            [CGRect(x: 520, y: 0, width: 60, height: 800)], [],
+        ]
         let lines = [LayoutDirection.leftToRight, .rightToLeft].flatMap { direction in
-            folds.map { blocked in
-                let span = CalendarFoldSpan.resolve(
-                    containerWidth: 900,
-                    blocked: CalendarFoldSpan.leadingOrigin(
-                        blocked, containerWidth: 900, layoutDirection: direction))
-                let available = 900 - span.total
-                let layout = CalendarViewportLayout(
-                    width: available, cellWidth: metrics.minCellSize,
-                    margins: 2 * metrics.calendarMargin,
-                    preferredSpacing: metrics.itemSpacing, minimumSpacing: 4)
-                return
-                    "direction=\(direction) viewport=\(available) leading=\(span.leading) trailing=\(span.trailing) content=\(layout.contentWidth) overflow=\(layout.overflows)"
+            folds.map {
+                describeFold(
+                    size: CGSize(width: 900, height: 800), blocked: $0, direction: direction)
             }
         }
         withSnapshotTesting(record: globalRecordMode) {
@@ -83,4 +68,51 @@ struct CalendarViewportSnapshotTests {
         }
     }
 
+    @Test(
+        "Two folded months share range selection in every scroll mode",
+        arguments: [CalendarConfiguration.ScrollMode.none, .vertical, .horizontal],
+        [Calendar.Identifier.gregorian, .persian])
+    func consecutiveMonths(
+        mode: CalendarConfiguration.ScrollMode, identifier: Calendar.Identifier
+    ) throws {
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .range(nil, nil))
+        let next = try #require(model.monthIdentifier(offset: 1))
+        let currentDays = try #require(model.monthSnapshot(for: model.visibleMonth))
+        let nextDays = try #require(model.monthSnapshot(for: next))
+        let start = try #require(currentDays.days.last { $0.isInDisplayedMonth }?.date)
+        let end = try #require(nextDays.days.first { $0.isInDisplayedMonth }?.date)
+        model.select(start)
+        model.select(end)
+        let primaryMode: CalendarConfiguration.ScrollMode = mode == .vertical ? .none : mode
+        let documents = [
+            CalendarStructure.render(
+                model: model, configuration: .init(scrollMode: primaryMode), theme: Theme(),
+                width: 430, monthSpan: 0, months: [model.visibleMonth], hideOverflowDays: true),
+            CalendarStructure.render(
+                model: model, configuration: .init(scrollMode: .none), theme: Theme(),
+                width: 430, monthSpan: 0, months: [next], hideOverflowDays: true),
+        ]
+        withSnapshotTesting(record: globalRecordMode) {
+            assertSnapshot(
+                of: "requestedScrollMode: \(mode)\n\nprimary panel\n"
+                    + documents.joined(separator: "\ncompanion panel\n"), as: .lines,
+                named: "\(identifier)-\(mode)")
+        }
+    }
+
+    private func describeFold(
+        size: CGSize, blocked: [CGRect], direction: LayoutDirection
+    ) -> String {
+        let fold = CalendarFoldLayout.resolve(
+            size: size, blocked: blocked, minimumPaneSize: CGSize(width: 332, height: 132),
+            allowsCompanion: true, layoutDirection: direction)
+        let metrics = CalendarMetrics.default
+        let viewport = CalendarViewportLayout(
+            width: fold.primary.width, cellWidth: metrics.minCellSize,
+            margins: 2 * metrics.calendarMargin,
+            preferredSpacing: metrics.itemSpacing, minimumSpacing: 4)
+        let secondary = fold.secondary.map { "\($0)" } ?? "none"
+        return
+            "direction=\(direction) mode=\(fold.mode) primary=\(fold.primary) secondary=\(secondary) content=\(viewport.contentWidth) overflow=\(viewport.overflows)"
+    }
 }

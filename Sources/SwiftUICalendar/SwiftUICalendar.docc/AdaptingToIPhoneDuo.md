@@ -1,55 +1,62 @@
 # Adapting to iPhone Duo
 
-How the calendar behaves on a folding display, and what it needs from your app.
+How the calendar uses each half of a folding display while keeping complete weeks readable.
 
 ## Overview
 
-On iPhone Duo the outer display behaves like any other iPhone, while the inner display is regular in
-both size classes. The inner display does not honor supported interface orientations, so the calendar
-makes every layout decision from size classes and available width rather than from orientation — which
-is what it already did for iPad and resizable macOS windows.
+`CalendarView` adapts to the space its host provides. Closed and fully open displays use the normal
+calendar presentation. An active fold can present two consecutive months, with each month contained
+in its own panel. Your app continues to use one model, selection, theme, and configuration.
 
-Nothing in your app needs to change. `CalendarView` adapts on its own.
+The layout reads the fold's full rectangle in the calendar viewport's coordinate space. It does not
+infer posture from interface orientation, device names, or a fixed hinge angle. A calendar hosted
+entirely on one side of a fold keeps its normal presentation.
 
-## Staying Clear of the Fold
+## Book and Tabletop Layouts
 
-When the device is partially folded, the hinge crosses the inner display and the system reports a
-*division* reserved region covering that band. Content spanning the band is harder to read, and a day
-cell landing in it is hard to tap.
+With a vertical fold, the visible month occupies the leading panel and the following month occupies
+the trailing panel. Right-to-left calendars, including Persian and Hebrew, place the visible month
+on the physical right and the following month on the left.
 
-Rather than straddle the fold, the calendar **displaces** itself: it measures the division regions in
-its own coordinate space and lays the grid out in the widest band beside them. A week still reads as a
-single row, and day cells keep their full touch targets.
+With a horizontal fold, the visible month occupies the upper panel and the following month occupies
+the lower panel. Both panels retain the calendar's reading direction. Each month has its own vertical
+scrolling, so shorter panels keep every week reachable.
 
-If the chosen band is narrower than the grid's minimum width — seven minimum-size cells plus their
-spacing — the calendar falls back to the same behavior it uses in any narrow window: the band scrolls
-horizontally so every date stays reachable, instead of shrinking cells below the minimum hit target.
-See <doc:GettingStarted> for the sizing rules this builds on.
+The primary panel retains fixed or horizontal month paging. While two panels are visible, vertical
+mode shows a single month in its primary panel instead of repeating the companion month in a
+continuous list; use the navigation header to change the spread. Each month still scrolls vertically
+when its weeks exceed the panel height. The companion presents the following month as a fixed
+month. Navigating the primary month updates the companion to match. Both panels use the same
+selection, including ranges that cross the month boundary, and the same custom day renderer. Overflow
+days are hidden while the companion is visible to avoid presenting the same dates in both panels.
 
-Right-to-left calendars — Persian, Hebrew, Islamic — land on the correct side of the fold too:
-the fold is measured where the hinge physically is, and the calendar converts it to its own
-layout direction before choosing a band.
+Folding, rotating the fold, and unfolding keep the primary viewport mounted. These layout changes do
+not navigate the model or clear its selection.
 
-Equally wide bands resolve to the leading one, so a symmetrically folded device does not flip the
-calendar from side to side as the hinge angle wobbles.
+## Small Panels and Date Bounds
+
+Two months appear only when both panels meet the readable width and minimum useful height resolved
+from the calendar's content metrics. Larger text or a custom day view's declared minimum can require
+more room. If either panel is too small, the calendar uses the largest usable panel. Equal panels
+prefer the leading side for a vertical fold and the upper side for a horizontal fold.
+
+A narrow single panel scrolls horizontally to expose every column without reducing day cells below
+their readable minimum or the 44-point touch target. Short panels scroll vertically to expose every
+week and the navigation header. See <doc:GettingStarted> for the sizing rules.
+
+The companion respects `CalendarState.dateRange`. At the last allowed month, the calendar uses one
+panel instead of duplicating the current month or showing a month outside the allowed range.
 
 ## Requirements
 
-The displacement itself needs nothing newer than the package's own minimum, iOS 18 / macOS 15, and is
-active on every platform.
+The fold layout itself supports the package's minimum deployment targets, iOS 18 and macOS 15.
+Reading the system's fold geometry requires Xcode 27.1 or later and iOS 27.1 or later.
 
-Reading the hinge from the system needs a newer SDK. `GeometryProxy.reservedRegions(kind: .division)`
-is declared `@available(anyAppleOS 27.1, *)` and does not exist in the 27.0 SDKs. The call is wrapped in
-`#if canImport(SwiftUICore, _version: 8.0.85)`, so older toolchains compile the call out and keep
-building.
+`GeometryProxy.reservedRegions(kind: .division)` is compiled only when
+`canImport(SwiftUICore, _version: 8.0.85)` succeeds and is guarded by a runtime availability check.
+Older toolchains and operating systems keep the normal calendar layout.
 
-- **Built with Xcode 27.1 or later**, on iOS 27.1 or later: the calendar reads the hinge itself and
-  moves clear of it. Nothing to adopt.
-- **Built with Xcode 27.0**, or running on an earlier OS: no hinge is reported, and the calendar lays
-  out exactly as it does on any other iPhone.
-
-Inside the compile-time gate, a runtime `#available(iOS 27.1, macOS 27.1, *)` check guards older
-devices. The version in `canImport` is required: a bare `#if canImport(SwiftUICore)` succeeds on
-every SDK back to iOS 18, so it cannot tell 27.0 from 27.1.
-
-To ship Duo support in your app, build it with Xcode 27.1 or later.
+For app-level arrangements such as a calendar beside an agenda, use Apple's
+[ArrangementView](https://developer.apple.com/documentation/swiftui/arrangementview) outside the
+calendar. See [Preparing your app for iPhone Duo](https://developer.apple.com/documentation/technologyoverviews/preparing-your-app-for-iphone-duo)
+for system containers and reserved regions.

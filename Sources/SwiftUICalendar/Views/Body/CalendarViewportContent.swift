@@ -14,15 +14,8 @@ struct CalendarViewportContent<Content: View>: View {
     @State private var dateRevealer = CalendarDateRevealer()
     @State private var horizontalPosition = ScrollPosition(edge: .leading)
     var keyboard: CalendarKeyboardCursor? = nil
-    @Environment(\.calendarFoldRanges) private var injectedFoldRanges
-    // The hinge the system reports; empty unless built with the iOS 27.1 SDK on a folding device.
-    @State private var systemFoldRanges: [ClosedRange<CGFloat>] = []
-    @Environment(\.layoutDirection) private var layoutDirection
     private let logger = Logger.swiftUICalendar(for: Self.self)
 
-    private var foldRanges: [ClosedRange<CGFloat>] {
-        injectedFoldRanges + systemFoldRanges
-    }
     @ViewBuilder let content: (Bool) -> Content
 
     /// Total soft margin around the grid. The vertically scrolling body insets each month as well.
@@ -36,19 +29,9 @@ struct CalendarViewportContent<Content: View>: View {
         metrics.calendarMargin * layout.marginScale
     }
 
-    /// Width surrendered to an iPhone Duo fold, measured in this viewport's own coordinate space —
-    /// already inside the safe area, so a fold is weighed against the space actually available.
-    private var fold: CalendarFoldSpan {
-        // The fold is physical; the insets below are applied as leading and trailing padding.
-        CalendarFoldSpan.resolve(
-            containerWidth: width,
-            blocked: CalendarFoldSpan.leadingOrigin(
-                foldRanges, containerWidth: width, layoutDirection: layoutDirection))
-    }
-
     private var layout: CalendarViewportLayout {
         CalendarViewportLayout(
-            width: width - fold.total, cellWidth: metrics.minCellSize, margins: softMargins,
+            width: width, cellWidth: metrics.minCellSize, margins: softMargins,
             preferredSpacing: configuration.layout.preferredColumnSpacing ?? metrics.itemSpacing,
             minimumSpacing: configuration.layout.minimumColumnSpacing)
     }
@@ -92,7 +75,7 @@ struct CalendarViewportContent<Content: View>: View {
                             )
                             .environment(
                                 \.calendarViewportWidth,
-                                max(0, width - fold.total - 2 * horizontalMargin)
+                                max(0, width - 2 * horizontalMargin)
                             )
                             .padding(.horizontal, horizontalMargin)
                             .frame(width: layout.contentWidth)
@@ -110,13 +93,7 @@ struct CalendarViewportContent<Content: View>: View {
                 ) { _, enabled in
                     dateRevealer.enabled = enabled
                 }
-                // Constrain the scroll view itself so overflow is clipped to the free band.
-                // Padding its content would scroll the reserved space along with the day cells.
-                .padding(.leading, fold.leading)
-                .padding(.trailing, fold.trailing)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // Measured on the same view as `width`, so the bands share its coordinate space.
-                .modifier(SystemFoldReader(ranges: $systemFoldRanges))
                 .onChange(of: keyboard?.scrollRequest) { _, request in
                     guard layout.overflows, let request, keyboard?.isActive == true else { return }
                     proxy.scrollTo(request.identity, anchor: .center)
@@ -134,7 +111,7 @@ struct CalendarViewportContent<Content: View>: View {
                     logger.debug("Revealing Today in horizontal overflow")
                     horizontalPosition.scrollTo(
                         x: layout.horizontalOffsetToReveal(
-                            column: column, viewportWidth: width - fold.total))
+                            column: column, viewportWidth: width))
                 }
             }
         }

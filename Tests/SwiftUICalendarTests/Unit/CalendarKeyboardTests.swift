@@ -55,6 +55,77 @@ struct CalendarKeyboardTests {
         #expect(model.engine.calendar.component(.day, from: try #require(cursor.date)) == 1)
     }
 
+    @Test(
+        "Arrow movement within a folded spread keeps its months in place",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func foldedSpreadMovement(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.test(identifier: identifier)
+        let current = model.currentDate
+        let next = try #require(model.monthIdentifier(offset: 1))
+        let cursor = CalendarKeyboardCursor()
+        cursor.companionMonth = next
+        cursor.date = try #require(model.engine.navigationDate(in: next, preferredDay: 15))
+        #expect(try cursor.move(days: 1, model: model))
+        #expect(model.currentDate == current)
+        let advanced = try #require(cursor.date)
+        #expect(model.engine.calendar.component(.day, from: advanced) == 16)
+        let interval = try #require(model.engine.calendar.dateInterval(of: .month, for: advanced))
+        cursor.date = try #require(
+            model.engine.calendar.date(byAdding: .day, value: -1, to: interval.end))
+        #expect(try cursor.move(days: 1, model: model))
+        let outside = try #require(cursor.date)
+        #expect(model.engine.month(containing: outside) == model.visibleMonth)
+        #expect(model.currentDate != current)
+    }
+
+    @Test(
+        "Folded month shortcuts advance from the focused companion date",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func foldedMonthShortcut(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.test(identifier: identifier)
+        let original = model.visibleMonth
+        let next = try #require(model.monthIdentifier(offset: 1))
+        let following = try #require(model.monthIdentifier(offset: 2))
+        let cursor = CalendarKeyboardCursor()
+        cursor.companionMonth = next
+        cursor.date = try #require(model.engine.navigationDate(in: next, preferredDay: 15))
+        #expect(try cursor.moveMonths(-1, model: model))
+        #expect(model.visibleMonth == original)
+        let previous = try #require(cursor.date)
+        #expect(model.engine.calendar.component(.day, from: previous) == 15)
+        #expect(try cursor.moveMonths(1, model: model))
+        #expect(model.visibleMonth == original)
+        #expect(try cursor.moveMonths(1, model: model))
+        #expect(model.visibleMonth == following)
+        let advanced = try #require(cursor.date)
+        #expect(model.engine.calendar.component(.day, from: advanced) == 15)
+    }
+
+    @Test("Folded keyboard movement respects bounds and external state ownership")
+    func foldedControlledMovement() throws {
+        let seed = CalendarViewModel.test()
+        let next = try #require(seed.monthIdentifier(offset: 1))
+        let nextDate = try #require(seed.engine.navigationDate(in: next, preferredDay: 15))
+        var state = seed.state
+        try state.setDateRange(.onOrBefore(nextDate))
+        var actions: [CalendarAction] = []
+        let model = CalendarViewModel(state: state) { actions.append($0) }
+        let cursor = CalendarKeyboardCursor()
+        cursor.companionMonth = next
+        cursor.date = try #require(
+            model.engine.calendar.date(byAdding: .day, value: -1, to: nextDate))
+        #expect(try cursor.move(days: 1, model: model))
+        let focused = cursor.date
+        #expect(actions.isEmpty)
+        #expect(try !cursor.move(days: 1, model: model))
+        #expect(try !cursor.moveMonths(1, model: model))
+        #expect(cursor.date == focused)
+        #expect(cursor.select(model: model))
+        let selected = try #require(cursor.date)
+        #expect(actions == [.select(selected, navigating: false)])
+        #expect(model.state == state)
+    }
+
     @Test("Range limits stop movement without changing focus")
     func rangeBoundary() throws {
         let model = CalendarViewModel.test()

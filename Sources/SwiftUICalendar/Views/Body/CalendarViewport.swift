@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 // MARK: - Viewport
@@ -8,6 +9,10 @@ struct CalendarViewport<Content: View>: View {
     var model: CalendarViewModel? = nil
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarConfiguration) private var configuration
+    @Environment(\.calendarFoldRegions) private var foldRegions
+    @Environment(\.layoutDirection) private var layoutDirection
+    @State private var panelHeaders = CalendarPanelHeaders()
+    private let logger = Logger.swiftUICalendar(for: Self.self)
     var keyboard: CalendarKeyboardCursor? = nil
     @ViewBuilder let content: (Bool) -> Content
 
@@ -20,8 +25,46 @@ struct CalendarViewport<Content: View>: View {
                 + metrics.weekdayHeaderMinHeight + 3 * metrics.headerRowHeight
         ) {
             GeometryReader { geometry in
-                CalendarViewportContent(
-                    size: geometry.size, model: model, keyboard: keyboard, content: content)
+                let nextMonth = model?.monthIdentifier(offset: 1)
+                let fold = CalendarFoldLayout.resolve(
+                    size: geometry.size,
+                    blocked: foldRegions + CalendarFoldRegions.read(in: geometry),
+                    minimumPaneSize: CGSize(
+                        width: CalendarViewportLayout.minimumWidth(
+                            cellWidth: metrics.minCellSize,
+                            preferredSpacing: configuration.layout.preferredColumnSpacing
+                                ?? metrics.itemSpacing,
+                            minimumSpacing: configuration.layout.minimumColumnSpacing),
+                        height: metrics.minRowHeight + metrics.weekdayHeaderMinHeight
+                            + 2 * metrics.headerRowHeight),
+                    allowsCompanion: nextMonth != nil, layoutDirection: layoutDirection)
+                CalendarFoldPlacement(size: geometry.size, fold: fold) {
+                    CalendarViewportContent(
+                        size: fold.primary.size, model: model, keyboard: keyboard, content: content
+                    )
+                    .environment(\.layoutDirection, layoutDirection)
+                    .environment(\.calendarHasCompanionMonth, fold.secondary != nil)
+
+                    if let secondary = fold.secondary, let nextMonth {
+                        CalendarViewportContent(size: secondary.size) { _ in
+                            CalendarCompanionMonthView(month: nextMonth, keyboard: keyboard)
+                        }
+                        .environment(\.layoutDirection, layoutDirection)
+                        .environment(\.calendarIsCompanionPanel, true)
+                        .environment(\.calendarConfiguration, companionConfiguration)
+                        .environment(\.calendarLayoutObserver, nil)
+                    }
+                }
+                .environment(\.layoutDirection, .leftToRight)
+                .environment(\.calendarPanelHeaders, panelHeaders)
+                .onChange(of: fold.mode, initial: true) { _, mode in
+                    logger.info("Fold layout changed to \(mode.rawValue, privacy: .public)")
+                }
+                .onChange(of: fold.secondary == nil ? nil : nextMonth, initial: true) { _, month in
+                    logger.debug(
+                        "Companion month \(month == nil ? "hidden" : "shown", privacy: .public)")
+                    keyboard?.companionMonth = month
+                }
             }
         }
         .safeAreaPadding(.vertical, metrics.calendarMargin)
@@ -33,6 +76,12 @@ struct CalendarViewport<Content: View>: View {
                         ?? metrics.itemSpacing,
                     minimumSpacing: configuration.layout.minimumColumnSpacing)
                 : nil)
+    }
+
+    private var companionConfiguration: CalendarConfiguration {
+        var companion = configuration
+        companion.scrollMode = .none
+        return companion
     }
 }
 
