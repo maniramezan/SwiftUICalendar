@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if os(iOS)
+import UIKit
+#endif
+
 /// Decides where day cells may grow past the phone-sized ceiling into space the window has to spare.
 ///
 /// A regular-width iPad grows every scroll mode: a compact width, which Split View and Stage Manager
@@ -11,13 +15,19 @@ import SwiftUI
 /// Whether a month actually grows is then decided by ``CalendarMetrics/growingCells(toFitHeight:controls:)``,
 /// which never goes below the standard ceiling, so a short window keeps the standard cells either way.
 enum CalendarCellGrowth {
+    @MainActor
     static func isAllowed(
-        sizeClass: UserInterfaceSizeClass?, scrollMode: CalendarConfiguration.ScrollMode
+        sizeClass: UserInterfaceSizeClass?, scrollMode: CalendarConfiguration.ScrollMode,
+        isPad: Bool? = nil
     ) -> Bool {
         #if os(macOS)
         return scrollMode != .vertical
         #else
-        return sizeClass == .regular
+        return (isPad ?? (UIDevice.current.userInterfaceIdiom == .pad)) && sizeClass == .regular
         #endif
     }
+}
+
+extension EnvironmentValues {
+    @Entry var calendarDeviceIsPad: Bool? = nil
 }

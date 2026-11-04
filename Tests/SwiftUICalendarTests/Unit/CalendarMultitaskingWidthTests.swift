@@ -53,7 +53,8 @@ struct CalendarMultitaskingWidthTests {
         theme.day.setDayContent { MeasuringDayView(context: $0, frames: frames) }
         let hosted = hostView(
             CalendarView(model: model, theme: theme, configuration: .init(scrollMode: mode))
-                .environment(\.calendarFoldRegions, regions),
+                .environment(\.calendarFoldRegions, regions)
+                .environment(\.calendarDeviceIsPad, true),
             size: size)
         defer { hosted.window.isHidden = true }
         hosted.hosting.traitOverrides.horizontalSizeClass = sizeClass

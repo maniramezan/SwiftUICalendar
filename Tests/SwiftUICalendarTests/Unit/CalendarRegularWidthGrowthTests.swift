@@ -13,7 +13,8 @@ struct CalendarRegularWidthGrowthTests {
     private func widestCell(
         mode: CalendarConfiguration.ScrollMode,
         sizeClass: UIUserInterfaceSizeClass,
-        size: CGSize
+        size: CGSize,
+        isPad: Bool = true
     ) throws -> CGFloat {
         let model = CalendarViewModel.snapshot(selection: .single(nil))
         let month = try #require(model.monthIdentifier())
@@ -21,7 +22,8 @@ struct CalendarRegularWidthGrowthTests {
         let theme = Theme()
         theme.day.setDayContent { MeasuringDayView(context: $0, frames: frames) }
         let hosted = hostView(
-            CalendarView(model: model, theme: theme, configuration: .init(scrollMode: mode)),
+            CalendarView(model: model, theme: theme, configuration: .init(scrollMode: mode))
+                .environment(\.calendarDeviceIsPad, isPad),
             size: size)
         defer { hosted.window.isHidden = true }
         hosted.hosting.traitOverrides.horizontalSizeClass = sizeClass
@@ -57,6 +59,16 @@ struct CalendarRegularWidthGrowthTests {
         let widest = try widestCell(
             mode: .vertical, sizeClass: .regular, size: CGSize(width: 820, height: 1180))
         #expect(widest > CalendarMetrics.default.maxCellSize)
+    }
+
+    @Test(
+        "A regular-width phone keeps standard cells in every scroll mode",
+        arguments: [CalendarConfiguration.ScrollMode.none, .horizontal, .vertical])
+    func regularPhoneKeepsCeiling(mode: CalendarConfiguration.ScrollMode) throws {
+        let widest = try widestCell(
+            mode: mode, sizeClass: .regular, size: CGSize(width: 932, height: 430),
+            isPad: false)
+        #expect(widest <= CalendarMetrics.default.maxCellSize + 0.5)
     }
 
     @Test("A regular-width window too short to fit a grown month keeps the old sizing")

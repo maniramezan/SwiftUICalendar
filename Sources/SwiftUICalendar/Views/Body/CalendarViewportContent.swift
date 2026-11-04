@@ -10,8 +10,10 @@ struct CalendarViewportContent<Content: View>: View {
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarLayoutObserver) private var layoutObserver
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.calendarDeviceIsPad) private var deviceIsPad
     @Environment(\.calendarHasCompanionMonth) private var hasCompanionMonth
     @Environment(\.calendarIsCompanionPanel) private var isCompanionPanel
+    @Environment(\.calendarPanelHeaders) private var panelHeaders
     private var width: CGFloat { size.width }
     private var height: CGFloat { size.height }
     @State private var dateRevealer = CalendarDateRevealer()
@@ -45,7 +47,9 @@ struct CalendarViewportContent<Content: View>: View {
         guard growsCells else { return resolved }
         return resolved.growingCells(
             toFitHeight: configuration.scrollMode == .vertical ? nil : height,
-            controls: resolved.controlsHeight(showsHeader: configuration.showsHeader))
+            controls: max(
+                resolved.controlsHeight(showsHeader: configuration.showsHeader),
+                (panelHeaders?.primaryHeight ?? 0) + resolved.rowSpacing))
     }
 
     /// Cells grow only for a single month grid. A two-month fold sizes its panels together, and
@@ -54,7 +58,8 @@ struct CalendarViewportContent<Content: View>: View {
     /// month heights.
     private var growsCells: Bool {
         CalendarCellGrowth.isAllowed(
-            sizeClass: horizontalSizeClass, scrollMode: configuration.scrollMode)
+            sizeClass: horizontalSizeClass, scrollMode: configuration.scrollMode, isPad: deviceIsPad
+        )
             && !hasCompanionMonth && !isCompanionPanel
     }
 

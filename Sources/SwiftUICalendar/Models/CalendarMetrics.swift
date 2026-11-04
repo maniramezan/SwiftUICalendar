@@ -202,7 +202,7 @@ extension CalendarMetrics {
     func sixRowHeight(cell: CGFloat, controls: CGFloat) -> CGFloat {
         let rows = CGFloat(CalendarGrid.maximumRowCount)
         return controls + rows * rowSpacing + 2 * pager.heightCeilingPadding
-            + (rows + pager.headerHeightRatio) * cell
+            + rows * max(minRowHeight, cell) + weekdayHeaderHeight(cellSize: cell)
     }
 
     /// Metrics whose cell ceiling grows into space a regular-width iPad has to spare.
@@ -218,8 +218,16 @@ extension CalendarMetrics {
         let rows = CGFloat(CalendarGrid.maximumRowCount)
         let fitted =
             height.map { height in
-                (height - sixRowHeight(cell: 0, controls: controls))
-                    / (rows + pager.headerHeightRatio)
+                let available =
+                    height - controls - rows * rowSpacing
+                    - 2 * pager.heightCeilingPadding
+                guard available >= rows * minRowHeight + weekdayHeaderMinHeight else {
+                    return maxCellSize
+                }
+                return min(
+                    (available - weekdayHeaderMinHeight) / rows,
+                    (available - rows * minRowHeight) / pager.headerHeightRatio,
+                    available / (rows + pager.headerHeightRatio))
             } ?? ceiling
         result.maxCellSize = max(maxCellSize, min(ceiling, fitted))
         return result

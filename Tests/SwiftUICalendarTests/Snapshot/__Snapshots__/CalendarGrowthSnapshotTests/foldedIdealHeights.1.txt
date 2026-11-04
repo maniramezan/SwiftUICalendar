@@ -1,0 +1,3 @@
+division=(630.0, 0.0, 40.0, 1100.0) idealHeight=568.8
+division=(340.0, 0.0, 40.0, 1100.0) idealHeight=568.8
+division=(0.0, 430.0, 1300.0, 40.0) idealHeight=1038.8

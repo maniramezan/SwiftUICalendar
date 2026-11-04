@@ -268,6 +268,7 @@ private struct CalendarFixedSurface: View {
     let configuration: CalendarConfiguration
     let allowsPaging: Bool
     let keyboard: CalendarKeyboardCursor
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarContentWidth) private var contentWidth
 
@@ -281,12 +282,19 @@ private struct CalendarFixedSurface: View {
 
                     if configuration.scrollMode == .none {
                         CalendarBodyView(layoutWidth: contentWidth, keyboard: keyboard)
+                            .id(viewModel.visibleMonth)
+                            .transition(.opacity)
                     } else {
                         CalendarBodyHorizontalView(
                             viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)
                     }
                 }
                 .frame(maxWidth: .infinity)
+                .animation(
+                    configuration.scrollMode == .none && !reduceMotion
+                        ? .easeInOut(duration: 0.2) : nil,
+                    value: viewModel.visibleMonth
+                )
             }
             .scrollBounceBehavior(.basedOnSize)
             .onChange(of: keyboard.scrollRequest) { _, request in

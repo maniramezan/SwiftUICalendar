@@ -12,7 +12,9 @@ struct CalendarViewport<Content: View>: View {
     @Environment(\.calendarFoldRegions) private var foldRegions
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.calendarDeviceIsPad) private var deviceIsPad
     @State private var panelHeaders = CalendarPanelHeaders()
+    @State private var reservedFoldRegions: [CGRect] = []
     /// Visible height of the scroll view hosting the calendar, `nil` outside one. It does not depend
     /// on the calendar's own size, so measuring it cannot feed back into the layout it informs.
     @State private var hostHeight: CGFloat?
@@ -61,6 +63,9 @@ struct CalendarViewport<Content: View>: View {
                 .onChange(of: fold.mode, initial: true) { _, mode in
                     logger.info("Fold layout changed to \(mode.rawValue, privacy: .public)")
                 }
+                .onChange(of: CalendarFoldRegions.read(in: geometry), initial: true) { _, regions in
+                    reservedFoldRegions = regions
+                }
                 .onChange(of: fold.secondary == nil ? nil : nextMonth, initial: true) { _, month in
                     logger.debug(
                         "Companion month \(month == nil ? "hidden" : "shown", privacy: .public)")
@@ -90,11 +95,16 @@ struct CalendarViewport<Content: View>: View {
     private var idealHeight: CalendarIdealHeight {
         let grows =
             CalendarCellGrowth.isAllowed(
-                sizeClass: horizontalSizeClass, scrollMode: configuration.scrollMode)
+                sizeClass: horizontalSizeClass, scrollMode: configuration.scrollMode,
+                isPad: deviceIsPad)
             && configuration.scrollMode != .vertical
         return CalendarIdealHeight(
             metrics: metrics, showsHeader: configuration.showsHeader, growsCells: grows,
-            hostHeight: hostHeight)
+            hostHeight: hostHeight, foldRegions: foldRegions + reservedFoldRegions,
+            allowsCompanion: model?.monthIdentifier(offset: 1) != nil, layout: configuration.layout,
+            controlsHeight: max(
+                metrics.controlsHeight(showsHeader: configuration.showsHeader),
+                panelHeaders.primaryHeight + metrics.rowSpacing))
     }
 
     private var companionConfiguration: CalendarConfiguration {

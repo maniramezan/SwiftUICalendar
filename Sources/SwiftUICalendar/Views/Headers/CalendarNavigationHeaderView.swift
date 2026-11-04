@@ -47,6 +47,7 @@ struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
                             .hidden()
                     }
                     Text(selectedItem.wrappedValue.title)
+                        .contentTransition(.opacity)
                 }
                 .fixedSize()
                 .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
