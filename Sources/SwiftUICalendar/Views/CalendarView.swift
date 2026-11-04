@@ -281,9 +281,12 @@ private struct CalendarFixedSurface: View {
                         allowsPaging: allowsPaging)
 
                     if configuration.scrollMode == .none {
-                        CalendarBodyView(layoutWidth: contentWidth, keyboard: keyboard)
-                            .id(viewModel.visibleMonth)
-                            .transition(.opacity)
+                        CalendarBodyView(
+                            monthIdentifier: viewModel.visibleMonth,
+                            layoutWidth: contentWidth, keyboard: keyboard
+                        )
+                        .id(viewModel.visibleMonth)
+                        .transition(.opacity)
                     } else {
                         CalendarBodyHorizontalView(
                             viewModel: viewModel, allowsPaging: allowsPaging, keyboard: keyboard)

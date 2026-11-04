@@ -27,6 +27,7 @@ func assertCalendarStructure(
     theme: Theme = Theme(),
     width: CGFloat = 390,
     monthSpan: Int = 0,
+    months: [MonthIdentifier]? = nil,
     minimumCellSize: CGSize = CGSize(width: 44, height: 44),
     metrics metricsOverride: CalendarMetrics? = nil,
     named name: String? = nil,
@@ -41,6 +42,7 @@ func assertCalendarStructure(
         width: width,
         monthSpan: monthSpan,
         minimumCellSize: minimumCellSize,
+        months: months,
         metrics: metricsOverride
     )
     withSnapshotTesting(record: globalRecordMode) {
