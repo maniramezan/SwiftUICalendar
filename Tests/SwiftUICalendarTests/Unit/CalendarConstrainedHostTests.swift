@@ -22,7 +22,7 @@ struct CalendarConstrainedHostTests {
     /// then full-width phones. The vertical body pads each month by a further 16pt per side, so every
     /// width below 356 + 48 = 404 leaves the grid less room than its minimum unless margins give way.
     nonisolated static let hostInsetWidths: [CGFloat] = [
-        320, 332, 343, 355, 359, 375, 393, 402, 404, 430,
+        320, 332, 343, 355, 356, 359, 375, 393, 402, 404, 430,
     ]
 
     nonisolated static let modes: [CalendarConfiguration.ScrollMode] = [

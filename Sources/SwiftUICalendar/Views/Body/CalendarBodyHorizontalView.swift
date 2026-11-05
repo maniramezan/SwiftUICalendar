@@ -1,3 +1,5 @@
+import OSLog
+import SwiftCommons
 import SwiftUI
 
 #if os(macOS)
@@ -24,6 +26,8 @@ struct CalendarBodyHorizontalView: View {
     @State private var isNavigating = false
     @State private var pagingGuard = CalendarPagingGuard()
     @State private var deferredContainerWidth: CGFloat?
+    @State private var navigationGeneration = 0
+    private let logger = Logger.swiftUICalendar(for: Self.self)
 
     #if os(macOS)
     @State private var scrollMonitor: HorizontalScrollWheelMonitor?
@@ -214,59 +218,30 @@ struct CalendarBodyHorizontalView: View {
             // LTR: previous | current | next
             // RTL: next | current | previous
             ZStack(alignment: .topLeading) {
-                // Previous month — parked to the left.
-                CalendarBodyView(
-                    monthIdentifier: previousMonth,
-                    showWeekdayHeader: false,
-                    hideOverflowDays: true,
-                    layoutWidth: pageWidth, keyboard: keyboard
-                )
-                // The model is required: this view receives it as a stored property, not from the
-                // environment, so its pages would otherwise find none. Theme and typography are
-                // already inherited.
-                .environment(viewModel)
-                .environment(\.layoutDirection, layoutDirection)
-                .frame(width: pageWidth, alignment: .top)
-                .background(heightReporter(for: .previous))
-                .clipped()
-                .offset(x: previousMonthBaseOffset + offset + dragOffset)
-                .accessibilityHidden(true)
-
-                // Current month (centered by default)
-                CalendarBodyView(
-                    monthIdentifier: currentMonth,
-                    showWeekdayHeader: false,
-                    hideOverflowDays: true,
-                    layoutWidth: pageWidth, keyboard: keyboard
-                )
-                // The model is required: this view receives it as a stored property, not from the
-                // environment, so its pages would otherwise find none. Theme and typography are
-                // already inherited.
-                .environment(viewModel)
-                .environment(\.layoutDirection, layoutDirection)
-                .frame(width: pageWidth, alignment: .top)
-                .background(heightReporter(for: .current))
-                .clipped()
-                .offset(x: offset + dragOffset)
-
-                // Next month — parked to the right.
-                CalendarBodyView(
-                    monthIdentifier: nextMonth,
-                    showWeekdayHeader: false,
-                    hideOverflowDays: true,
-                    layoutWidth: pageWidth, keyboard: keyboard
-                )
-                // The model is required: this view receives it as a stored property, not from the
-                // environment, so its pages would otherwise find none. Theme and typography are
-                // already inherited.
-                .environment(viewModel)
-                .environment(\.layoutDirection, layoutDirection)
-                .frame(width: pageWidth, alignment: .top)
-                .background(heightReporter(for: .next))
-                .clipped()
-                .offset(x: nextMonthBaseOffset + offset + dragOffset)
-                .accessibilityHidden(true)
+                ForEach(pages) { page in
+                    CalendarBodyView(
+                        monthIdentifier: page.id,
+                        showWeekdayHeader: false,
+                        hideOverflowDays: true,
+                        layoutWidth: pageWidth, keyboard: keyboard
+                    )
+                    .environment(viewModel)
+                    .environment(\.layoutDirection, layoutDirection)
+                    .frame(width: pageWidth, alignment: .top)
+                    .background(heightReporter(for: page.id))
+                    .clipped()
+                    .offset(
+                        x: CGFloat(page.offset) * pageWidth * layoutDirectionMultiplier
+                            + offset + dragOffset
+                    )
+                    .accessibilityHidden(page.offset != 0)
+                    .allowsHitTesting(page.offset == 0)
+                }
             }
+            .animation(
+                reduceMotion ? nil : metrics.pager.pagingSpring.animation,
+                value: currentMonth
+            )
             .environment(\.layoutDirection, .leftToRight)
             // The carousel fills whatever width the parent proposes. Month pages are centered within
             // that space (via their individual `.frame(width: pageWidth)` + maxWidth centering).
@@ -342,6 +317,15 @@ struct CalendarBodyHorizontalView: View {
                 updateContainerWidth(width)
             }
         }
+        .onChange(of: currentMonth) { _, _ in
+            guard isNavigating else { return }
+            navigationGeneration += 1
+            resetNavigation()
+        }
+        .onDisappear {
+            navigationGeneration += 1
+            resetNavigation()
+        }
         #if os(macOS)
         // Trackpad/scroll-wheel horizontal scrolling pages months on macOS, matching the iOS swipe.
         .onAppear { installScrollMonitor() }
@@ -349,12 +333,12 @@ struct CalendarBodyHorizontalView: View {
         #endif
     }
 
-    private func heightReporter(for position: HorizontalMonthPosition) -> some View {
+    private func heightReporter(for month: MonthIdentifier) -> some View {
         GeometryReader { geometry in
             Color.clear
                 .preference(
                     key: HorizontalMonthHeightPreferenceKey.self,
-                    value: [position: geometry.size.height]
+                    value: [month: geometry.size.height]
                 )
         }
     }
@@ -416,65 +400,76 @@ struct CalendarBodyHorizontalView: View {
         metrics.resolvedHeight(rowCount: rowCount, layoutWidth: pageWidth)
     }
 
-    /// Swipe LEFT: next month slides in from the right.
-    private func goToNext(width: CGFloat) {
-        guard !isNavigating else {
-            return
-        }
+    private var pages: [HorizontalMonthPage] {
+        Self.pages(viewModel: viewModel)
+    }
 
-        isNavigating = true
-        withAnimation(
-            reduceMotion ? nil : metrics.pager.pagingSpring.animation,
-            completionCriteria: .logicallyComplete
-        ) {
-            // Move until the parked next month reaches center.
-            offset = Self.nextOffset(
-                currentOffset: offset,
-                width: width,
-                layoutDirectionMultiplier: layoutDirectionMultiplier
-            )
-            dragOffset = 0
-        } completion: {
-            finishNavigation(monthDelta: 1)
+    static func pages(viewModel: CalendarViewModel) -> [HorizontalMonthPage] {
+        [-1, 0, 1].compactMap { offset in
+            viewModel.monthIdentifier(offset: offset).map {
+                HorizontalMonthPage(id: $0, offset: offset)
+            }
         }
     }
 
-    /// Swipe RIGHT: previous month slides in from the left.
+    private func goToNext(width: CGFloat) {
+        navigate(by: 1, width: width)
+    }
+
     private func goToPrevious(width: CGFloat) {
-        guard !isNavigating else {
+        navigate(by: -1, width: width)
+    }
+
+    private func navigate(by monthDelta: Int, width: CGFloat) {
+        guard !isNavigating, viewModel.monthIdentifier(offset: monthDelta) != nil else {
+            withAnimation(reduceMotion ? nil : metrics.pager.snapBackSpring.animation) {
+                dragOffset = 0
+            }
             return
         }
-
         isNavigating = true
+        navigationGeneration += 1
+        let generation = navigationGeneration
         withAnimation(
             reduceMotion ? nil : metrics.pager.pagingSpring.animation,
-            completionCriteria: .logicallyComplete
+            completionCriteria: .removed
         ) {
-            // Move until the parked previous month reaches center.
-            offset = Self.previousOffset(
-                currentOffset: offset,
-                width: width,
-                layoutDirectionMultiplier: layoutDirectionMultiplier
-            )
+            offset = -CGFloat(monthDelta) * width * layoutDirectionMultiplier
             dragOffset = 0
         } completion: {
-            finishNavigation(monthDelta: -1)
+            guard generation == navigationGeneration else { return }
+            finishNavigation(monthDelta: monthDelta)
         }
     }
 
     private func finishNavigation(monthDelta: Int) {
-        try? viewModel.updateMonth(byAdding: monthDelta)
-        let reset = Self.resetNavigationState()
-        withTransaction(Transaction(animation: nil)) {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isNavigating = false
+            do {
+                try viewModel.updateMonth(byAdding: monthDelta)
+            } catch {
+                logger.error(
+                    "Failed to finish horizontal paging", error: error,
+                    context: "month delta \(monthDelta)")
+            }
+            resetNavigation()
+        }
+    }
+
+    private func resetNavigation() {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            let reset = Self.resetNavigationState()
             offset = reset.offset
             dragOffset = reset.dragOffset
-        }
-        isNavigating = reset.isNavigating
-        if let deferredContainerWidth {
-            withTransaction(Transaction(animation: nil)) {
+            isNavigating = reset.isNavigating
+            if let deferredContainerWidth {
                 containerWidth = deferredContainerWidth
+                self.deferredContainerWidth = nil
             }
-            self.deferredContainerWidth = nil
         }
     }
 
@@ -485,7 +480,9 @@ struct CalendarBodyHorizontalView: View {
         guard scrollMonitor == nil else { return }
         let monitor = HorizontalScrollWheelMonitor(threshold: metrics.pager.scrollPageThreshold) {
             delta in
-            guard Self.shouldHandleScrollPage(delta: delta, isNavigating: isNavigating) else {
+            guard allowsPaging,
+                Self.shouldHandleScrollPage(delta: delta, isNavigating: isNavigating)
+            else {
                 return
             }
             switch delta {
@@ -505,10 +502,9 @@ struct CalendarBodyHorizontalView: View {
     #endif
 }
 
-private enum HorizontalMonthPosition: Hashable {
-    case previous
-    case current
-    case next
+struct HorizontalMonthPage: Identifiable {
+    let id: MonthIdentifier
+    let offset: Int
 }
 
 enum HorizontalPagerAction {
@@ -657,11 +653,11 @@ enum HorizontalMonthSwipeResolver {
 }
 
 private struct HorizontalMonthHeightPreferenceKey: PreferenceKey {
-    static let defaultValue: [HorizontalMonthPosition: CGFloat] = [:]
+    static let defaultValue: [MonthIdentifier: CGFloat] = [:]
 
     static func reduce(
-        value: inout [HorizontalMonthPosition: CGFloat],
-        nextValue: () -> [HorizontalMonthPosition: CGFloat]
+        value: inout [MonthIdentifier: CGFloat],
+        nextValue: () -> [MonthIdentifier: CGFloat]
     ) {
         value.merge(nextValue(), uniquingKeysWith: { max($0, $1) })
     }

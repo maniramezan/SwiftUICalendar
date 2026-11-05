@@ -198,6 +198,7 @@ private struct SampleCalendarContent: View {
                 )
             }
         }
+        .id(scrollMode)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }

@@ -1,106 +1,165 @@
-#if os(macOS)
-import AppKit
-import SwiftUI
+import Foundation
 import Testing
 
 @testable import SwiftUICalendar
 
 @MainActor
-@Suite("Month transition presentation", .serialized)
+@Suite("Month fade coordinator", .serialized)
 struct CalendarMonthTransitionTests {
-    struct SelectionMarker: CalendarDayView {
-        let context: CalendarDayContext
-
-        init(context: CalendarDayContext) {
-            self.context = context
-        }
-
-        var body: some View {
-            if context.isSelected {
-                Color(red: 1, green: 0, blue: 1)
-            } else {
-                Color.clear
-            }
-        }
+    private struct Dates {
+        let currentMonth: MonthIdentifier
+        let nextMonth: MonthIdentifier
+        let followingMonth: MonthIdentifier
+        let originalStart: Date
+        let originalEnd: Date
+        let firstTarget: Date
+        let secondTarget: Date
     }
 
-    private func markerRows(in view: NSView) throws -> Set<Int> {
-        let data = try #require(renderPNGData(view))
-        let bitmap = try #require(NSBitmapImageRep(data: data))
-        let pixels = try #require(bitmap.bitmapData)
-        let components = bitmap.samplesPerPixel
-        #expect(bitmap.bitsPerSample == 8)
-        #expect(!bitmap.isPlanar)
-        let red = bitmap.bitmapFormat.contains(.alphaFirst) ? 1 : 0
-        var rows: Set<Int> = []
-        for y in 0..<bitmap.pixelsHigh {
-            for x in 0..<bitmap.pixelsWide {
-                let pixel = pixels + y * bitmap.bytesPerRow + x * components
-                if pixel[red] > 180 && pixel[red + 1] < 170 && pixel[red + 2] > 180 {
-                    rows.insert(y)
-                    break
-                }
-            }
-        }
-        return rows
+    private func dates(identifier: Calendar.Identifier) throws -> Dates {
+        let model = CalendarViewModel.test(identifier: identifier, selection: .single(nil))
+        let currentMonth = model.visibleMonth
+        let nextMonth = try #require(model.monthIdentifier(offset: 1))
+        let followingMonth = try #require(model.monthIdentifier(offset: 2))
+        return Dates(
+            currentMonth: currentMonth,
+            nextMonth: nextMonth,
+            followingMonth: followingMonth,
+            originalStart: try #require(model.engine.date(day: 10, in: currentMonth)),
+            originalEnd: try #require(model.engine.date(day: 12, in: currentMonth)),
+            firstTarget: try #require(model.engine.date(day: 15, in: nextMonth)),
+            secondTarget: try #require(model.engine.date(day: 15, in: followingMonth)))
     }
 
     @Test(
-        "A shared overflow date crossfades between rows without traveling through other weeks",
-        arguments: [Calendar.Identifier.gregorian, .persian], [-1, 1])
-    func sharedDateDoesNotMoveThroughRows(identifier: Calendar.Identifier, direction: Int) throws {
+        "Selection stays unchanged through fade-out and changes after fade-in",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func selectionCommitsAfterFadeIn(identifier: Calendar.Identifier) throws {
+        let dates = try dates(identifier: identifier)
         let model = CalendarViewModel.test(identifier: identifier, selection: .single(nil))
-        let calendar = model.engine.calendar
-        let start = try #require(
-            Calendar(identifier: .gregorian).date(
-                from: DateComponents(year: 2027, month: 2, day: 5)))
-        try model.navigate(to: start)
-        var sharedDate: Date?
-        for _ in 0..<12 {
-            let nextMonth = try #require(model.monthIdentifier(offset: direction))
-            let snapshot = try #require(model.monthSnapshot(for: model.visibleMonth))
-            sharedDate =
-                snapshot.days.last { day in
-                    guard let date = day.date else { return false }
-                    return model.engine.month(containing: date) == nextMonth
-                }?.date
-            if sharedDate != nil { break }
-            try model.updateMonth(byAdding: 1)
-        }
-        let destination = try #require(sharedDate)
-        model.select(destination, navigating: false)
-        let theme = Theme()
-        theme.day.setDayContent { SelectionMarker(context: $0) }
-        let hosted = hostView(
-            CalendarView(model: model, theme: theme, configuration: .init(showsHeader: false)),
-            size: CGSize(width: 390, height: 900))
-        hosted.window.orderFront(nil)
-        defer {
-            hosted.window.orderOut(nil)
-            hosted.window.contentView = nil
-        }
-        #expect(waitForStableRender(hosted.hosting))
-        let before = try markerRows(in: hosted.hosting)
-        #expect(!before.isEmpty)
-        try model.navigate(to: destination)
-        var samples: [Set<Int>] = []
-        let deadline = Date().addingTimeInterval(0.35)
-        repeat {
-            RunLoop.current.run(until: Date().addingTimeInterval(1.0 / 60.0))
-            samples.append(try markerRows(in: hosted.hosting))
-        } while Date() < deadline
-        #expect(waitForStableRender(hosted.hosting))
-        let after = try markerRows(in: hosted.hosting)
-        #expect(!after.isEmpty)
-        #expect(before.isDisjoint(with: after))
-        let endpointRows = before.union(after)
-        let allowed = Set(endpointRows.flatMap { [$0 - 1, $0, $0 + 1] })
-        for (index, sample) in samples.enumerated() {
-            let unexpectedRows = sample.subtracting(allowed)
-            #expect(
-                unexpectedRows.isEmpty, "Frame \(index) drew the selection between week rows")
-        }
-        #expect(model.selection == .single(calendar.startOfDay(for: destination)))
+        let original = model.engine.calendar.startOfDay(for: dates.originalStart)
+        let target = model.engine.calendar.startOfDay(for: dates.firstTarget)
+        model.select(original)
+        let fade = CalendarMonthFade(month: dates.currentMonth)
+
+        let token = try #require(fade.begin(to: dates.nextMonth, selecting: dates.firstTarget))
+        #expect(model.selection == .single(original))
+        #expect(try fade.finishFadeOut(token, model: model))
+        #expect(model.selection == .single(original))
+        #expect(fade.displayedMonth == dates.nextMonth)
+        #expect(fade.targetMonth == dates.nextMonth)
+
+        fade.finishFadeIn(token, model: model)
+        #expect(model.selection == .single(target))
+    }
+
+    @Test("A same-month request does not start a fade")
+    func sameMonthRequestIsSkipped() throws {
+        let dates = try dates(identifier: .gregorian)
+        let model = CalendarViewModel.test(identifier: .gregorian, selection: .single(nil))
+        let fade = CalendarMonthFade(month: dates.currentMonth)
+
+        #expect(fade.begin(to: dates.currentMonth) == nil)
+        #expect(fade.displayedMonth == dates.currentMonth)
+        #expect(model.selection == .single(nil))
+    }
+
+    @Test(
+        "Header navigation preserves the current selection",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func headerNavigationPreservesSelection(identifier: Calendar.Identifier) throws {
+        let dates = try dates(identifier: identifier)
+        let model = CalendarViewModel.test(identifier: identifier, selection: .single(nil))
+        let original = model.engine.calendar.startOfDay(for: dates.originalStart)
+        model.select(original)
+        let fade = CalendarMonthFade(month: dates.currentMonth)
+        let token = try #require(fade.begin(to: dates.nextMonth))
+
+        #expect(try fade.finishFadeOut(token, model: model))
+        #expect(model.selection == .single(original))
+        fade.finishFadeIn(token, model: model)
+        #expect(model.selection == .single(original))
+    }
+
+    @Test(
+        "Range and multiple selections remain unchanged until fade-in finishes",
+        arguments: [false, true])
+    func compoundSelectionCommitsAfterFadeIn(isMultiple: Bool) throws {
+        let dates = try dates(identifier: .gregorian)
+        let calendar = Calendar(identifier: .gregorian)
+        let start = calendar.startOfDay(for: dates.originalStart)
+        let end = calendar.startOfDay(for: dates.originalEnd)
+        let target = calendar.startOfDay(for: dates.firstTarget)
+        let original: CalendarViewModel.Selection =
+            isMultiple
+            ? .multiple([start, end])
+            : .range(start, end)
+        let model = CalendarViewModel.test(identifier: .gregorian, selection: original)
+        let fade = CalendarMonthFade(month: dates.currentMonth)
+        let token = try #require(fade.begin(to: dates.nextMonth, selecting: target))
+
+        #expect(model.selection == original)
+        #expect(try fade.finishFadeOut(token, model: model))
+        #expect(model.selection == original)
+        fade.finishFadeIn(token, model: model)
+
+        let expected: CalendarViewModel.Selection =
+            isMultiple
+            ? .multiple([start, end, target])
+            : .range(target, nil)
+        #expect(model.selection == expected)
+    }
+
+    @Test("Retargeting during fade-out keeps the token and uses the latest destination")
+    func retargetDuringFadeOutUsesLatestDestination() throws {
+        let dates = try dates(identifier: .gregorian)
+        let model = CalendarViewModel.test(identifier: .gregorian, selection: .single(nil))
+        let fade = CalendarMonthFade(month: dates.currentMonth)
+        let token = try #require(fade.begin(to: dates.nextMonth, selecting: dates.firstTarget))
+
+        #expect(fade.begin(to: dates.followingMonth, selecting: dates.secondTarget) == nil)
+        #expect(try fade.finishFadeOut(token, model: model))
+        #expect(fade.displayedMonth == dates.followingMonth)
+        #expect(model.selection == .single(nil))
+        fade.finishFadeIn(token, model: model)
+        #expect(
+            model.selection == .single(model.engine.calendar.startOfDay(for: dates.secondTarget)))
+    }
+
+    @Test("A retarget during fade-in invalidates the stale completion")
+    func retargetDuringFadeInIgnoresStaleCompletion() throws {
+        let dates = try dates(identifier: .gregorian)
+        let model = CalendarViewModel.test(identifier: .gregorian, selection: .single(nil))
+        let fade = CalendarMonthFade(month: dates.currentMonth)
+        let staleToken = try #require(
+            fade.begin(to: dates.nextMonth, selecting: dates.firstTarget))
+        #expect(try fade.finishFadeOut(staleToken, model: model))
+
+        let activeToken = try #require(
+            fade.begin(to: dates.followingMonth, selecting: dates.secondTarget))
+        fade.finishFadeIn(staleToken, model: model)
+        #expect(model.selection == .single(nil))
+        #expect(fade.displayedMonth == dates.nextMonth)
+        #expect(try fade.finishFadeOut(activeToken, model: model))
+        #expect(fade.displayedMonth == dates.followingMonth)
+        #expect(model.selection == .single(nil))
+        fade.finishFadeIn(activeToken, model: model)
+        #expect(
+            model.selection == .single(model.engine.calendar.startOfDay(for: dates.secondTarget)))
+    }
+
+    @Test("Cancellation suppresses pending overflow selection")
+    func cancellationSuppressesPendingSelection() throws {
+        let dates = try dates(identifier: .gregorian)
+        let model = CalendarViewModel.test(identifier: .gregorian, selection: .single(nil))
+        let fade = CalendarMonthFade(month: dates.currentMonth)
+        let token = try #require(fade.begin(to: dates.nextMonth, selecting: dates.firstTarget))
+
+        fade.cancel(showing: dates.currentMonth)
+        #expect(try !fade.finishFadeOut(token, model: model))
+        fade.finishFadeIn(token, model: model)
+        #expect(model.selection == .single(nil))
+        #expect(fade.displayedMonth == dates.currentMonth)
+        #expect(fade.opacity == 1)
     }
 }
-#endif

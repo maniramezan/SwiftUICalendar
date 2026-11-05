@@ -253,6 +253,40 @@ struct CalendarBodyHorizontalViewLayoutTests {
         #expect(!CalendarBodyHorizontalView.shouldHandleScrollPage(delta: 1, isNavigating: true))
     }
 
+    @Test(
+        "Paging preserves month identities as adjacent pages exchange positions",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func pageIdentitySurvivesNavigation(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.test(identifier: identifier, selection: .single(nil))
+        let before = CalendarBodyHorizontalView.pages(viewModel: model)
+        let incoming = try #require(before.first { $0.offset == 1 })
+        let current = try #require(before.first { $0.offset == 0 })
+        try model.updateMonth(byAdding: 1)
+        let after = CalendarBodyHorizontalView.pages(viewModel: model)
+        #expect(after.first { $0.offset == 0 }?.id == incoming.id)
+        #expect(after.first { $0.offset == -1 }?.id == current.id)
+        #expect(Set(after.map(\.id)).count == after.count)
+        try model.updateMonth(byAdding: -1)
+        #expect(CalendarBodyHorizontalView.pages(viewModel: model).map(\.id) == before.map(\.id))
+    }
+
+    @Test(
+        "Paging omits unavailable neighbors at both date-range boundaries",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func boundaryPagesHaveUniqueIdentities(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.test(identifier: identifier, selection: .single(nil))
+        for (date, excludedOffset) in [
+            (model.dateRange.lowerBound, -1), (model.dateRange.upperBound, 1),
+        ] {
+            try model.navigate(to: date)
+            let pages = CalendarBodyHorizontalView.pages(viewModel: model)
+            #expect(pages.count == 2)
+            #expect(pages.contains { $0.offset == excludedOffset } == false)
+            #expect(Set(pages.map(\.id)).count == pages.count)
+            #expect(pages.first { $0.offset == 0 }?.id == model.visibleMonth)
+        }
+    }
+
     #if os(macOS)
     @Test(
         "horizontal calendar renders identically to a fresh portrait view after rotating from landscape"
@@ -287,6 +321,33 @@ struct CalendarBodyHorizontalViewLayoutTests {
         rotatedHosted.window.contentView = nil
 
         #expect(freshData == rotatedData)
+    }
+
+    @Test(
+        "Rapid external navigation settles on the latest month and preserves selection",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func rapidExternalNavigation(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.test(identifier: identifier, selection: .single(nil))
+        let target = try #require(model.monthIdentifier(offset: 2))
+        let selected = try #require(model.engine.date(day: 15, in: target))
+        model.select(selected)
+        let view = CalendarView(model: model, configuration: .init(scrollMode: .horizontal))
+        let size = CGSize(width: 390, height: 844)
+        let hosted = hostView(view, size: size)
+        defer { hosted.window.contentView = nil }
+        #expect(waitForStableRender(hosted.hosting))
+        for delta in [1, -1, 2] {
+            try model.updateMonth(byAdding: delta)
+            RunLoop.current.run(until: Date().addingTimeInterval(1.0 / 60))
+        }
+        #expect(waitForStableRender(hosted.hosting))
+        let actual = try #require(renderPNGData(hosted.hosting))
+        let reference = hostView(view, size: size)
+        defer { reference.window.contentView = nil }
+        #expect(waitForStableRender(reference.hosting))
+        #expect(actual == renderPNGData(reference.hosting))
+        #expect(model.visibleMonth == target)
+        #expect(model.selection == .single(selected))
     }
 
     @Test("hosted horizontal view runs lifecycle without crashing")

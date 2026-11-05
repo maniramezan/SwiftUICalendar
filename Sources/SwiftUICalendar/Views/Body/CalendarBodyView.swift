@@ -15,10 +15,12 @@ struct CalendarBodyView: View {
     private let logger = Logger.swiftUICalendar(for: CalendarBodyView.self)
     private let layoutWidth: CGFloat?
     private let keyboard: CalendarKeyboardCursor?
+    private let onOverflowSelection: ((Date) -> Void)?
     private let monthIdentifier: MonthIdentifier?
     private let displayMonth: Int?
     private let displayYear: Int?
     private let showWeekdayHeader: Bool
+    private let showsSelection: Bool
     private let hideOverflowDays: Bool
     /// When `true`, tapping a day outside the displayed month navigates the calendar to that month.
     /// Set to `false` for scroll modes where the adjacent month is already visible.
@@ -124,7 +126,7 @@ struct CalendarBodyView: View {
                             day: item.day,
                             dayLabel: item.dayLabel,
                             isToday: item.isToday,
-                            isSelected: item.isSelected,
+                            isSelected: showsSelection && item.isSelected,
                             isInCurrentMonth: item.isInDisplayedMonth,
                             isEnabled: item.isEnabled,
                             theme: theme.day,
@@ -135,7 +137,8 @@ struct CalendarBodyView: View {
                             secondaryLabel: resolveSecondaryLabel(for: date),
                             calendar: viewModel.engine.calendar,
                             cellSize: CGSize(width: cellSize, height: rowHeight),
-                            rangePosition: item.dayStart.flatMap(rangePosition),
+                            rangePosition: showsSelection
+                                ? item.dayStart.flatMap(rangePosition) : nil,
                             secondaryAccessibilityLabel: secondaryAccessibility.label(for: date)
                         )
 
@@ -227,7 +230,8 @@ struct CalendarBodyView: View {
         monthIdentifier: MonthIdentifier? = nil,
         displayMonth: Int? = nil, displayYear: Int? = nil, showWeekdayHeader: Bool = true,
         hideOverflowDays: Bool = false, navigatesOnOverflowTap: Bool = true,
-        layoutWidth: CGFloat? = nil, keyboard: CalendarKeyboardCursor? = nil
+        layoutWidth: CGFloat? = nil, keyboard: CalendarKeyboardCursor? = nil,
+        onOverflowSelection: ((Date) -> Void)? = nil, showsSelection: Bool = true
     ) {
         self.monthIdentifier = monthIdentifier
         self.displayMonth = displayMonth
@@ -237,6 +241,8 @@ struct CalendarBodyView: View {
         self.navigatesOnOverflowTap = navigatesOnOverflowTap
         self.layoutWidth = layoutWidth
         self.keyboard = keyboard
+        self.onOverflowSelection = onOverflowSelection
+        self.showsSelection = showsSelection
     }
 }
 
@@ -286,8 +292,12 @@ extension CalendarBodyView {
         // Tapping a day from an adjacent month navigates the calendar to that month — but only when
         // navigation is allowed. In a vertical scroll the target month is already on screen, so
         // mutating `currentDate` here would trigger an unwanted scroll jump.
-        viewModel.select(
-            selectedDate, navigating: navigatesOnOverflowTap && !item.isInDisplayedMonth)
+        if navigatesOnOverflowTap, !item.isInDisplayedMonth, let onOverflowSelection {
+            onOverflowSelection(selectedDate)
+        } else {
+            viewModel.select(
+                selectedDate, navigating: navigatesOnOverflowTap && !item.isInDisplayedMonth)
+        }
         // A tapped day is where keyboard users continue from; see `CalendarKeyboardCursor.focusRequest`.
         if let dayStart = item.dayStart {
             keyboard?.requestFocus(at: dayStart)
