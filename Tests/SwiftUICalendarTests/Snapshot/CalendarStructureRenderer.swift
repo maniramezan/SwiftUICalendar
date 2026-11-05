@@ -27,7 +27,9 @@ func assertCalendarStructure(
     theme: Theme = Theme(),
     width: CGFloat = 390,
     monthSpan: Int = 0,
+    months: [MonthIdentifier]? = nil,
     minimumCellSize: CGSize = CGSize(width: 44, height: 44),
+    metrics metricsOverride: CalendarMetrics? = nil,
     named name: String? = nil,
     file: StaticString = #filePath,
     testName: String = #function,
@@ -39,7 +41,9 @@ func assertCalendarStructure(
         theme: theme,
         width: width,
         monthSpan: monthSpan,
-        minimumCellSize: minimumCellSize
+        minimumCellSize: minimumCellSize,
+        months: months,
+        metrics: metricsOverride
     )
     withSnapshotTesting(record: globalRecordMode) {
         assertSnapshot(
@@ -78,7 +82,8 @@ enum CalendarStructure {
         monthSpan: Int,
         minimumCellSize: CGSize = CGSize(width: 44, height: 44),
         months: [MonthIdentifier]? = nil,
-        hideOverflowDays: Bool = false
+        hideOverflowDays: Bool = false,
+        metrics metricsOverride: CalendarMetrics? = nil
     ) -> String {
         let calendar = model.state.calendar
         var lines: [String] = []
@@ -94,7 +99,7 @@ enum CalendarStructure {
         lines.append("secondaryLabel: \(secondaryName(theme.day.secondaryLabelMode))")
         lines.append("selection: \(describe(model.selection, calendar: calendar))")
 
-        let baseMetrics = CalendarMetrics.default.resolvingContent(
+        let baseMetrics = (metricsOverride ?? CalendarMetrics.default).resolvingContent(
             cell: minimumCellSize, weekday: .zero)
         let margins =
             2 * baseMetrics.calendarMargin

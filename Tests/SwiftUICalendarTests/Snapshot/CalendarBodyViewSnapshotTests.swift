@@ -17,6 +17,42 @@ struct CalendarBodyViewSnapshotTests {
             .date(from: DateComponents(year: year, month: month, day: day))!
     }
 
+    @Test(
+        "Overflow navigation preserves the selected date in fixed and horizontal months",
+        arguments: [Calendar.Identifier.gregorian, .persian],
+        [CalendarConfiguration.ScrollMode.none, .horizontal])
+    func overflowSelectionAfterNavigation(
+        identifier: Calendar.Identifier, mode: CalendarConfiguration.ScrollMode
+    ) throws {
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
+        let nextMonth = try #require(model.monthIdentifier(offset: 1))
+        let selected = try #require(
+            model.monthSnapshot(for: model.visibleMonth)?.days.last {
+                $0.date.map { model.engine.month(containing: $0) == nextMonth } == true
+            }?.date)
+        model.select(selected, navigating: true)
+        assertCalendarStructure(
+            model: model, configuration: .init(scrollMode: mode),
+            monthSpan: mode == .horizontal ? 1 : 0,
+            named: "overflow-selected-\(mode)-\(identifier)")
+    }
+
+    @Test(
+        "Square day selection survives overflow navigation",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func squareOverflowSelectionAfterNavigation(identifier: Calendar.Identifier) throws {
+        let model = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
+        let nextMonth = try #require(model.monthIdentifier(offset: 1))
+        let selected = try #require(
+            model.monthSnapshot(for: model.visibleMonth)?.days.last {
+                $0.date.map { model.engine.month(containing: $0) == nextMonth } == true
+            }?.date)
+        model.select(selected, navigating: true)
+        let theme = Theme()
+        theme.day.useSquareDualCalendarDayView()
+        assertCalendarStructure(model: model, theme: theme, named: "square-overflow-\(identifier)")
+    }
+
     // MARK: - Gregorian, various selection modes
 
     @Test("No selection")

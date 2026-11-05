@@ -123,7 +123,13 @@ With range selection, the built-in cells join the selected days with a band. It 
 
 Day cells are always clamped between a minimum hit-target size and a maximum size. `gridSizing`
 decides what happens to the leftover width when the container is wider than seven maximum-size
-cells — a macOS window, an iPad, or a landscape iPhone.
+cells — a macOS window or a landscape iPhone.
+
+On a regular-width iPad and in a macOS window the maximum grows with the space available: up to twice
+the phone-sized maximum, and no larger than keeps six rows, the weekday header, and the Today and
+navigation controls on screen. A wide window fills the width; a short one grows until the month still
+fits without scrolling, and a window too short for that keeps the standard maximum. A compact width,
+an iPhone, a two-month fold, and the vertically scrolling list on macOS keep the standard maximum.
 
 ```swift
 let configuration = CalendarConfiguration(gridSizing: .compact)

@@ -9,6 +9,11 @@ struct CalendarViewportContent<Content: View>: View {
     @Environment(\.calendarMetrics) private var metrics
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarLayoutObserver) private var layoutObserver
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.calendarDeviceIsPad) private var deviceIsPad
+    @Environment(\.calendarHasCompanionMonth) private var hasCompanionMonth
+    @Environment(\.calendarIsCompanionPanel) private var isCompanionPanel
+    @Environment(\.calendarPanelHeaders) private var panelHeaders
     private var width: CGFloat { size.width }
     private var height: CGFloat { size.height }
     @State private var dateRevealer = CalendarDateRevealer()
@@ -37,7 +42,25 @@ struct CalendarViewportContent<Content: View>: View {
     }
 
     private var resolvedMetrics: CalendarMetrics {
-        metrics.scalingSoftMargins(by: layout.marginScale).resolvingSpacing(layout.columnSpacing)
+        let resolved = metrics.scalingSoftMargins(by: layout.marginScale)
+            .resolvingSpacing(layout.columnSpacing)
+        guard growsCells else { return resolved }
+        return resolved.growingCells(
+            toFitHeight: configuration.scrollMode == .vertical ? nil : height,
+            controls: max(
+                resolved.controlsHeight(showsHeader: configuration.showsHeader),
+                (panelHeaders?.primaryHeight ?? 0) + resolved.rowSpacing))
+    }
+
+    /// Cells grow only for a single month grid. A two-month fold sizes its panels together, and
+    /// ``CalendarCellGrowth`` decides which windows have space to spare. The vertical list is bound by
+    /// width alone, since it scrolls; it re-anchors on the current month when a resize changes the
+    /// month heights.
+    private var growsCells: Bool {
+        CalendarCellGrowth.isAllowed(
+            sizeClass: horizontalSizeClass, scrollMode: configuration.scrollMode, isPad: deviceIsPad
+        )
+            && !hasCompanionMonth && !isCompanionPanel
     }
 
     private var layoutInfo: CalendarLayoutInfo {

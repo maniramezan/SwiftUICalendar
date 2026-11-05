@@ -34,6 +34,9 @@ struct CalendarViewportSafeAreaTests {
                 configuration: .init(scrollMode: mode, gridSizing: sizing)),
             size: size, safeArea: safeArea)
         defer { hosted.window.isHidden = true }
+        // A notch exists only on iPhone, which is always compact-width. An iPad simulator hosting
+        // these phone-sized windows would otherwise report a regular width and grow the cells.
+        hosted.hosting.traitOverrides.horizontalSizeClass = .compact
         settle(hosted.hosting.view)
         return Array(frames.inMonth.values)
     }

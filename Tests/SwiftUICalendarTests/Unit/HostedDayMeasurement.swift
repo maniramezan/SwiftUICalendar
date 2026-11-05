@@ -15,6 +15,15 @@ final class MeasuredDayFrames {
     let month: MonthIdentifier?
     let calendar: Calendar
 
+    /// Drops a day's frame when its cell leaves the hierarchy.
+    ///
+    /// Off by default because several suites read the frame of a day that has scrolled out of the
+    /// realized range. A suite that asks where the *visible* cells are turns it on: a lazy grid
+    /// can realize a row below the viewport mid-layout, record transient geometry, then discard
+    /// the row without ever reporting a settled frame, leaving a stale entry that looks like a
+    /// cell outside the window.
+    var forgetsDisappearedDays = false
+
     /// Frames of days belonging to the month they are displayed in, keyed by date.
     var inMonth: [Date: CGRect] = [:]
 
@@ -76,6 +85,11 @@ struct MeasuringDayView: CalendarDayView {
                     frames.shouldRecord(context.date)
                 else { return }
                 frames.inMonth[context.date] = frame
+            }
+            .onDisappear {
+                guard context.isInCurrentMonth, let frames, frames.forgetsDisappearedDays
+                else { return }
+                frames.inMonth[context.date] = nil
             }
     }
 }

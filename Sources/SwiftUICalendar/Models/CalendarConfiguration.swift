@@ -11,7 +11,9 @@ public struct CalendarConfiguration: Equatable, Sendable {
     ///
     /// Day cells are always clamped between a minimum hit-target size and a maximum size. This
     /// setting decides what happens to the leftover width in a container wider than seven
-    /// maximum-size cells, which is common on macOS windows, iPad, and landscape iPhone.
+    /// maximum-size cells, which is common on macOS windows and landscape iPhone. On a
+    /// regular-width iPad the maximum grows with the available space, so the leftover width is
+    /// smaller there.
     public enum GridSizing: Equatable, Sendable {
         /// Centers the grid once day cells reach their maximum size; otherwise fills the available width.
         ///

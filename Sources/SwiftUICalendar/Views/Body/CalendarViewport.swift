@@ -11,7 +11,13 @@ struct CalendarViewport<Content: View>: View {
     @Environment(\.calendarConfiguration) private var configuration
     @Environment(\.calendarFoldRegions) private var foldRegions
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.calendarDeviceIsPad) private var deviceIsPad
     @State private var panelHeaders = CalendarPanelHeaders()
+    @State private var reservedFoldRegions: [CGRect] = []
+    /// Visible height of the scroll view hosting the calendar, `nil` outside one. It does not depend
+    /// on the calendar's own size, so measuring it cannot feed back into the layout it informs.
+    @State private var hostHeight: CGFloat?
     private let logger = Logger.swiftUICalendar(for: Self.self)
     var keyboard: CalendarKeyboardCursor? = nil
     @ViewBuilder let content: (Bool) -> Content
@@ -19,10 +25,7 @@ struct CalendarViewport<Content: View>: View {
     var body: some View {
         CalendarViewportSize(
             idealWidth: metrics.minCalendarWidth,
-            idealHeight:
-                metrics.resolvedHeight(
-                    rowCount: CalendarGrid.maximumRowCount, layoutWidth: metrics.minCalendarWidth)
-                + metrics.weekdayHeaderMinHeight + 3 * metrics.headerRowHeight
+            idealHeight: idealHeight
         ) {
             GeometryReader { geometry in
                 let nextMonth = model?.monthIdentifier(offset: 1)
@@ -60,12 +63,23 @@ struct CalendarViewport<Content: View>: View {
                 .onChange(of: fold.mode, initial: true) { _, mode in
                     logger.info("Fold layout changed to \(mode.rawValue, privacy: .public)")
                 }
+                .onChange(of: CalendarFoldRegions.read(in: geometry), initial: true) { _, regions in
+                    reservedFoldRegions = regions
+                }
                 .onChange(of: fold.secondary == nil ? nil : nextMonth, initial: true) { _, month in
                     logger.debug(
                         "Companion month \(month == nil ? "hidden" : "shown", privacy: .public)")
                     keyboard?.companionMonth = month
                 }
             }
+        }
+        .onGeometryChange(for: CGFloat?.self) { proxy in
+            proxy.bounds(of: .scrollView).map {
+                $0.height - proxy.safeAreaInsets.top - proxy.safeAreaInsets.bottom
+            }
+        } action: { height in
+            logger.debug("Host viewport height changed")
+            hostHeight = height
         }
         .safeAreaPadding(.vertical, metrics.calendarMargin)
         .frame(
@@ -76,6 +90,21 @@ struct CalendarViewport<Content: View>: View {
                         ?? metrics.itemSpacing,
                     minimumSpacing: configuration.layout.minimumColumnSpacing)
                 : nil)
+    }
+
+    private var idealHeight: CalendarIdealHeight {
+        let grows =
+            CalendarCellGrowth.isAllowed(
+                sizeClass: horizontalSizeClass, scrollMode: configuration.scrollMode,
+                isPad: deviceIsPad)
+            && configuration.scrollMode != .vertical
+        return CalendarIdealHeight(
+            metrics: metrics, showsHeader: configuration.showsHeader, growsCells: grows,
+            hostHeight: hostHeight, foldRegions: foldRegions + reservedFoldRegions,
+            allowsCompanion: model?.monthIdentifier(offset: 1) != nil, layout: configuration.layout,
+            controlsHeight: max(
+                metrics.controlsHeight(showsHeader: configuration.showsHeader),
+                panelHeaders.primaryHeight + metrics.rowSpacing))
     }
 
     private var companionConfiguration: CalendarConfiguration {
