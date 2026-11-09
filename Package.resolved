@@ -1,5 +1,5 @@
 {
-  "originHash" : "2f66cc7510ac90f66fd7bdc3903e3c2dd8c25b2fdcf0496c1afed60c70110095",
+  "originHash" : "6aacc497b6d27d52de31a91047666861f0f9a66703cb603c586e4c29362ad6d0",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "114354e8c1667a2edc4993700fb9fa4f90157b56",
         "version" : "1.2.2"
+      }
+    },
+    {
+      "identity" : "opencombine",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/OpenCombine/OpenCombine.git",
+      "state" : {
+        "revision" : "8576f0d579b27020beccbccc3ea6844f3ddfc2c2",
+        "version" : "0.14.0"
       }
     },
     {
@@ -69,8 +78,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-dependencies",
       "state" : {
-        "revision" : "b476cc5761057d8d857de063fe7ac8daecf5c06b",
-        "version" : "1.17.1"
+        "revision" : "2f83b70a6fbf45795dd40ccaa907bad3c8d93fe1",
+        "version" : "1.17.2"
       }
     },
     {
@@ -123,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
       "state" : {
-        "revision" : "28e5de025e3fd98991791bfbf83023ab3708da03",
-        "version" : "1.19.6"
+        "revision" : "1488390b0735e726564b948bf08b384398bdab5c",
+        "version" : "1.19.7"
       }
     },
     {
@@ -150,8 +159,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftTestCommons.git",
       "state" : {
-        "revision" : "a90013fe22a398ad70e09ca75f1e32b39a5f7d27",
-        "version" : "0.4.0"
+        "revision" : "3420590635e3c3bf869116679177051406d3b3a8",
+        "version" : "0.4.2"
       }
     },
     {
@@ -159,8 +168,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftUIComponents",
       "state" : {
-        "revision" : "34f8f500f989ba4efe0f467e8a33c6b5806403ca",
-        "version" : "0.18.2"
+        "revision" : "4368cd7c382f8b20d8d7b86c1c138f0a01106903",
+        "version" : "0.21.3"
       }
     }
   ],
