@@ -45,8 +45,26 @@ case "${1:-}" in
     ;;
   prepare)
     # bootstatus waits for data migration and setup, not just the "Booted" state. The device stays
-    # booted: it is the one the tests run on.
-    xcrun simctl bootstatus "$2" -b
+    # booted: it is the one the tests run on. It is ready once bootstatus reports a terminal status,
+    # but the command can linger long after that: 1.5 to 3 minutes on the CI runners, and once past
+    # the 6-minute step limit. So stop at the terminal status. A bootstatus that exits without one
+    # (a failed boot) fails the job with its own exit status.
+    log="$(mktemp)"
+    xcrun simctl bootstatus "$2" -b >"$log" 2>&1 &
+    pid=$!
+    while kill -0 "$pid" 2>/dev/null && ! grep -q "isTerminal=YES" "$log"; do
+      sleep 1
+    done
+    cat "$log"
+    if grep -q "isTerminal=YES" "$log"; then
+      rm -f "$log"
+      pkill -P "$pid" 2>/dev/null || true
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    else
+      rm -f "$log"
+      wait "$pid"
+    fi
     ;;
   test)
     udid="$2" plan="$3" result="$4"

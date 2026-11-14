@@ -20,6 +20,11 @@ class UITestSimulatorTest < Minitest::Test
     executable = "#!#{RbConfig.ruby}\n" + <<~'RUBY'
       require "json"
       File.open(ENV.fetch("CALL_LOG"), "a") { |file| file.puts JSON.generate([File.basename($0, ".rb"), *ARGV]) }
+      if ARGV[0, 2] == ["simctl", "bootstatus"] && ENV["BOOT_LINGER"] == "1"
+        puts "Status=4294967295, isTerminal=YES, Elapsed=01:12."
+        STDOUT.flush
+        sleep 30
+      end
       if ARGV[0, 3] == ["simctl", "list", "runtimes"]
         puts ENV.fetch("RUNTIME_JSON")
       elsif ARGV[0, 2] == ["simctl", "create"]
@@ -118,6 +123,16 @@ class UITestSimulatorTest < Minitest::Test
     output, status = run_script("prepare", "owned-device")
     assert status.success?, output
     assert_equal [["xcrun", "simctl", "bootstatus", "owned-device", "-b"]], calls
+  end
+
+  # bootstatus can linger for minutes after the device is ready; prepare must not wait for it.
+  def test_prepare_returns_at_the_terminal_status_without_waiting_for_bootstatus_to_exit
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    output, status = run_script("prepare", "owned-device", BOOT_LINGER: "1")
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+    assert status.success?, output
+    assert_includes output, "isTerminal=YES"
+    assert_operator elapsed, :<, 10
   end
 
   def test_prepare_failure_fails_the_job_instead_of_testing_a_half_booted_device
