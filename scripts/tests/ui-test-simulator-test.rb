@@ -25,12 +25,6 @@ class UITestSimulatorTest < Minitest::Test
       elsif ARGV[0, 2] == ["simctl", "create"]
         puts "owned-device"
       end
-      if File.basename($0, ".rb") == "xcodebuild" && ENV["TEST_HANG"] == "1"
-        trap("TERM") {}
-        puts "test runner stalled"
-        STDOUT.flush
-        sleep 30
-      end
       exit ENV.fetch(File.basename($0, ".rb") == "xcodebuild" ? "TEST_EXIT" : "SIM_EXIT", "0").to_i
     RUBY
     %w[xcrun xcodebuild].each do |name|
@@ -60,12 +54,8 @@ class UITestSimulatorTest < Minitest::Test
     FileUtils.remove_entry(@directory)
   end
 
-  def run_script(*arguments, watchdog_timeout: nil, **environment)
+  def run_script(*arguments, **environment)
     command = ["bash", SCRIPT, *arguments]
-    if watchdog_timeout
-      command = [RbConfig.ruby, File.expand_path("../test-watchdog.rb", __dir__),
-                 "--timeout", watchdog_timeout.to_s, "--diagnostics", "results/watchdog", "--", *command]
-    end
     Open3.capture2e(
       {"PATH" => "#{@directory}:#{ENV.fetch('PATH')}", "CALL_LOG" => @log,
        "RUNTIME_JSON" => JSON.generate(@inventory)}.merge(environment.transform_keys(&:to_s)),
@@ -151,7 +141,7 @@ class UITestSimulatorTest < Minitest::Test
 
   def test_test_plan_reuses_products_and_preserves_flags_and_failure_without_retry
     output, status = run_script("test", "owned-device", "Locales", "results/locales.xcresult",
-                                "-test-timeouts-enabled", "YES", TEST_EXIT: "65", watchdog_timeout: 5)
+                                "-test-timeouts-enabled", "YES", TEST_EXIT: "65")
     assert_equal 65, status.exitstatus, output
     assert_equal [["xcodebuild", "test-without-building", "-testProductsPath",
                    ".build/SampleUITests.xctestproducts", "-testPlan", "Locales", "-destination",
@@ -175,17 +165,6 @@ class UITestSimulatorTest < Minitest::Test
     filters = calls.first.select { |argument| argument.start_with?("-only-testing:") }
     assert_equal ["-only-testing:SwiftUICalendarSampleUITests/HeaderControlUITests",
                   "-only-testing:SwiftUICalendarSampleUITests/DynamicTypeUITests"], filters
-    assert File.file?(File.join(@directory, "results/tests.events.jsonl"))
-  end
-
-  def test_watchdog_stops_a_hung_test_command_and_retains_output_without_retry
-    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
-                                TEST_HANG: "1", watchdog_timeout: 2)
-    assert_equal 124, status.exitstatus, output
-    assert_equal 1, calls.count
-    assert_includes File.read(File.join(@directory, "results/watchdog/test-output.log")),
-                    "test runner stalled"
-    assert File.file?(File.join(@directory, "results/watchdog/processes.txt"))
     assert File.file?(File.join(@directory, "results/tests.events.jsonl"))
   end
 

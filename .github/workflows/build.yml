@@ -54,7 +54,6 @@ jobs:
 
       - name: Validate CI scripts
         run: |
-          ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
           ruby ./scripts/tests/ui-test-workflow-test.rb
           ruby ./scripts/tests/check-coverage-test.rb
@@ -68,7 +67,7 @@ jobs:
         timeout-minutes: 20
         env:
           MINIMUM_COVERAGE: 80
-        run: ruby ./scripts/test-watchdog.rb --timeout 900 -- bash ./scripts/check-coverage.sh
+        run: bash ./scripts/check-coverage.sh
 
       - name: Upload package test diagnostics
         if: always()
@@ -105,12 +104,21 @@ jobs:
       - name: Select Swift toolchain
         run: bash ./scripts/select-swift-toolchain.sh
 
+      # Package checkouts depend only on the resolved versions, so they are shared across runners
+      # and toolchains; a cold runner otherwise clones every dependency again.
+      - name: Cache Xcode package checkouts
+        uses: actions/cache@v6.1.0
+        with:
+          path: SwiftUICalendar/.build/xcode-packages
+          key: ${{ runner.os }}-xcode-packages-${{ hashFiles('SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
       - name: Build sample UI tests once
         run: >-
           xcodebuild build-for-testing
           -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
           -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
-          -skipMacroValidation -testProductsPath .build/SampleUITests.xctestproducts
+          -skipMacroValidation -clonedSourcePackagesDirPath .build/xcode-packages
+          -testProductsPath .build/SampleUITests.xctestproducts
 
       - name: Configure functional UI test diagnostics
         run: python3 ./scripts/configure-ui-test-products.py .build/SampleUITests.xctestproducts
@@ -245,7 +253,7 @@ jobs:
         timeout-minutes: 20
         # The script runs one worker on the settled simulator; retain the existing individual test limits.
         # Full simulator diagnostics collection hangs here; keep XCTest result bundles instead.
-        # The process watchdog exits before GitHub cancels the step, leaving time to upload evidence.
+        # The step timeout stops a hung run with time left in the job to upload the result bundle.
         # A test that fails is rerun once: the loaded simulator sometimes cannot terminate the app at
         # teardown, which fails whichever test happens to be running. A real failure fails both runs.
         run: |
@@ -257,9 +265,8 @@ jobs:
             -maximum-test-execution-time-allowance 300
             -collect-test-diagnostics never
           )
-          ruby ./scripts/test-watchdog.rb --timeout 900 --diagnostics .build/results/watchdog -- \
-            bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" "$UI_TEST_PLAN" \
-              .build/results/tests.xcresult "${flags[@]}"
+          bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" "$UI_TEST_PLAN" \
+            .build/results/tests.xcresult "${flags[@]}"
 
       - name: Delete UI test simulator
         if: always() && env.SIMULATOR_UDID != ''
@@ -292,6 +299,31 @@ jobs:
       - name: Select Swift toolchain
         run: bash ./scripts/select-swift-toolchain.sh
 
+      # Package checkouts depend only on the resolved versions, so they are shared across runners
+      # and toolchains; a cold runner otherwise clones every dependency again.
+      - name: Cache Xcode package checkouts
+        uses: actions/cache@v6.1.0
+        with:
+          path: SwiftUICalendar/.build/xcode-packages
+          key: ${{ runner.os }}-xcode-packages-${{ hashFiles('SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
+      # Its own step, so a stalled package fetch fails here by name instead of silently using up the
+      # test step's time (it stopped twice after "Resolve Package Graph" on cold runners).
+      - name: Resolve Swift packages
+        timeout-minutes: 8
+        run: >-
+          xcodebuild -resolvePackageDependencies -scheme SwiftUICalendar-Package
+          -clonedSourcePackagesDirPath .build/xcode-packages
+
+      # Build before the simulator boots, so the two do not compete for the runner's CPU.
+      - name: Build iOS package tests
+        timeout-minutes: 15
+        run: >-
+          xcodebuild build-for-testing -scheme SwiftUICalendar-Package
+          -destination "generic/platform=iOS Simulator" -skipMacroValidation
+          -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution
+          -derivedDataPath .build/iPadPackage -testProductsPath .build/iPadPackage.xctestproducts
+
       - name: Create iPad simulator
         run: |
           udid="$(bash ./scripts/ui-test-simulator.sh create 'iPad Pro 13-inch (M5)')"
@@ -302,13 +334,11 @@ jobs:
         run: bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
 
       - name: Run iOS package tests
-        timeout-minutes: 20
-        run: |
-          ruby ./scripts/test-watchdog.rb --timeout 900 --diagnostics .build/results/watchdog -- \
-            xcodebuild test -scheme SwiftUICalendar-Package \
-              -destination "id=$SIMULATOR_UDID" -skipMacroValidation \
-              -parallel-testing-enabled NO -derivedDataPath .build/iPadPackage \
-              -resultBundlePath .build/results/ipad-package.xcresult
+        timeout-minutes: 15
+        run: >-
+          xcodebuild test-without-building -testProductsPath .build/iPadPackage.xctestproducts
+          -destination "id=$SIMULATOR_UDID" -parallel-testing-enabled NO
+          -resultBundlePath .build/results/ipad-package.xcresult
 
       - name: Delete iPad simulator
         if: always() && env.SIMULATOR_UDID != ''
@@ -374,7 +404,6 @@ jobs:
 
       - name: Validate CI scripts
         run: |
-          ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
           ruby ./scripts/tests/ui-test-workflow-test.rb
           ruby ./scripts/tests/check-coverage-test.rb
@@ -388,7 +417,7 @@ jobs:
         timeout-minutes: 20
         env:
           MINIMUM_COVERAGE: 80
-        run: ruby ./scripts/test-watchdog.rb --timeout 900 -- bash ./scripts/check-coverage.sh
+        run: bash ./scripts/check-coverage.sh
 
       - name: Upload package test diagnostics
         if: always()

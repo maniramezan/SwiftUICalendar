@@ -47,22 +47,42 @@ class UITestWorkflowTest < Minitest::Test
     assert_includes plans.fetch("env").fetch("DEVICE_NAME"), "matrix.device"
     job = JOBS.fetch("ios-package-tests")
     commands = job.fetch("steps").map { |step| step.fetch("run", "") }.join("\n")
-    assert_includes commands, "xcodebuild test -scheme SwiftUICalendar-Package"
+    assert_includes commands, "xcodebuild build-for-testing -scheme SwiftUICalendar-Package"
+    assert_includes commands, "xcodebuild test-without-building"
     assert_includes commands, "-destination \"id=$SIMULATOR_UDID\""
     assert_includes commands, "ui-test-simulator.sh prepare"
     assert_includes commands, "ui-test-simulator.sh delete"
   end
 
-  def test_watchdog_leaves_time_for_cleanup_and_diagnostics_before_github_timeout
+  # Both xcodebuild jobs reuse cached package checkouts, and the iPad job builds before it boots
+  # the simulator so the two never compete for the runner's CPU.
+  def test_xcodebuild_jobs_reuse_cached_packages_and_build_before_booting
+    %w[ui-test-build ios-package-tests].each do |name|
+      steps = JOBS.fetch(name).fetch("steps")
+      cache = steps.find { |entry| entry.fetch("uses", "").start_with?("actions/cache@") }
+      refute_nil cache, "#{name} has no package cache"
+      assert_equal "SwiftUICalendar/.build/xcode-packages", cache.fetch("with").fetch("path")
+      commands = steps.map { |entry| entry.fetch("run", "") }.join("\n")
+      assert_includes commands, "-clonedSourcePackagesDirPath .build/xcode-packages"
+    end
+    steps = JOBS.fetch("ios-package-tests").fetch("steps")
+    build = steps.index { |entry| entry.fetch("run", "").include?("build-for-testing") }
+    boot = steps.index { |entry| entry.fetch("run", "").include?("ui-test-simulator.sh prepare") }
+    run = steps.index { |entry| entry.fetch("run", "").include?("test-without-building") }
+    assert_operator build, :<, boot
+    assert_operator boot, :<, run
+  end
+
+  # GitHub's step timeout stops a hung test run; the job must outlast it by enough to delete the
+  # simulator and upload the result bundle, which runs even after a timeout.
+  def test_step_timeout_leaves_time_for_cleanup_and_upload
     plans = JOBS.fetch("ui-test-plans")
-    step = plans.fetch("steps").find { |entry| entry.fetch("name") == "Run UI test plan" }
-    command = step.fetch("run")
-    assert_includes command, "ruby ./scripts/test-watchdog.rb"
-    assert_includes command, "--diagnostics .build/results/watchdog"
-    seconds = command.match(/--timeout (\d+)/)[1].to_i
-    assert_operator seconds, :>, 0
-    assert_operator seconds + 120, :<, step.fetch("timeout-minutes") * 60
+    steps = plans.fetch("steps")
+    step = steps.find { |entry| entry.fetch("name") == "Run UI test plan" }
+    refute_includes step.fetch("run"), "test-watchdog"
     assert_operator step.fetch("timeout-minutes") + 5, :<=, plans.fetch("timeout-minutes")
+    upload = steps.find { |entry| entry.fetch("name") == "Upload test results" }
+    assert_equal "always()", upload.fetch("if")
   end
 
   # Xcode clones and cold-boots its own devices for parallel testing, so warming the owned device only
