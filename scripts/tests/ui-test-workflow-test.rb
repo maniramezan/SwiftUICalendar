@@ -9,7 +9,7 @@ class UITestWorkflowTest < Minitest::Test
 
   def test_matrix_runs_every_default_suite_and_locale_exactly_once
     matrix = JOBS.fetch("ui-test-plans").fetch("strategy").fetch("matrix").fetch("include")
-    default = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSample" }
+    default = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSample" && !entry.key?("device") }
     classes = Dir.glob(File.join(ROOT, "Examples/SwiftUICalendarSample/UITests/*.swift"))
                  .flat_map { |path| File.read(path).scan(/class\s+(\w+)\s*:\s*SampleUITestCase\b/).flatten }
     default_plan = JSON.parse(File.read(File.join(ROOT,
@@ -30,11 +30,27 @@ class UITestWorkflowTest < Minitest::Test
     actual = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSampleLocales" }
                    .map { |entry| entry.fetch("configuration") }.sort
     assert_equal expected, actual
-    assert_equal expected.count + default.count, matrix.count
+    assert_equal expected.count + default.count + 3, matrix.count
     matrix.reject { |entry| entry.fetch("plan") == "SwiftUICalendarSample" }.each do |entry|
       assert_nil entry["suites"], "Locale jobs must run the complete locale plan"
     end
     assert_equal false, JOBS.fetch("ui-test-plans").fetch("strategy").fetch("fail-fast")
+  end
+
+  def test_device_matrix_exercises_dynamic_type_on_small_phone_large_phone_and_tablet
+    plans = JOBS.fetch("ui-test-plans")
+    matrix = plans.fetch("strategy").fetch("matrix").fetch("include")
+    devices = matrix.select { |entry| entry.key?("device") }
+    assert_equal ["iPhone SE (3rd generation)", "iPhone 17 Pro Max", "iPad Pro 13-inch (M5)"],
+                 devices.map { |entry| entry.fetch("device") }
+    devices.each { |entry| assert_equal "DynamicTypeUITests", entry.fetch("suites") }
+    assert_includes plans.fetch("env").fetch("DEVICE_NAME"), "matrix.device"
+    job = JOBS.fetch("ios-package-tests")
+    commands = job.fetch("steps").map { |step| step.fetch("run", "") }.join("\n")
+    assert_includes commands, "xcodebuild test -scheme SwiftUICalendar-Package"
+    assert_includes commands, "-destination \"id=$SIMULATOR_UDID\""
+    assert_includes commands, "ui-test-simulator.sh prepare"
+    assert_includes commands, "ui-test-simulator.sh delete"
   end
 
   def test_watchdog_leaves_time_for_cleanup_and_diagnostics_before_github_timeout
@@ -83,13 +99,13 @@ class UITestWorkflowTest < Minitest::Test
 
   def test_required_check_rejects_build_or_matrix_failures_and_skips
     gate = JOBS.fetch("ui-tests")
-    assert_equal %w[ui-test-build ui-test-plans], gate.fetch("needs")
+    assert_equal %w[ui-test-build ui-test-plans ios-package-tests], gate.fetch("needs")
     assert_includes gate.fetch("if"), "always()"
     command = gate.fetch("steps").first.fetch("run")
-    %w[success failure cancelled skipped].repeated_permutation(2) do |build, plans|
-      output, status = Open3.capture2e({"BUILD_RESULT" => build, "PLANS_RESULT" => plans},
+    %w[success failure cancelled skipped].repeated_permutation(3) do |build, plans, package|
+      output, status = Open3.capture2e({"BUILD_RESULT" => build, "PLANS_RESULT" => plans, "PACKAGE_RESULT" => package},
                                       "bash", "-c", command)
-      assert_equal build == "success" && plans == "success", status.success?,
+      assert_equal build == "success" && plans == "success" && package == "success", status.success?,
                    "build=#{build}, plans=#{plans}: #{output}"
     end
   end

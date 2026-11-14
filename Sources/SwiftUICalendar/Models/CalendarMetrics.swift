@@ -93,6 +93,15 @@ struct CalendarMetrics: Equatable, Sendable {
     let glassBorderOpacity: Double
     /// Opacity of the same edge when it is drawn hairline-thin over a rounded rectangle.
     let glassHairlineBorderOpacity: Double
+    /// Duration of each fixed-month transition phase.
+    let monthFadeOutDuration: Double = 0.12
+    let monthFadeInDuration: Double = 0.16
+
+    /// Room for at least half a month, its weekday labels, and navigation controls.
+    var minimumCompanionPanelHeight: CGFloat {
+        3 * minRowHeight + 2 * rowSpacing + weekdayHeaderMinHeight + 2 * headerRowHeight
+    }
+
     /// Geometry, thresholds, and motion for the horizontal month pager.
     let pager: Pager
 

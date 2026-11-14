@@ -29,10 +29,6 @@ struct CalendarBodyHorizontalView: View {
     @State private var navigationGeneration = 0
     private let logger = Logger.swiftUICalendar(for: Self.self)
 
-    #if os(macOS)
-    @State private var scrollMonitor: HorizontalScrollWheelMonitor?
-    #endif
-
     private var layoutWidth: CGFloat {
         metrics.layoutWidth(containerWidth: containerWidth)
     }
@@ -210,10 +206,6 @@ struct CalendarBodyHorizontalView: View {
             .accessibilityHidden(true)
 
             // Day-grid carousel.
-            // Swipe semantics are fixed across locales:
-            // swipe left to move forward (next month),
-            // swipe right to move backward (previous month).
-            //
             // Layout differs by direction:
             // LTR: previous | current | next
             // RTL: next | current | previous
@@ -327,9 +319,21 @@ struct CalendarBodyHorizontalView: View {
             resetNavigation()
         }
         #if os(macOS)
-        // Trackpad/scroll-wheel horizontal scrolling pages months on macOS, matching the iOS swipe.
-        .onAppear { installScrollMonitor() }
-        .onDisappear { removeScrollMonitor() }
+        .background {
+            HorizontalScrollWheelRegion(
+                threshold: metrics.pager.scrollPageThreshold, isEnabled: allowsPaging
+            ) { delta in
+                guard Self.shouldHandleScrollPage(delta: delta, isNavigating: isNavigating) else {
+                    return
+                }
+                let directedDelta = delta * Int(layoutDirectionMultiplier)
+                if directedDelta == 1 {
+                    goToNext(width: pageWidth)
+                } else {
+                    goToPrevious(width: pageWidth)
+                }
+            }
+        }
         #endif
     }
 
@@ -473,33 +477,6 @@ struct CalendarBodyHorizontalView: View {
         }
     }
 
-    #if os(macOS)
-    // MARK: - Trackpad / scroll-wheel paging (macOS)
-
-    private func installScrollMonitor() {
-        guard scrollMonitor == nil else { return }
-        let monitor = HorizontalScrollWheelMonitor(threshold: metrics.pager.scrollPageThreshold) {
-            delta in
-            guard allowsPaging,
-                Self.shouldHandleScrollPage(delta: delta, isNavigating: isNavigating)
-            else {
-                return
-            }
-            switch delta {
-            case 1: goToNext(width: pageWidth)
-            case -1: goToPrevious(width: pageWidth)
-            default: break
-            }
-        }
-        monitor.start()
-        scrollMonitor = monitor
-    }
-
-    private func removeScrollMonitor() {
-        scrollMonitor?.stop()
-        scrollMonitor = nil
-    }
-    #endif
 }
 
 struct HorizontalMonthPage: Identifiable {
@@ -524,8 +501,12 @@ enum HorizontalPagerAction {
 final class HorizontalScrollWheelMonitor {
     private var monitor: Any?
     private var accumulated: CGFloat = 0
-    private let threshold: CGFloat
-    private let onPage: (Int) -> Void
+    var threshold: CGFloat
+    var isEnabled = true {
+        didSet { if !isEnabled { accumulated = 0 } }
+    }
+    var onPage: (Int) -> Void
+    private weak var region: NSView?
 
     init(threshold: CGFloat, onPage: @escaping (Int) -> Void) {
         self.threshold = threshold
@@ -533,12 +514,19 @@ final class HorizontalScrollWheelMonitor {
     }
 
     /// Begins observing scroll-wheel events. Events are delivered on the main thread.
-    func start() {
+    func start(in region: NSView) {
+        self.region = region
         guard monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) {
             [weak self] event in
             MainActor.assumeIsolated {
-                self?.fold(
+                guard let self,
+                    self.contains(window: event.window, location: event.locationInWindow)
+                else {
+                    self?.accumulated = 0
+                    return
+                }
+                self.fold(
                     deltaX: event.scrollingDeltaX,
                     deltaY: event.scrollingDeltaY,
                     isMomentum: event.momentumPhase != [],
@@ -550,8 +538,18 @@ final class HorizontalScrollWheelMonitor {
         }
     }
 
+    func contains(window: NSWindow?, location: CGPoint) -> Bool {
+        guard isEnabled, let region, let window, region.window === window,
+            !region.isHiddenOrHasHiddenAncestor
+        else { return false }
+        return region.bounds.intersection(region.visibleRect).contains(
+            region.convert(location, from: nil))
+    }
+
     /// Stops observing scroll-wheel events.
     func stop() {
+        accumulated = 0
+        region = nil
         if let monitor {
             NSEvent.removeMonitor(monitor)
             self.monitor = nil
@@ -561,6 +559,7 @@ final class HorizontalScrollWheelMonitor {
     /// Folds one scroll sample into the running accumulator and emits a page delta
     /// (`1` next, `-1` previous) when the threshold is crossed.
     func fold(deltaX: CGFloat, deltaY: CGFloat, isMomentum: Bool, didBegin: Bool, didEnd: Bool) {
+        guard isEnabled else { return }
         let result = HorizontalScrollPagingResolver.resolve(
             accumulated: accumulated,
             deltaX: deltaX,
@@ -597,12 +596,13 @@ enum HorizontalScrollPagingResolver {
         threshold: CGFloat
     ) -> (accumulated: CGFloat, pageDelta: Int?) {
         // Ignore momentum so a single swipe pages predictably instead of running away.
-        if isMomentum { return (accumulated, nil) }
-        // Only act on predominantly-horizontal scrolls.
-        guard abs(deltaX) > abs(deltaY), deltaX != 0 else { return (accumulated, nil) }
+        let initial = didBegin ? 0 : accumulated
+        if isMomentum { return (didEnd ? 0 : initial, nil) }
+        guard abs(deltaX) > abs(deltaY), deltaX != 0 else {
+            return (didEnd ? 0 : initial, nil)
+        }
 
-        var running = didBegin ? 0 : accumulated
-        running += deltaX
+        let running = initial + deltaX
 
         if running <= -threshold { return (0, 1) }
         if running >= threshold { return (0, -1) }

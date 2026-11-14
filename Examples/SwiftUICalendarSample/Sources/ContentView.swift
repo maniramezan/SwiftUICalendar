@@ -34,7 +34,6 @@ struct ContentView: View {
             .padding(
                 .horizontal, max(0, UserDefaults.standard.double(forKey: "calendar-host-inset"))
             )
-            .navigationTitle("Calendar")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -72,6 +71,7 @@ struct ContentView: View {
                     )
                 }
             )
+            .navigationTitle("Calendar")
         }
         #if os(macOS)
         .focusedSceneValue(\.calendarSettingsPresentation, $isSettingsPresented)

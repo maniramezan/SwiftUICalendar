@@ -6,6 +6,7 @@ struct CalendarFixedMonthView: View {
     let viewModel: CalendarViewModel
     let layoutWidth: CGFloat?
     let keyboard: CalendarKeyboardCursor
+    @Environment(\.calendarMetrics) private var metrics
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var fade: CalendarMonthFade
     private let logger = Logger.swiftUICalendar(for: Self.self)
@@ -43,7 +44,8 @@ struct CalendarFixedMonthView: View {
     private func transition(to month: MonthIdentifier, selecting date: Date? = nil) {
         guard let token = fade.begin(to: month, selecting: date) else { return }
         withAnimation(
-            reduceMotion ? nil : .easeOut(duration: 0.12), completionCriteria: .removed
+            reduceMotion ? nil : .easeOut(duration: metrics.monthFadeOutDuration),
+            completionCriteria: .removed
         ) {
             fade.opacity = 0
         } completion: {
@@ -55,7 +57,8 @@ struct CalendarFixedMonthView: View {
                 }
                 guard shouldFadeIn else { return }
                 withAnimation(
-                    reduceMotion ? nil : .easeIn(duration: 0.16), completionCriteria: .removed
+                    reduceMotion ? nil : .easeIn(duration: metrics.monthFadeInDuration),
+                    completionCriteria: .removed
                 ) {
                     fade.opacity = 1
                 } completion: {

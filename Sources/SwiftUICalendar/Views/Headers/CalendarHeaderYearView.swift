@@ -76,7 +76,12 @@ struct CalendarHeaderYearView: View {
                 )
             },
             set: { newItem in
-                try? model.navigate(toYear: newItem.id)
+                do {
+                    try model.navigate(toYear: newItem.id)
+                } catch {
+                    logger.error(
+                        "Failed to choose year", error: error, context: "year \(newItem.id)")
+                }
             }
         )
     }

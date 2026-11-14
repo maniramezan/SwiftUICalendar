@@ -1,0 +1,9 @@
+Calendar.Today: Today
+Calendar.Done: Done
+Calendar.Navigation.Month.ChangeHint: Choose another month
+Calendar.Navigation.Year.ChangeHint: Choose another year
+Calendar.Day.Today: Today
+Calendar.Day.Selected: Selected
+Calendar.Day.Range.start: Range start
+Calendar.Day.Range.end: Range end
+Calendar.Day.Range.interior: Within selected range

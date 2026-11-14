@@ -21,10 +21,14 @@ struct CalendarAccessibility: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .accessibilityAction(named: Text("Calendar.Navigation.PreviousMonth".localized)) {
+            .accessibilityAction(
+                named: Text("Calendar.Navigation.PreviousMonth".localized(locale: model.locale))
+            ) {
                 navigate(previous: true)
             }
-            .accessibilityAction(named: Text("Calendar.Navigation.NextMonth".localized)) {
+            .accessibilityAction(
+                named: Text("Calendar.Navigation.NextMonth".localized(locale: model.locale))
+            ) {
                 navigate(previous: false)
             }
             .task(id: model.visibleMonth) {

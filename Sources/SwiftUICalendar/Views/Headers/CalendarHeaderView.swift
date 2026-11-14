@@ -34,10 +34,11 @@ private struct CalendarHeaderTodayButton: View {
     var body: some View {
         #if os(macOS)
         // Today selects the current day in single-selection mode on both platforms.
-        Button("Calendar.Today".localized) {
+        Button("Calendar.Today".localized(locale: model.locale)) {
             model.goToToday()
         }
         .fixedSize()
+        .disabled(!model.canGoToToday)
         .accessibilityIdentifier(CalendarAccessibilityID.todayButton)
         #endif
     }

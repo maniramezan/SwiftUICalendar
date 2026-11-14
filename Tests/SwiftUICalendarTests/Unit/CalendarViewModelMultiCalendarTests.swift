@@ -179,7 +179,8 @@ struct CalendarViewModelMultiCalendarTests {
             let vm = CalendarViewModel.test(identifier: .hebrew)
             vm.currentDate = elulDate
             try vm.updateMonthToNextMonth()
-            #expect(vm.currentMonth == 1)  // Tishri
+            // Tishri
+            #expect(vm.currentMonth == 1)
             #expect(vm.currentYear == 5786)
         }
 
@@ -190,7 +191,8 @@ struct CalendarViewModelMultiCalendarTests {
             let vm = CalendarViewModel.test(identifier: .hebrew)
             vm.currentDate = tishriDate
             try vm.updateMonthToPreviousMonth()
-            #expect(vm.currentMonth == 13)  // Elul of 5785 (non-leap year)
+            // Elul of 5785 (non-leap year)
+            #expect(vm.currentMonth == 13)
             #expect(vm.currentYear == 5785)
         }
 
@@ -259,7 +261,8 @@ struct CalendarViewModelMultiCalendarTests {
             let vm = CalendarViewModel.test(identifier: .islamicUmmAlQura)
             vm.currentDate = dhulHijjahDate
             try vm.updateMonthToNextMonth()
-            #expect(vm.currentMonth == 1)  // Muharram
+            // Muharram
+            #expect(vm.currentMonth == 1)
             #expect(vm.currentYear == 1447)
         }
 
@@ -270,7 +273,8 @@ struct CalendarViewModelMultiCalendarTests {
             let vm = CalendarViewModel.test(identifier: .islamicUmmAlQura)
             vm.currentDate = muharramDate
             try vm.updateMonthToPreviousMonth()
-            #expect(vm.currentMonth == 12)  // Dhul Hijjah
+            // Dhul Hijjah
+            #expect(vm.currentMonth == 12)
             #expect(vm.currentYear == 1446)
         }
 

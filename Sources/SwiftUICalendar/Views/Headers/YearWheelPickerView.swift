@@ -7,6 +7,7 @@ import SwiftUICalendarAccessibility
 /// The iOS sheet retains its calendar-specific Done action, which the shared wheel presentation
 /// cannot customize. Outside iOS, the shared wheel preference falls back to a native dropdown.
 struct YearWheelPickerView: View {
+    @Environment(\.locale) private var locale
     @Environment(\.calendarMetrics) private var metrics
     let items: [YearItem]
     @Binding var currentValue: YearItem
@@ -28,9 +29,9 @@ struct YearWheelPickerView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
-            "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
+            "Calendar.Navigation.Year.Selected".localized(locale: locale, with: currentValue.title)
         )
-        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized(locale: locale))
         .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
         .sheet(isPresented: $isPresented) {
             NavigationStack {
@@ -42,7 +43,7 @@ struct YearWheelPickerView: View {
                 .pickerStyle(.wheel)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Calendar.Done".localized) {
+                        Button("Calendar.Done".localized(locale: locale)) {
                             isPresented = false
                         }
                         .accessibilityIdentifier(CalendarAccessibilityID.yearPickerDoneButton)

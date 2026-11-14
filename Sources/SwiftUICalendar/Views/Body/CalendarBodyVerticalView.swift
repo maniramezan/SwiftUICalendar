@@ -16,7 +16,7 @@ struct CalendarBodyVerticalView: View {
     @State private var navigationRevision = 0
     @State private var months: [MonthIdentifier] = []
     @State private var scrollPosition: MonthIdentifier?
-    @State private var realizedMonths: Set<MonthIdentifier> = []
+    @State private var realizedMonths = RealizedCalendarMonths()
     @State private var navigationPosition = ScrollPosition(idType: MonthIdentifier.self)
     @State private var pendingDayReveal: Date?
     // The settle coordinator is a reference type held in `@State` rather than a value: its
@@ -57,7 +57,14 @@ struct CalendarBodyVerticalView: View {
                             layoutWidth: contentWidth > 0 ? contentWidth : nil,
                             keyboard: keyboard
                         )
-                        .onAppear { realizedMonths.insert(identifier) }
+                        .onAppear {
+                            realizedMonths.insert(identifier)
+                            if let day = pendingDayReveal,
+                                viewModel.engine.month(containing: day) == identifier
+                            {
+                                revealRequestedDay(in: identifier, proxy: proxy)
+                            }
+                        }
                         .onDisappear { realizedMonths.remove(identifier) }
                     }
                 }
@@ -152,11 +159,6 @@ struct CalendarBodyVerticalView: View {
                 )
                 viewModel.previewScrolledMonth(nil)
                 resetWindow()
-            }
-            .onChange(of: realizedMonths) { _, realized in
-                guard let day = pendingDayReveal else { return }
-                let month = viewModel.engine.month(containing: day)
-                if realized.contains(month) { revealRequestedDay(in: month, proxy: proxy) }
             }
             .onChange(of: scrollPosition) { _, position in
                 guard let position else { return }

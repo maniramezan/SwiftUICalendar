@@ -1,0 +1,9 @@
+Calendar.Today: היום
+Calendar.Done: סיום
+Calendar.Navigation.Month.ChangeHint: בחירת חודש אחר
+Calendar.Navigation.Year.ChangeHint: בחירת שנה אחרת
+Calendar.Day.Today: היום
+Calendar.Day.Selected: נבחר
+Calendar.Day.Range.start: תחילת הטווח
+Calendar.Day.Range.end: סוף הטווח
+Calendar.Day.Range.interior: בתוך הטווח שנבחר

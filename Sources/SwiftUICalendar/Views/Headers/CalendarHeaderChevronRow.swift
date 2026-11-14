@@ -8,6 +8,7 @@ import SwiftUICalendarAccessibility
 /// parameters because the same row pages months in one header and years in the other, and a shared
 /// identifier would make every query ambiguous.
 struct CalendarHeaderChevronRow<Content: View>: View {
+    @Environment(\.locale) private var locale
     @Environment(\.calendarMetrics) private var metrics
     let previousIdentifier: String
     let nextIdentifier: String
@@ -35,7 +36,7 @@ struct CalendarHeaderChevronRow<Content: View>: View {
             .accessibilityLabel(
                 (previousIdentifier == CalendarAccessibilityID.previousYearButton
                     ? "Calendar.Navigation.PreviousYear" : "Calendar.Navigation.PreviousMonth")
-                    .localized
+                    .localized(locale: locale)
             )
             .accessibilityIdentifier(previousIdentifier)
             .opacity(isPreviousDisabled ? metrics.disabledOpacity : 1.0)
@@ -57,7 +58,8 @@ struct CalendarHeaderChevronRow<Content: View>: View {
             .buttonStyle(.plain)
             .accessibilityLabel(
                 (nextIdentifier == CalendarAccessibilityID.nextYearButton
-                    ? "Calendar.Navigation.NextYear" : "Calendar.Navigation.NextMonth").localized
+                    ? "Calendar.Navigation.NextYear" : "Calendar.Navigation.NextMonth").localized(
+                        locale: locale)
             )
             .accessibilityIdentifier(nextIdentifier)
             .opacity(isNextDisabled ? metrics.disabledOpacity : 1.0)

@@ -57,6 +57,7 @@ jobs:
           ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
           ruby ./scripts/tests/ui-test-workflow-test.rb
+          ruby ./scripts/tests/check-coverage-test.rb
           python3 ./scripts/tests/configure-ui-test-products-test.py
 
       - name: Build package
@@ -165,6 +166,21 @@ jobs:
             plan: SwiftUICalendarSample
             configuration: ""
             suites: SelectionUITests
+          - name: Dynamic Type SE
+            device: iPhone SE (3rd generation)
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: DynamicTypeUITests
+          - name: Dynamic Type Pro Max
+            device: iPhone 17 Pro Max
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: DynamicTypeUITests
+          - name: Dynamic Type iPad
+            device: iPad Pro 13-inch (M5)
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: DynamicTypeUITests
           - name: English
             plan: SwiftUICalendarSampleLocales
             configuration: English
@@ -184,7 +200,7 @@ jobs:
       run:
         working-directory: SwiftUICalendar
     env:
-      DEVICE_NAME: iPhone 17
+      DEVICE_NAME: ${{ matrix.device || 'iPhone 17' }}
       UI_TEST_PLAN: ${{ matrix.plan }}
       UI_TEST_CONFIGURATION: ${{ matrix.configuration }}
       UI_TEST_SUITES: ${{ matrix.suites }}
@@ -257,10 +273,59 @@ jobs:
           path: SwiftUICalendar/.build/results
           if-no-files-found: ignore
 
+  ios-package-tests:
+    name: iPad package tests
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: xcode-27
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: SwiftUICalendar
+    steps:
+      - name: Checkout SwiftUICalendar
+        uses: actions/checkout@v7.0.1
+        with:
+          path: SwiftUICalendar
+
+      - name: Select Swift toolchain
+        run: bash ./scripts/select-swift-toolchain.sh
+
+      - name: Create iPad simulator
+        run: |
+          udid="$(bash ./scripts/ui-test-simulator.sh create 'iPad Pro 13-inch (M5)')"
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+
+      - name: Boot and settle iPad simulator
+        timeout-minutes: 6
+        run: bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
+
+      - name: Run iOS package tests
+        timeout-minutes: 20
+        run: |
+          ruby ./scripts/test-watchdog.rb --timeout 900 --diagnostics .build/results/watchdog -- \
+            xcodebuild test -scheme SwiftUICalendar-Package \
+              -destination "id=$SIMULATOR_UDID" -skipMacroValidation \
+              -parallel-testing-enabled NO -derivedDataPath .build/iPadPackage \
+              -resultBundlePath .build/results/ipad-package.xcresult
+
+      - name: Delete iPad simulator
+        if: always() && env.SIMULATOR_UDID != ''
+        run: bash ./scripts/ui-test-simulator.sh delete "$SIMULATOR_UDID"
+
+      - name: Upload iPad package results
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ipad-package-results
+          path: SwiftUICalendar/.build/results
+          if-no-files-found: ignore
+
   # Keep the required check's name stable and fail it if any build or matrix job fails or skips.
   ui-tests:
     if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
-    needs: [ui-test-build, ui-test-plans]
+    needs: [ui-test-build, ui-test-plans, ios-package-tests]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -268,7 +333,8 @@ jobs:
         env:
           BUILD_RESULT: ${{ needs.ui-test-build.result }}
           PLANS_RESULT: ${{ needs.ui-test-plans.result }}
-        run: test "$BUILD_RESULT" = success && test "$PLANS_RESULT" = success
+          PACKAGE_RESULT: ${{ needs.ios-package-tests.result }}
+        run: test "$BUILD_RESULT" = success && test "$PLANS_RESULT" = success && test "$PACKAGE_RESULT" = success
 
   main-validation:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -311,6 +377,7 @@ jobs:
           ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
           ruby ./scripts/tests/ui-test-workflow-test.rb
+          ruby ./scripts/tests/check-coverage-test.rb
           python3 ./scripts/tests/configure-ui-test-products-test.py
 
       - name: Build package

@@ -1,0 +1,9 @@
+Calendar.Today: اليوم
+Calendar.Done: تم
+Calendar.Navigation.Month.ChangeHint: اختيار شهر آخر
+Calendar.Navigation.Year.ChangeHint: اختيار سنة أخرى
+Calendar.Day.Today: اليوم
+Calendar.Day.Selected: محدد
+Calendar.Day.Range.start: بداية النطاق
+Calendar.Day.Range.end: نهاية النطاق
+Calendar.Day.Range.interior: ضمن النطاق المحدد

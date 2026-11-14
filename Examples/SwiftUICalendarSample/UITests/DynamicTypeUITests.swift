@@ -1,4 +1,5 @@
 import SwiftUICalendarAccessibility
+import UIKit
 import XCTest
 
 /// At a large text size the calendar must keep all seven columns reachable and keep its
@@ -48,11 +49,24 @@ final class DynamicTypeUITests: SampleUITestCase {
         XCTAssertTrue(month.waitForExistence(timeout: Self.dayCellTimeout))
         XCTAssertTrue(month.isHittable)
         XCTAssertTrue(done.waitForNonExistence(timeout: Self.dayCellTimeout))
+        XCTAssertTrue(app.navigationBars["Calendar"].exists)
     }
 
     @MainActor
     func testAccessibilityTextKeepsEdgeColumnsReachable() throws {
         try assertEdgeColumnsReachable(size: "UICTContentSizeCategoryAccessibilityXXXL")
+    }
+
+    @MainActor
+    func testLandscapeNormalTextKeepsEdgeColumnsReachable() throws {
+        try assertEdgeColumnsReachable(
+            size: "UICTContentSizeCategoryL", orientation: .landscapeLeft)
+    }
+
+    @MainActor
+    func testLandscapeAccessibilityTextKeepsEdgeColumnsReachable() throws {
+        try assertEdgeColumnsReachable(
+            size: "UICTContentSizeCategoryAccessibilityXXXL", orientation: .landscapeLeft)
     }
 
     @MainActor
@@ -108,11 +122,17 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     // The host width bounds the calendar, not the window, so reachability is judged inside it.
     @MainActor
-    private func assertEdgeColumnsReachable(size: String, hostWidth: CGFloat? = nil) throws {
+    private func assertEdgeColumnsReachable(
+        size: String, hostWidth: CGFloat? = nil, orientation: UIDeviceOrientation = .portrait
+    ) throws {
         // CI run 38569309941 spent 80s and 45s relaunching between modes. Exercise the same
         // user session instead, restoring the leading column through real scrolling each time.
         let app = launch(size: size, hostWidth: hostWidth)
+        XCUIDevice.shared.orientation = orientation
         let window = app.windows.firstMatch.frame
+        if orientation.isLandscape {
+            XCTAssertGreaterThan(window.width, window.height)
+        }
         let bounds =
             hostWidth.map { width in
                 window.insetBy(dx: max(0, (window.width - width) / 2), dy: 0)

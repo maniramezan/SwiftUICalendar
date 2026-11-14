@@ -3,7 +3,7 @@
 set -euo pipefail
 
 minimum_coverage="${MINIMUM_COVERAGE:-80}"
-source_root="${SOURCE_ROOT:-Sources/SwiftUICalendar}"
+source_root="${SOURCE_ROOT:-Sources}"
 export MINIMUM_COVERAGE="${minimum_coverage}"
 export SOURCE_ROOT="${source_root}"
 
@@ -13,7 +13,7 @@ coverage_path="$(swift test "$@" --show-codecov-path)"
 
 ruby -rjson -e '
   minimum = Float(ENV.fetch("MINIMUM_COVERAGE"))
-  source_root = ENV.fetch("SOURCE_ROOT")
+  source_root = File.realpath(ENV.fetch("SOURCE_ROOT"))
   path = ARGV.fetch(0)
   data = JSON.parse(File.read(path))
 
@@ -22,8 +22,8 @@ ruby -rjson -e '
 
   data.fetch("data").each do |entry|
     entry.fetch("files").each do |file|
-      filename = file.fetch("filename")
-      next unless filename.include?("/#{source_root}/")
+      filename = File.realpath(file.fetch("filename"))
+      next unless filename.start_with?("#{source_root}/")
 
       preview_start_line = nil
       File.foreach(filename).with_index(1) do |content, line_number|
