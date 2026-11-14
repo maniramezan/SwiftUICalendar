@@ -26,7 +26,7 @@ final class SelectionUITests: SampleUITestCase {
     }
 
     func testRangeReverseResetAndDeselect() throws {
-        let app = configured(.range, mode: .none, architecture: .mvvm)
+        let app = configured(.range, mode: .none, architecture: .mvvm, viaSettings: true)
         let month = try monthDates()
         day(15, month: month.current, in: app).tap()
         day(10, month: month.current, in: app).tap()
@@ -115,25 +115,40 @@ final class SelectionUITests: SampleUITestCase {
         }
     }
 
+    /// Starts the sample already showing `selection`, `mode` and `architecture`.
+    ///
+    /// Launch arguments configure the app instead of the Settings panel, which cost more per launch
+    /// than the selection checks themselves. `viaSettings` drives the panel instead, so one test
+    /// still covers the selection-mode picker end to end.
     private func configured(
-        _ selection: SampleSelectionMode, mode: CalendarScrollMode, architecture: SampleArchitecture
+        _ selection: SampleSelectionMode, mode: CalendarScrollMode,
+        architecture: SampleArchitecture,
+        viaSettings: Bool = false
     ) -> XCUIApplication {
         let app = sampleApplication()
         app.launchArguments = [
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL",
         ]
+        if !viaSettings {
+            app.launchArguments += SampleLaunchFixture.arguments(
+                architecture: architecture, selectionMode: selection, scrollMode: mode)
+        }
         app.launch()
-        app.openSettings()
-        app.option(
-            architecture.accessibilityIdentifier, in: CalendarSampleAccessibilityID.stateOwnerPicker
-        ).tap()
-        app.option(
-            selection.accessibilityIdentifier, in: CalendarSampleAccessibilityID.selectionPicker
-        ).tap()
-        app.option(mode.accessibilityIdentifier, in: CalendarSampleAccessibilityID.scrollModePicker)
-            .tap()
-        app.dismissSettings()
+        if viaSettings {
+            app.openSettings()
+            app.option(
+                architecture.accessibilityIdentifier,
+                in: CalendarSampleAccessibilityID.stateOwnerPicker
+            ).tap()
+            app.option(
+                selection.accessibilityIdentifier, in: CalendarSampleAccessibilityID.selectionPicker
+            ).tap()
+            app.option(
+                mode.accessibilityIdentifier, in: CalendarSampleAccessibilityID.scrollModePicker
+            ).tap()
+            app.dismissSettings()
+        }
         return app
     }
 

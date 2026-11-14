@@ -37,6 +37,7 @@
       "children": [
         { "path": "CalendarSampleAccessibilityID.swift", "target-membership": [ "SwiftUICalendarSample/compile-sources", "SwiftUICalendarSampleUITests/compile-sources" ] },
         { "path": "SampleArchitecture.swift", "target-membership": [ "SwiftUICalendarSample/compile-sources", "SwiftUICalendarSampleUITests/compile-sources" ] },
+        { "path": "SampleLaunchFixture.swift", "target-membership": [ "SwiftUICalendarSample/compile-sources", "SwiftUICalendarSampleUITests/compile-sources" ] },
         { "path": "SampleDayViewMode.swift", "target-membership": [ "SwiftUICalendarSample/compile-sources", "SwiftUICalendarSampleUITests/compile-sources" ] },
         { "path": "SampleSelectionMode.swift", "target-membership": [ "SwiftUICalendarSample/compile-sources", "SwiftUICalendarSampleUITests/compile-sources" ] },
       ],

@@ -246,62 +246,12 @@ struct CalendarBodyHorizontalView: View {
             .onPreferenceChange(HorizontalMonthHeightPreferenceKey.self) { heights in
                 updateMeasuredHeight(heights.values.max() ?? 0)
             }
-            // Let vertical gestures reach the enclosing row scroller. A swipe is recorded in the
-            // paging guard so it cannot also select the day it started on.
+            // Let vertical gestures reach the enclosing row scroller (see `HorizontalPagingGesture`).
+            // A swipe is recorded in the paging guard so it cannot also select the day it started on.
             .environment(\.calendarPagingGuard, pagingGuard)
-            .simultaneousGesture(
-                DragGesture()
-                    .onChanged { value in
-                        guard !isNavigating else { return }
-                        guard abs(value.translation.width) > abs(value.translation.height) else {
-                            // A drag that began horizontally and turned vertical belongs to the
-                            // enclosing scroller; release the page it was dragging.
-                            if dragOffset != 0 {
-                                dragOffset = 0
-                            }
-                            return
-                        }
-
-                        pagingGuard.recordSwipe()
-                        dragOffset = Self.nextDragOffset(
-                            currentDragOffset: dragOffset,
-                            translationWidth: value.translation.width,
-                            limit: pageWidth,
-                            isNavigating: isNavigating
-                        )
-                    }
-                    .onEnded { value in
-                        pagingGuard.endSwipe()
-                        guard !isNavigating else { return }
-                        guard abs(value.translation.width) > abs(value.translation.height) else {
-                            // A diagonal drag may start horizontally and finish vertically.
-                            // Clear any partial page offset when yielding to vertical scrolling.
-                            dragOffset = 0
-                            return
-                        }
-
-                        let monthDelta = Self.resolvedMonthDelta(
-                            translationWidth: value.translation.width,
-                            predictedEndTranslationWidth: value.predictedEndTranslation.width,
-                            layoutDirectionMultiplier: layoutDirectionMultiplier,
-                            layoutWidth: pageWidth,
-                            pager: metrics.pager
-                        )
-
-                        switch Self.pagerAction(for: monthDelta) {
-                        case .next:
-                            goToNext(width: pageWidth)
-                        case .previous:
-                            goToPrevious(width: pageWidth)
-                        case .snapBack:
-                            withAnimation(
-                                reduceMotion ? nil : metrics.pager.snapBackSpring.animation
-                            ) {
-                                dragOffset = 0
-                            }
-                        }
-                    },
-                including: allowsPaging ? .all : .subviews
+            .modifier(
+                HorizontalPagingGesture(
+                    isEnabled: allowsPaging, onChanged: dragChanged, onEnded: dragEnded)
             )
             .onGeometryChange(for: CGFloat.self) { geometry in
                 geometry.size.width
@@ -335,6 +285,57 @@ struct CalendarBodyHorizontalView: View {
             }
         }
         #endif
+    }
+
+    private func dragChanged(_ translation: CGSize) {
+        guard !isNavigating else { return }
+        guard abs(translation.width) > abs(translation.height) else {
+            // A drag that began horizontally and turned vertical belongs to the
+            // enclosing scroller; release the page it was dragging.
+            if dragOffset != 0 {
+                dragOffset = 0
+            }
+            return
+        }
+
+        pagingGuard.recordSwipe()
+        dragOffset = Self.nextDragOffset(
+            currentDragOffset: dragOffset,
+            translationWidth: translation.width,
+            limit: pageWidth,
+            isNavigating: isNavigating
+        )
+    }
+
+    private func dragEnded(_ translation: CGSize, predictedEndTranslation: CGSize) {
+        pagingGuard.endSwipe()
+        guard !isNavigating else { return }
+        guard abs(translation.width) > abs(translation.height) else {
+            // A diagonal drag may start horizontally and finish vertically.
+            // Clear any partial page offset when yielding to vertical scrolling.
+            dragOffset = 0
+            return
+        }
+
+        let monthDelta = Self.resolvedMonthDelta(
+            translationWidth: translation.width,
+            predictedEndTranslationWidth: predictedEndTranslation.width,
+            layoutDirectionMultiplier: layoutDirectionMultiplier,
+            layoutWidth: pageWidth,
+            pager: metrics.pager
+        )
+        logger.debug("Horizontal swipe ended with month delta \(monthDelta ?? 0, privacy: .public)")
+
+        switch Self.pagerAction(for: monthDelta) {
+        case .next:
+            goToNext(width: pageWidth)
+        case .previous:
+            goToPrevious(width: pageWidth)
+        case .snapBack:
+            withAnimation(reduceMotion ? nil : metrics.pager.snapBackSpring.animation) {
+                dragOffset = 0
+            }
+        }
     }
 
     private func heightReporter(for month: MonthIdentifier) -> some View {

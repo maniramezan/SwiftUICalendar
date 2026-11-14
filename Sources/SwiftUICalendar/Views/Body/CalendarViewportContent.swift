@@ -70,6 +70,21 @@ struct CalendarViewportContent<Content: View>: View {
             columnSpacing: layout.columnSpacing, overflowsHorizontally: layout.overflows)
     }
 
+    /// The axis stays `.horizontal` on iOS even while the grid fits, where `.basedOnSize` keeps it
+    /// still. With `[]`, a calendar that first appeared under a navigation bar, with no host scroll
+    /// view around it, had this scroll view adopted by the bar, which added its top inset behind
+    /// SwiftUI's back: the grid drew ~146pt below its laid-out frames, so a finger on a visible day
+    /// hit another one. `CalendarSurface` avoids `[]` for the same kind of drift. A `.minimumSize`
+    /// host that squeezes the grid below its minimum width can now scroll to the clipped columns
+    /// instead of losing them. macOS has no such bar and keeps scrolling only while it overflows.
+    private var scrollAxes: Axis.Set {
+        #if os(iOS)
+        .horizontal
+        #else
+        configuration.layout.overflow == .automatic && layout.overflows ? .horizontal : []
+        #endif
+    }
+
     var body: some View {
         // The safe area is left to SwiftUI: the scroll view sits inside it — a notch or a host's
         // `.safeAreaPadding` alike — so its measured width is already the usable width. Two shapes
@@ -80,10 +95,7 @@ struct CalendarViewportContent<Content: View>: View {
         // Persian or Hebrew in landscape on a notched iPhone hung the app.
         Group {
             ScrollViewReader { proxy in
-                ScrollView(
-                    configuration.layout.overflow == .automatic && layout.overflows
-                        ? .horizontal : []
-                ) {
+                ScrollView(scrollAxes) {
                     if width > 0 && height > 0 {
                         // Paging is handed back to the viewport only while the grid genuinely overflows, so
                         // a horizontal swipe scrolls to the clipped columns instead of flipping the month.
