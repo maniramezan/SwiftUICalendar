@@ -17,6 +17,18 @@ struct ThemeTests {
         #expect(second.day.emptyDayBorderColorWidth == 0)
     }
 
+    @Test("Unavailable days and selected years have independent configurable colors")
+    func semanticColors() {
+        let theme = Theme()
+        #expect(theme.day.unavailableForegroundColor == .gray)
+        #expect(theme.selectedYearBackgroundColor == Color.accentColor.opacity(0.2))
+        theme.day.unavailableForegroundColor = .orange
+        theme.selectedYearBackgroundColor = .mint
+        #expect(theme.day.unavailableForegroundColor == .orange)
+        #expect(theme.selectedYearBackgroundColor == .mint)
+        #expect(Theme.default.day.unavailableForegroundColor == .gray)
+    }
+
     @Test("useSquareDualCalendarDayView applies optional secondary label mode")
     func useSquareDualCalendarDayViewAppliesSecondaryLabelMode() {
         let theme = Theme()

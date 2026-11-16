@@ -38,8 +38,7 @@ struct CalendarViewport<Content: View>: View {
                             preferredSpacing: configuration.layout.preferredColumnSpacing
                                 ?? metrics.itemSpacing,
                             minimumSpacing: configuration.layout.minimumColumnSpacing),
-                        height: metrics.minRowHeight + metrics.weekdayHeaderMinHeight
-                            + 2 * metrics.headerRowHeight),
+                        height: metrics.minimumCompanionPanelHeight),
                     allowsCompanion: nextMonth != nil, layoutDirection: layoutDirection)
                 CalendarFoldPlacement(size: geometry.size, fold: fold) {
                     CalendarViewportContent(

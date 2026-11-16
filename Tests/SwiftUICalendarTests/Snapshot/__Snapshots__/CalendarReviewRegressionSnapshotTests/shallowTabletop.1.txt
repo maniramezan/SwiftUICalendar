@@ -1,0 +1,2 @@
+leftToRight: single primary=(0.0, 220.0, 900.0, 580.0) secondary=nil
+rightToLeft: single primary=(0.0, 220.0, 900.0, 580.0) secondary=nil

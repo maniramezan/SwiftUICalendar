@@ -9,7 +9,7 @@ import AppKit
 #endif
 
 @MainActor
-@Suite("Range band geometry")
+@Suite("Range band geometry", .serialized)
 struct CalendarRangeBandTests {
     @Test("Adjacent interior cells meet halfway across the gutter")
     func joinsAcrossGutter() {
@@ -43,6 +43,44 @@ struct CalendarRangeBandTests {
     }
 
     #if os(macOS)
+    @Test("Disabled selected days do not draw range ribbons", arguments: [true, false])
+    func disabledBand(isEnabled: Bool) throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US")
+        let start = try #require(calendar.date(from: DateComponents(year: 2025, month: 6, day: 1)))
+        let end = try #require(calendar.date(byAdding: .day, value: 4, to: start))
+        let allowedStart = try #require(calendar.date(byAdding: .day, value: 9, to: start))
+        let current = try #require(calendar.date(byAdding: .day, value: 14, to: start))
+        let allowedEnd = try #require(calendar.date(byAdding: .day, value: 29, to: start))
+        let state = try CalendarState(
+            calendar: calendar, currentDate: current, selection: .range(start, end),
+            dateRange: (isEnabled ? start : allowedStart)...allowedEnd)
+        let theme = Theme()
+        theme.day.selectedBackgroundColor = .clear
+        theme.day.rangeBackgroundColor = .red
+        let hosted = hostView(
+            CalendarBodyView(hideOverflowDays: true)
+                .environment(CalendarViewModel(state: state))
+                .environment(theme)
+                .environment(Typography.default), size: CGSize(width: 390, height: 450))
+        defer { hosted.window.contentView = nil }
+        #expect(waitForStableRender(hosted.hosting))
+        let data = try #require(renderPNGData(hosted.hosting))
+        let bitmap = try #require(NSBitmapImageRep(data: data))
+        var containsRibbon = false
+        for y in stride(from: 0, to: bitmap.pixelsHigh, by: 4) {
+            for x in stride(from: 0, to: bitmap.pixelsWide, by: 4) {
+                if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                    color.redComponent > max(color.greenComponent, color.blueComponent) + 0.3,
+                    color.alphaComponent > 0.5
+                {
+                    containsRibbon = true
+                }
+            }
+        }
+        #expect(containsRibbon == isEnabled)
+    }
+
     @Test(
         "Rendered start band extends toward the next date in each writing direction",
         arguments: [LayoutDirection.leftToRight, .rightToLeft])

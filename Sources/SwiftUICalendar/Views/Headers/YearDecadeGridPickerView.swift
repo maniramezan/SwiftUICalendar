@@ -6,6 +6,7 @@ import SwiftUICalendarAccessibility
 /// Each page shows nine consecutive years. Use the chevrons in the popover's navigation row to
 /// page nine years at a time; paging is clamped to the supplied `minYear`/`maxYear` bounds.
 struct YearDecadeGridPickerView: View {
+    @Environment(\.locale) private var locale
     @Environment(\.calendarMetrics) private var metrics
     let minYear: Int
     let maxYear: Int
@@ -54,8 +55,10 @@ struct YearDecadeGridPickerView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Calendar.Navigation.Year.Selected".localized(with: currentValue.title))
-        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+        .accessibilityLabel(
+            "Calendar.Navigation.Year.Selected".localized(locale: locale, with: currentValue.title)
+        )
+        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized(locale: locale))
         .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
         .popover(isPresented: $isPresented) {
             YearDecadeGridPopoverContent(
@@ -73,6 +76,8 @@ struct YearDecadeGridPickerView: View {
 /// The popover body for `YearDecadeGridPickerView`: a paging header plus a 3x3 grid of years.
 /// Internal (not private) so hosting tests can render the grid without presenting a popover.
 struct YearDecadeGridPopoverContent: View {
+    @Environment(Theme.self) private var theme
+    @Environment(\.locale) private var locale
     @Environment(\.calendarMetrics) private var metrics
     let minYear: Int
     let maxYear: Int
@@ -93,7 +98,7 @@ struct YearDecadeGridPopoverContent: View {
                         .contentShape(Rectangle().inset(by: -metrics.hitTargetOutset))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Calendar.Navigation.PreviousYears".localized)
+                .accessibilityLabel("Calendar.Navigation.PreviousYears".localized(locale: locale))
                 .accessibilityIdentifier(CalendarAccessibilityID.yearPagePreviousButton)
                 .disabled(!YearDecadeGrid.canPageBackward(from: pageStart, minYear: minYear))
 
@@ -114,7 +119,7 @@ struct YearDecadeGridPopoverContent: View {
                         .contentShape(Rectangle().inset(by: -metrics.hitTargetOutset))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Calendar.Navigation.NextYears".localized)
+                .accessibilityLabel("Calendar.Navigation.NextYears".localized(locale: locale))
                 .accessibilityIdentifier(CalendarAccessibilityID.yearPageNextButton)
                 .disabled(!YearDecadeGrid.canPageForward(from: pageStart, maxYear: maxYear))
             }
@@ -130,6 +135,7 @@ struct YearDecadeGridPopoverContent: View {
                         minYear: minYear,
                         maxYear: maxYear,
                         isSelected: year == currentValue.id,
+                        selectedBackgroundColor: theme.selectedYearBackgroundColor,
                         formatTitle: formatTitle,
                         onSelect: {
                             currentValue = YearItem(id: year, title: formatTitle(year))
@@ -161,6 +167,7 @@ private struct YearDecadeGridCell: View {
     let minYear: Int
     let maxYear: Int
     let isSelected: Bool
+    let selectedBackgroundColor: Color
     let formatTitle: (Int) -> String
     let onSelect: () -> Void
 
@@ -172,7 +179,7 @@ private struct YearDecadeGridCell: View {
         Button(action: onSelect) {
             Text(formatTitle(year))
                 .frame(maxWidth: .infinity, minHeight: metrics.yearOptionMinHeight)
-                .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+                .background(isSelected ? selectedBackgroundColor : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: metrics.cornerRadius))
                 // Reaches the touch floor by growing into the grid's row spacing, so adjacent
                 // options' tappable regions meet rather than overlap.

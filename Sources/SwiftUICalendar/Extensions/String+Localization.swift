@@ -44,7 +44,10 @@ extension String {
     /// Returns a formatted localized string using the current locale.
     /// Example: "greeting_format".localized(with: "John")
     func localized(with args: CVarArg...) -> String {
-        let resolved = String(localized: localizedResource)
-        return String(format: resolved, locale: Locale.current, arguments: args)
+        String(format: localized(locale: .current), locale: Locale.current, arguments: args)
+    }
+
+    func localized(locale: Locale, with args: CVarArg...) -> String {
+        String(format: localized(locale: locale), locale: locale, arguments: args)
     }
 }

@@ -6,6 +6,7 @@ import SwiftUICalendarAccessibility
 ///
 /// Inherits the calendar header font and keeps even a long year list in a dropdown.
 struct YearMenuPickerView: View {
+    @Environment(\.locale) private var locale
     @Environment(\.calendarMetrics) private var metrics
 
     let items: [YearItem]
@@ -28,9 +29,9 @@ struct YearMenuPickerView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
-            "Calendar.Navigation.Year.Selected".localized(with: currentValue.title)
+            "Calendar.Navigation.Year.Selected".localized(locale: locale, with: currentValue.title)
         )
-        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized)
+        .accessibilityHint("Calendar.Navigation.Year.ChangeHint".localized(locale: locale))
         .accessibilityIdentifier(CalendarAccessibilityID.yearButton)
     }
 }

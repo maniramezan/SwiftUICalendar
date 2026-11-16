@@ -1,0 +1,9 @@
+Calendar.Today: Heute
+Calendar.Done: Fertig
+Calendar.Navigation.Month.ChangeHint: Anderen Monat wählen
+Calendar.Navigation.Year.ChangeHint: Anderes Jahr wählen
+Calendar.Day.Today: Heute
+Calendar.Day.Selected: Ausgewählt
+Calendar.Day.Range.start: Beginn des Zeitraums
+Calendar.Day.Range.end: Ende des Zeitraums
+Calendar.Day.Range.interior: Im ausgewählten Zeitraum

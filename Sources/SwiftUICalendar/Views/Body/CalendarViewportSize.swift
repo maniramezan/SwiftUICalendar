@@ -59,8 +59,7 @@ struct CalendarIdealHeight: Sendable {
                     cellWidth: metrics.minCellSize,
                     preferredSpacing: layout.preferredColumnSpacing ?? metrics.itemSpacing,
                     minimumSpacing: layout.minimumColumnSpacing),
-                height: metrics.minRowHeight + metrics.weekdayHeaderMinHeight
-                    + 2 * metrics.headerRowHeight),
+                height: metrics.minimumCompanionPanelHeight),
             allowsCompanion: allowsCompanion, layoutDirection: .leftToRight)
         let panelWidth = max(fold.primary.width, fold.secondary?.width ?? 0)
         switch fold.mode {

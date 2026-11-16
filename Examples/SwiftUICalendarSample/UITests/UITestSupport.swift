@@ -183,14 +183,19 @@ extension XCUIApplication {
         let done = buttons[CalendarSampleAccessibilityID.done]
         if done.waitForExistence(timeout: 1) {
             done.tap()
-            return
+        } else {
+            // The regular-width inspector has no Done — the Settings toolbar button toggles it closed.
+            let settings = buttons[CalendarSampleAccessibilityID.settings]
+            XCTAssertTrue(
+                settings.waitForExistence(timeout: 5), "Settings button not found", file: file,
+                line: line)
+            settings.tap()
         }
 
-        // The regular-width inspector has no Done — the Settings toolbar button toggles it closed.
-        let settings = buttons[CalendarSampleAccessibilityID.settings]
+        let settingsContent =
+            descendants(matching: .any)[CalendarSampleAccessibilityID.stateOwnerPicker].firstMatch
         XCTAssertTrue(
-            settings.waitForExistence(timeout: 5), "Settings button not found", file: file,
-            line: line)
-        settings.tap()
+            settingsContent.waitForNonExistence(timeout: Self.settingsPresentationTimeout),
+            "Settings did not dismiss", file: file, line: line)
     }
 }

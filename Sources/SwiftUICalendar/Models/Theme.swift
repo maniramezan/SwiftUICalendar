@@ -20,6 +20,8 @@ import SwiftUI
 @Observable final public class Theme {
     /// Configuration for day view rendering.
     public var day = Day()
+    /// Fill for the selected year in the decade picker.
+    public var selectedYearBackgroundColor: Color = .accentColor.opacity(0.2)
     /// A fresh default theme configuration.
     ///
     /// This property returns a new theme each time so local mutations do not leak into other
@@ -116,6 +118,8 @@ extension Theme {
         public var focusBorderColor: Color = .accentColor
         /// Border width for the keyboard focus ring.
         public var focusBorderWidth: CGFloat = 3
+        /// Foreground color for disabled dates and dates outside the displayed month.
+        public var unavailableForegroundColor: Color = .gray
         /// Border color for days outside the currently displayed month.
         public var emptyDayBorderColor: Color = .clear
         /// Border width for days outside the currently displayed month.

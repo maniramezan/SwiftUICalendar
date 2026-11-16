@@ -1,4 +1,5 @@
 import SwiftUICalendarAccessibility
+import UIKit
 import XCTest
 
 /// At a large text size the calendar must keep all seven columns reachable and keep its
@@ -8,6 +9,13 @@ import XCTest
 final class DynamicTypeUITests: SampleUITestCase {
     private static let weekdayColumnCount = 7
     private static let dayCellTimeout: TimeInterval = 10
+    private static let rotationTimeout: TimeInterval = 10
+    private static let maximumHorizontalScrollAttempts = 8
+    private static let revealDragStart: CGFloat = 0.9
+    private static let revealDragEnd: CGFloat = 0.4
+    private static let dragPressDuration: TimeInterval = 0.05
+    private static let dragHoldDuration: TimeInterval = 0.2
+    private static let dragEdgeClearance: CGFloat = 8
     private static let frameTolerance: CGFloat = 0.5
     private static let sizeFlag = "-UIPreferredContentSizeCategoryName"
     private static let hostInsetFlag = "-calendar-host-inset"
@@ -48,11 +56,24 @@ final class DynamicTypeUITests: SampleUITestCase {
         XCTAssertTrue(month.waitForExistence(timeout: Self.dayCellTimeout))
         XCTAssertTrue(month.isHittable)
         XCTAssertTrue(done.waitForNonExistence(timeout: Self.dayCellTimeout))
+        XCTAssertTrue(app.navigationBars["Calendar"].exists)
     }
 
     @MainActor
     func testAccessibilityTextKeepsEdgeColumnsReachable() throws {
         try assertEdgeColumnsReachable(size: "UICTContentSizeCategoryAccessibilityXXXL")
+    }
+
+    @MainActor
+    func testLandscapeNormalTextKeepsEdgeColumnsReachable() throws {
+        try assertEdgeColumnsReachable(
+            size: "UICTContentSizeCategoryL", orientation: .landscapeLeft)
+    }
+
+    @MainActor
+    func testLandscapeAccessibilityTextKeepsEdgeColumnsReachable() throws {
+        try assertEdgeColumnsReachable(
+            size: "UICTContentSizeCategoryAccessibilityXXXL", orientation: .landscapeLeft)
     }
 
     @MainActor
@@ -108,11 +129,20 @@ final class DynamicTypeUITests: SampleUITestCase {
 
     // The host width bounds the calendar, not the window, so reachability is judged inside it.
     @MainActor
-    private func assertEdgeColumnsReachable(size: String, hostWidth: CGFloat? = nil) throws {
+    private func assertEdgeColumnsReachable(
+        size: String, hostWidth: CGFloat? = nil, orientation: UIDeviceOrientation = .portrait
+    ) throws {
         // CI run 38569309941 spent 80s and 45s relaunching between modes. Exercise the same
         // user session instead, restoring the leading column through real scrolling each time.
         let app = launch(size: size, hostWidth: hostWidth)
+        XCUIDevice.shared.orientation = orientation
+        if orientation.isLandscape {
+            waitForWindow(in: app, matching: orientation)
+        }
         let window = app.windows.firstMatch.frame
+        if orientation.isLandscape {
+            XCTAssertGreaterThan(window.width, window.height)
+        }
         let bounds =
             hostWidth.map { width in
                 window.insetBy(dx: max(0, (window.width - width) / 2), dy: 0)
@@ -123,35 +153,38 @@ final class DynamicTypeUITests: SampleUITestCase {
         for mode in CalendarScrollMode.allCases {
             try XCTContext.runActivity(named: "\(mode): both edge columns are reachable") { _ in
                 app.chooseScrollMode(mode)
-                let row = try visibleFullRow(in: app, bounds: bounds)
+                let row = try visibleFullRow(in: app, bounds: bounds, mode: mode)
                 let leading = try XCTUnwrap(row.first)
                 let trailing = try XCTUnwrap(row.last)
-                let rowY = leading.frame.midY
+                let rowY = dragY(forRowAt: leading.frame.midY, in: app)
                 // Switching modes may retain a valid horizontal overflow offset. Bring the leading
                 // date back into view without relaunching or changing the displayed month.
-                for _ in 0..<4 where leading.frame.minX < bounds.minX - Self.frameTolerance {
+                for _ in 0..<Self.maximumHorizontalScrollAttempts
+                where leading.frame.minX < bounds.minX - Self.frameTolerance {
                     dragHorizontally(in: app, bounds: bounds, rowY: rowY, from: 0.15, to: 0.85)
                 }
-                XCTAssertTrue(leading.isHittable)
                 XCTAssertGreaterThanOrEqual(leading.frame.minX, bounds.minX - Self.frameTolerance)
-                // Maximum text can require more than one viewport of horizontal travel. Use the
-                // visible row's coordinates even after the leading date moves offscreen.
-                for _ in 0..<4 where trailing.frame.maxX > bounds.maxX + Self.frameTolerance {
+                // Maximum text can require more than one viewport of horizontal travel. The drag
+                // stays on the row's line even after the trailing date moves offscreen.
+                for _ in 0..<Self.maximumHorizontalScrollAttempts
+                where trailing.frame.maxX > bounds.maxX + Self.frameTolerance {
                     dragHorizontally(in: app, bounds: bounds, rowY: rowY, from: 0.85, to: 0.15)
                 }
-                XCTAssertTrue(
-                    trailing.isHittable,
-                    "The trailing date must be reachable without changing months")
-                XCTAssertLessThanOrEqual(trailing.frame.maxX, bounds.maxX + Self.frameTolerance)
+                XCTAssertLessThanOrEqual(
+                    trailing.frame.maxX, bounds.maxX + Self.frameTolerance,
+                    "\(mode): the trailing date must fit within the horizontal viewport")
             }
         }
     }
 
     @MainActor
-    private func visibleFullRow(in app: XCUIApplication, bounds: CGRect) throws -> [XCUIElement] {
+    private func visibleFullRow(
+        in app: XCUIApplication, bounds: CGRect, mode: CalendarScrollMode
+    ) throws -> [XCUIElement] {
         let days = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", CalendarAccessibilityID.dayPrefix))
         XCTAssertTrue(days.firstMatch.waitForExistence(timeout: Self.dayCellTimeout))
+        var lastRowsSummary = "no day buttons"
         for attempt in 0..<4 {
             // Find the row in one snapshot rather than querying every day cell's frame; only the
             // chosen row's cells are resolved as live elements.
@@ -162,22 +195,65 @@ final class DynamicTypeUITests: SampleUITestCase {
                     && $0.frame.width > 0 && $0.frame.height > 0
             }
             let rows = Dictionary(grouping: populated) { Int($0.frame.minY.rounded()) }
+            lastRowsSummary = rows.keys.sorted().map {
+                "\($0):\(rows[$0, default: []].count)"
+            }.joined(separator: ", ")
             for y in rows.keys.sorted() {
                 let row = rows[y, default: []].sorted { $0.frame.minX < $1.frame.minX }
                 guard row.count == Self.weekdayColumnCount,
                     let visible = row.first(where: { bounds.contains($0.frame) })
                 else { continue }
-                // A retained horizontal offset can hide the leading cell. Find a visible anchor
-                // first; the test then scrolls the same row back to its leading edge.
-                guard app.buttons[visible.identifier].isHittable else { continue }
+                // At accessibility sizes a visible row can extend under the navigation bar.
+                // Its frame still measures horizontal column reachability reliably.
                 return row.map { app.buttons[$0.identifier] }
             }
             // Full Dynamic Type may put the first full week below the viewport. Reveal it;
             // never confuse an offscreen cached row with a clipped or unreachable date.
-            if attempt < 3 { app.swipeUp(velocity: .slow) }
+            if attempt < 3 { revealLowerRows(in: app) }
         }
-        XCTFail("No complete week could be revealed at maximum text size")
+        XCTFail(
+            "\(mode.rawValue): no complete week could be revealed at maximum text size "
+                + "(rows: \(lastRowsSummary))")
         return []
+    }
+
+    @MainActor
+    private func waitForWindow(in app: XCUIApplication, matching orientation: UIDeviceOrientation) {
+        let wantsLandscape = orientation.isLandscape
+        let settled = NSPredicate { _, _ in
+            let frame = app.windows.firstMatch.frame
+            return (frame.width > frame.height) == wantsLandscape
+        }
+        let expectation = XCTNSPredicateExpectation(predicate: settled, object: nil)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [expectation], timeout: Self.rotationTimeout), .completed,
+            "the window never took the geometry of orientation \(orientation.rawValue)")
+    }
+
+    /// Scrolls the calendar up by about half a window. `swipeUp()` starts at the window's centre,
+    /// which in landscape at large text is the month menu: the drag became a press-and-drag on the
+    /// menu and nothing scrolled. Starting low in the window keeps the drag on the day grid, and
+    /// the hold stops any fling from carrying the first full week past the top.
+    @MainActor
+    private func revealLowerRows(in app: XCUIApplication) {
+        let window = app.windows.firstMatch
+        let start = window.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: Self.revealDragStart))
+        let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: Self.revealDragEnd))
+        start.press(
+            forDuration: Self.dragPressDuration, thenDragTo: end, withVelocity: .slow,
+            thenHoldForDuration: Self.dragHoldDuration)
+    }
+
+    /// The row's own line, kept below the navigation bar and inside the window, so a horizontal
+    /// drag moves the grid rather than pressing a header control or the bar.
+    @MainActor
+    private func dragY(forRowAt rowMidY: CGFloat, in app: XCUIApplication) -> CGFloat {
+        let window = app.windows.firstMatch.frame
+        let barBottom = app.navigationBars.firstMatch.frame.maxY
+        return min(
+            max(rowMidY, barBottom + Self.dragEdgeClearance),
+            window.maxY - Self.dragEdgeClearance)
     }
 
     @MainActor
@@ -185,14 +261,14 @@ final class DynamicTypeUITests: SampleUITestCase {
         in app: XCUIApplication, bounds: CGRect, rowY: CGFloat, from: CGFloat, to: CGFloat
     ) {
         let window = app.windows.firstMatch.frame
-        let visibleY = max(window.minY + 1, min(window.maxY - 1, rowY))
+        let visibleY = rowY
         let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
         let start = origin.withOffset(
             CGVector(
                 dx: bounds.minX - window.minX + bounds.width * from, dy: visibleY - window.minY))
         let end = origin.withOffset(
             CGVector(dx: bounds.minX - window.minX + bounds.width * to, dy: visibleY - window.minY))
-        start.press(forDuration: 0.05, thenDragTo: end)
+        start.press(forDuration: Self.dragPressDuration, thenDragTo: end)
     }
 
     @MainActor

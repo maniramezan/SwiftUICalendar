@@ -54,9 +54,9 @@ jobs:
 
       - name: Validate CI scripts
         run: |
-          ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
           ruby ./scripts/tests/ui-test-workflow-test.rb
+          ruby ./scripts/tests/check-coverage-test.rb
           python3 ./scripts/tests/configure-ui-test-products-test.py
 
       - name: Build package
@@ -67,7 +67,7 @@ jobs:
         timeout-minutes: 20
         env:
           MINIMUM_COVERAGE: 80
-        run: ruby ./scripts/test-watchdog.rb --timeout 900 -- bash ./scripts/check-coverage.sh
+        run: bash ./scripts/check-coverage.sh
 
       - name: Upload package test diagnostics
         if: always()
@@ -104,12 +104,21 @@ jobs:
       - name: Select Swift toolchain
         run: bash ./scripts/select-swift-toolchain.sh
 
+      # Package checkouts depend only on the resolved versions, so they are shared across runners
+      # and toolchains; a cold runner otherwise clones every dependency again.
+      - name: Cache Xcode package checkouts
+        uses: actions/cache@v6.1.0
+        with:
+          path: SwiftUICalendar/.build/xcode-packages
+          key: ${{ runner.os }}-xcode-packages-${{ hashFiles('SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
       - name: Build sample UI tests once
         run: >-
           xcodebuild build-for-testing
           -project Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj
           -scheme SwiftUICalendarSample -destination "generic/platform=iOS Simulator"
-          -skipMacroValidation -testProductsPath .build/SampleUITests.xctestproducts
+          -skipMacroValidation -clonedSourcePackagesDirPath .build/xcode-packages
+          -testProductsPath .build/SampleUITests.xctestproducts
 
       - name: Configure functional UI test diagnostics
         run: python3 ./scripts/configure-ui-test-products.py .build/SampleUITests.xctestproducts
@@ -165,6 +174,21 @@ jobs:
             plan: SwiftUICalendarSample
             configuration: ""
             suites: SelectionUITests
+          - name: Dynamic Type SE
+            device: iPhone SE (3rd generation)
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: DynamicTypeUITests
+          - name: Dynamic Type Pro Max
+            device: iPhone 17 Pro Max
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: DynamicTypeUITests
+          - name: Dynamic Type iPad
+            device: iPad Pro 13-inch (M5)
+            plan: SwiftUICalendarSample
+            configuration: ""
+            suites: DynamicTypeUITests
           - name: English
             plan: SwiftUICalendarSampleLocales
             configuration: English
@@ -184,7 +208,7 @@ jobs:
       run:
         working-directory: SwiftUICalendar
     env:
-      DEVICE_NAME: iPhone 17
+      DEVICE_NAME: ${{ matrix.device || 'iPhone 17' }}
       UI_TEST_PLAN: ${{ matrix.plan }}
       UI_TEST_CONFIGURATION: ${{ matrix.configuration }}
       UI_TEST_SUITES: ${{ matrix.suites }}
@@ -222,28 +246,26 @@ jobs:
         timeout-minutes: 6
         run: |
           bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
-          xcrun simctl list devices booted
           vm_stat
 
       - name: Run UI test plan
         timeout-minutes: 20
         # The script runs one worker on the settled simulator; retain the existing individual test limits.
         # Full simulator diagnostics collection hangs here; keep XCTest result bundles instead.
-        # The process watchdog exits before GitHub cancels the step, leaving time to upload evidence.
-        # A test that fails is rerun once: the loaded simulator sometimes cannot terminate the app at
-        # teardown, which fails whichever test happens to be running. A real failure fails both runs.
+        # The step timeout stops a hung run with time left in the job to upload the result bundle.
+        # The script reruns failed tests once in a second xcodebuild session: the loaded simulator
+        # sometimes cannot terminate the app at teardown or never reports a launch back, which fails
+        # or times out whichever test happens to be running. xcodebuild's -retry-tests-on-failure is
+        # not used because it never reruns a test that timed out. A real failure fails both sessions.
         run: |
           flags=(
-            -retry-tests-on-failure
-            -test-iterations 2
             -test-timeouts-enabled YES
             -default-test-execution-time-allowance 180
             -maximum-test-execution-time-allowance 300
             -collect-test-diagnostics never
           )
-          ruby ./scripts/test-watchdog.rb --timeout 900 --diagnostics .build/results/watchdog -- \
-            bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" "$UI_TEST_PLAN" \
-              .build/results/tests.xcresult "${flags[@]}"
+          bash ./scripts/ui-test-simulator.sh test "$SIMULATOR_UDID" "$UI_TEST_PLAN" \
+            .build/results/tests.xcresult "${flags[@]}"
 
       - name: Delete UI test simulator
         if: always() && env.SIMULATOR_UDID != ''
@@ -257,10 +279,82 @@ jobs:
           path: SwiftUICalendar/.build/results
           if-no-files-found: ignore
 
+  ios-package-tests:
+    name: iPad package tests
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: xcode-27
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: SwiftUICalendar
+    steps:
+      - name: Checkout SwiftUICalendar
+        uses: actions/checkout@v7.0.1
+        with:
+          path: SwiftUICalendar
+
+      - name: Select Swift toolchain
+        run: bash ./scripts/select-swift-toolchain.sh
+
+      # Package checkouts depend only on the resolved versions, so they are shared across runners
+      # and toolchains; a cold runner otherwise clones every dependency again.
+      - name: Cache Xcode package checkouts
+        uses: actions/cache@v6.1.0
+        with:
+          path: SwiftUICalendar/.build/xcode-packages
+          key: ${{ runner.os }}-xcode-packages-${{ hashFiles('SwiftUICalendar/Package.resolved', 'SwiftUICalendar/Examples/SwiftUICalendarSample/SwiftUICalendarSample.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
+      # Its own step, so a stalled package fetch fails here by name instead of silently using up the
+      # test step's time (it stopped twice after "Resolve Package Graph" on cold runners).
+      - name: Resolve Swift packages
+        timeout-minutes: 8
+        run: >-
+          xcodebuild -resolvePackageDependencies -scheme SwiftUICalendar-Package
+          -clonedSourcePackagesDirPath .build/xcode-packages
+
+      # Build before the simulator boots, so the two do not compete for the runner's CPU.
+      - name: Build iOS package tests
+        timeout-minutes: 15
+        run: >-
+          xcodebuild build-for-testing -scheme SwiftUICalendar-Package
+          -destination "generic/platform=iOS Simulator" -skipMacroValidation
+          -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution
+          -derivedDataPath .build/iPadPackage -testProductsPath .build/iPadPackage.xctestproducts
+
+      - name: Create iPad simulator
+        run: |
+          udid="$(bash ./scripts/ui-test-simulator.sh create 'iPad Pro 13-inch (M5)')"
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+
+      - name: Boot and settle iPad simulator
+        timeout-minutes: 6
+        run: bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
+
+      - name: Run iOS package tests
+        timeout-minutes: 15
+        run: >-
+          xcodebuild test-without-building -testProductsPath .build/iPadPackage.xctestproducts
+          -destination "id=$SIMULATOR_UDID" -parallel-testing-enabled NO
+          -resultBundlePath .build/results/ipad-package.xcresult
+
+      - name: Delete iPad simulator
+        if: always() && env.SIMULATOR_UDID != ''
+        run: bash ./scripts/ui-test-simulator.sh delete "$SIMULATOR_UDID"
+
+      - name: Upload iPad package results
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ipad-package-results
+          path: SwiftUICalendar/.build/results
+          if-no-files-found: ignore
+
   # Keep the required check's name stable and fail it if any build or matrix job fails or skips.
   ui-tests:
     if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
-    needs: [ui-test-build, ui-test-plans]
+    needs: [ui-test-build, ui-test-plans, ios-package-tests]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -268,7 +362,8 @@ jobs:
         env:
           BUILD_RESULT: ${{ needs.ui-test-build.result }}
           PLANS_RESULT: ${{ needs.ui-test-plans.result }}
-        run: test "$BUILD_RESULT" = success && test "$PLANS_RESULT" = success
+          PACKAGE_RESULT: ${{ needs.ios-package-tests.result }}
+        run: test "$BUILD_RESULT" = success && test "$PLANS_RESULT" = success && test "$PACKAGE_RESULT" = success
 
   main-validation:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -308,9 +403,9 @@ jobs:
 
       - name: Validate CI scripts
         run: |
-          ruby ./scripts/tests/test-watchdog-test.rb
           ruby ./scripts/tests/ui-test-simulator-test.rb
           ruby ./scripts/tests/ui-test-workflow-test.rb
+          ruby ./scripts/tests/check-coverage-test.rb
           python3 ./scripts/tests/configure-ui-test-products-test.py
 
       - name: Build package
@@ -321,7 +416,7 @@ jobs:
         timeout-minutes: 20
         env:
           MINIMUM_COVERAGE: 80
-        run: ruby ./scripts/test-watchdog.rb --timeout 900 -- bash ./scripts/check-coverage.sh
+        run: bash ./scripts/check-coverage.sh
 
       - name: Upload package test diagnostics
         if: always()

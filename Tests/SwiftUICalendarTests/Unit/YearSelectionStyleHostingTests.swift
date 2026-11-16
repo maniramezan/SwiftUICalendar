@@ -167,7 +167,7 @@ struct YearSelectionStyleHostingTests {
             isPresented: isPresented
         )
 
-        let hosted = hostView(view, size: CGSize(width: 220, height: 260))
+        let hosted = hostView(view.environment(Theme()), size: CGSize(width: 220, height: 260))
         hosted.window.contentView = nil
 
         #expect(hosted.hosting.fittingSize.width >= 0)

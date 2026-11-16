@@ -48,6 +48,25 @@ struct CalendarFoldLayoutTests {
         #expect(layout.secondary == CGRect(x: 0, y: 420, width: 900, height: 380))
     }
 
+    @Test("Companion panels require three readable rows, not one")
+    func shallowTabletop() {
+        let metrics = CalendarMetrics.default
+        #expect(metrics.minimumCompanionPanelHeight == 260)
+        let shallow = CalendarFoldLayout.resolve(
+            size: CGSize(width: 900, height: 800),
+            blocked: [CGRect(x: 0, y: 180, width: 900, height: 40)],
+            minimumPaneSize: CGSize(width: 332, height: metrics.minimumCompanionPanelHeight),
+            allowsCompanion: true, layoutDirection: .leftToRight)
+        #expect(shallow.mode == .single)
+        #expect(shallow.primary == CGRect(x: 0, y: 220, width: 900, height: 580))
+        let roomy = CalendarFoldLayout.resolve(
+            size: CGSize(width: 900, height: 800),
+            blocked: [CGRect(x: 0, y: 380, width: 900, height: 40)],
+            minimumPaneSize: CGSize(width: 332, height: metrics.minimumCompanionPanelHeight),
+            allowsCompanion: true, layoutDirection: .leftToRight)
+        #expect(roomy.mode == .tabletop)
+    }
+
     @Test("A missing adjacent month keeps a single complete calendar")
     func noAdjacentMonth() {
         let layout = resolve([CGRect(x: 430, y: 0, width: 40, height: 800)], companion: false)

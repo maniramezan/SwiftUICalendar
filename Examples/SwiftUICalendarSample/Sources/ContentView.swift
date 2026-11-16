@@ -6,17 +6,37 @@ import SwiftUICalendarTCA
 
 struct ContentView: View {
     @State private var calendarIdentifier: Calendar.Identifier = .gregorian
-    @State private var selectionMode: SampleSelectionMode = .single
-    @State private var scrollMode: CalendarConfiguration.ScrollMode = .none
+    @State private var selectionMode: SampleSelectionMode
+    @State private var scrollMode: CalendarConfiguration.ScrollMode
     @State private var dayViewMode: SampleDayViewMode = .circle
     @State private var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode = .sixRows
-    @State private var architecture: SampleArchitecture = .mvvm
-    @State private var viewModel = CalendarViewModel(
-        calendarIdentifier: .gregorian, selection: .single(nil))
+    @State private var architecture: SampleArchitecture
+    @State private var viewModel: CalendarViewModel
     @State private var tcaStore: StoreOf<CalendarFeature>?
     @State private var theme = Theme()
     @State private var typography = Typography.default
     @State private var isSettingsPresented = false
+
+    init() {
+        let architecture: SampleArchitecture =
+            SampleLaunchFixture.value(forKey: SampleLaunchFixture.architectureKey) ?? .mvvm
+        let selectionMode: SampleSelectionMode =
+            SampleLaunchFixture.value(forKey: SampleLaunchFixture.selectionModeKey) ?? .single
+        let scrollMode: CalendarConfiguration.ScrollMode =
+            SampleLaunchFixture.value(forKey: SampleLaunchFixture.scrollModeKey) ?? .none
+        let viewModel = CalendarViewModel(
+            calendarIdentifier: .gregorian, selection: selectionMode.selectionValue)
+        _architecture = State(initialValue: architecture)
+        _selectionMode = State(initialValue: selectionMode)
+        _scrollMode = State(initialValue: scrollMode)
+        _viewModel = State(initialValue: viewModel)
+        _tcaStore = State(
+            initialValue: architecture == .tca
+                ? StoreOf<CalendarFeature>(
+                    initialState: CalendarFeature.State(calendar: viewModel.state),
+                    reducer: { CalendarFeature() }
+                ) : nil)
+    }
 
     var body: some View {
         NavigationStack {
@@ -34,7 +54,6 @@ struct ContentView: View {
             .padding(
                 .horizontal, max(0, UserDefaults.standard.double(forKey: "calendar-host-inset"))
             )
-            .navigationTitle("Calendar")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -59,7 +78,7 @@ struct ContentView: View {
                     isPresented: $isSettingsPresented,
                     // Keep the presentation kind stable when a phone rotates to regular width.
                     usesSheet: usesSettingsSheet
-                ) { showsDone in
+                ) { isSheet in
                     ConfigurationView(
                         architecture: $architecture,
                         calendarIdentifier: $calendarIdentifier,
@@ -68,10 +87,11 @@ struct ContentView: View {
                         horizontalHeightMode: $horizontalHeightMode,
                         dayViewMode: $dayViewMode,
                         isPresented: $isSettingsPresented,
-                        showsDone: showsDone
+                        isSheet: isSheet
                     )
                 }
             )
+            .navigationTitle("Calendar")
         }
         #if os(macOS)
         .focusedSceneValue(\.calendarSettingsPresentation, $isSettingsPresented)
@@ -247,7 +267,7 @@ private struct SampleCalendarPath: View {
 private struct SettingsPresentation<Settings: View>: ViewModifier {
     @Binding var isPresented: Bool
     let usesSheet: Bool
-    @ViewBuilder let settings: (_ showsDone: Bool) -> Settings
+    @ViewBuilder let settings: (_ isSheet: Bool) -> Settings
 
     func body(content: Content) -> some View {
         if usesSheet {
@@ -259,7 +279,7 @@ private struct SettingsPresentation<Settings: View>: ViewModifier {
         } else {
             content.inspector(isPresented: $isPresented) {
                 // An iPad inspector can adapt to a sheet in narrow multitasking widths.
-                settings(true)
+                settings(false)
                     .inspectorColumnWidth(min: 320, ideal: 360, max: 420)
             }
         }
@@ -274,102 +294,117 @@ private struct ConfigurationView: View {
     @Binding var horizontalHeightMode: CalendarConfiguration.HorizontalHeightMode
     @Binding var dayViewMode: SampleDayViewMode
     @Binding var isPresented: Bool
-    /// Whether the settings arrive as a sheet, which needs its own way out.
-    let showsDone: Bool
+    /// Whether the settings arrive as a sheet rather than in the regular-width inspector.
+    let isSheet: Bool
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Architecture") {
-                    Picker("State Owner", selection: $architecture) {
-                        ForEach(SampleArchitecture.allCases) { path in
-                            Text(path.title).tag(path)
-                                .accessibilityIdentifier(path.accessibilityIdentifier)
-                        }
+        Form {
+            Section("Architecture") {
+                Picker("State Owner", selection: $architecture) {
+                    ForEach(SampleArchitecture.allCases) { path in
+                        Text(path.title).tag(path)
+                            .accessibilityIdentifier(path.accessibilityIdentifier)
                     }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier(CalendarSampleAccessibilityID.stateOwnerPicker)
                 }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier(CalendarSampleAccessibilityID.stateOwnerPicker)
+            }
 
-                Section("Calendar") {
-                    Picker("Calendar", selection: $calendarIdentifier) {
-                        Text("Gregorian").tag(Calendar.Identifier.gregorian)
-                            .accessibilityIdentifier(
-                                CalendarSampleAccessibilityID.calendarOption(.gregorian))
-                        Text("Persian").tag(Calendar.Identifier.persian)
-                            .accessibilityIdentifier(
-                                CalendarSampleAccessibilityID.calendarOption(.persian))
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier(CalendarSampleAccessibilityID.calendarPicker)
-
-                    Picker("Selection", selection: $selectionMode) {
-                        ForEach(SampleSelectionMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
-                                .accessibilityIdentifier(mode.accessibilityIdentifier)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier(CalendarSampleAccessibilityID.selectionPicker)
-                }
-
-                Section("Layout") {
-                    Picker("Scroll", selection: $scrollMode) {
-                        Text("None").tag(CalendarConfiguration.ScrollMode.none)
-                            .accessibilityIdentifier(
-                                CalendarScrollMode.none.accessibilityIdentifier)
-                        Text("Vertical").tag(CalendarConfiguration.ScrollMode.vertical)
-                            .accessibilityIdentifier(
-                                CalendarScrollMode.vertical.accessibilityIdentifier)
-                        Text("Horizontal").tag(CalendarConfiguration.ScrollMode.horizontal)
-                            .accessibilityIdentifier(
-                                CalendarScrollMode.horizontal.accessibilityIdentifier)
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier(CalendarSampleAccessibilityID.scrollModePicker)
-
-                    if scrollMode == .horizontal {
-                        Picker("Horizontal Height", selection: $horizontalHeightMode) {
-                            ForEach(CalendarHorizontalHeightMode.allCases, id: \.self) { mode in
-                                Text(mode.title).tag(mode)
-                                    .accessibilityIdentifier(mode.accessibilityIdentifier)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+            Section("Calendar") {
+                Picker("Calendar", selection: $calendarIdentifier) {
+                    Text("Gregorian").tag(Calendar.Identifier.gregorian)
                         .accessibilityIdentifier(
-                            CalendarSampleAccessibilityID.horizontalHeightPicker)
-                    }
+                            CalendarSampleAccessibilityID.calendarOption(.gregorian))
+                    Text("Persian").tag(Calendar.Identifier.persian)
+                        .accessibilityIdentifier(
+                            CalendarSampleAccessibilityID.calendarOption(.persian))
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier(CalendarSampleAccessibilityID.calendarPicker)
 
-                    Picker("Day View", selection: $dayViewMode) {
-                        ForEach(SampleDayViewMode.allCases) { mode in
+                Picker("Selection", selection: $selectionMode) {
+                    ForEach(SampleSelectionMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                            .accessibilityIdentifier(mode.accessibilityIdentifier)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier(CalendarSampleAccessibilityID.selectionPicker)
+            }
+
+            Section("Layout") {
+                Picker("Scroll", selection: $scrollMode) {
+                    Text("None").tag(CalendarConfiguration.ScrollMode.none)
+                        .accessibilityIdentifier(
+                            CalendarScrollMode.none.accessibilityIdentifier)
+                    Text("Vertical").tag(CalendarConfiguration.ScrollMode.vertical)
+                        .accessibilityIdentifier(
+                            CalendarScrollMode.vertical.accessibilityIdentifier)
+                    Text("Horizontal").tag(CalendarConfiguration.ScrollMode.horizontal)
+                        .accessibilityIdentifier(
+                            CalendarScrollMode.horizontal.accessibilityIdentifier)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier(CalendarSampleAccessibilityID.scrollModePicker)
+
+                if scrollMode == .horizontal {
+                    Picker("Horizontal Height", selection: $horizontalHeightMode) {
+                        ForEach(CalendarHorizontalHeightMode.allCases, id: \.self) { mode in
                             Text(mode.title).tag(mode)
                                 .accessibilityIdentifier(mode.accessibilityIdentifier)
                         }
                     }
                     .pickerStyle(.segmented)
-                    .accessibilityIdentifier(CalendarSampleAccessibilityID.dayViewPicker)
+                    .accessibilityIdentifier(
+                        CalendarSampleAccessibilityID.horizontalHeightPicker)
                 }
-            }
-            .navigationTitle("Settings")
-            .safeAreaInset(edge: .top, spacing: 0) {
-                // Keep dismissal inside the presentation instead of merging an inspector toolbar
-                // into the calendar's navigation bar, where it can linger after dismissal.
-                if showsDone {
-                    HStack {
-                        Spacer()
-                        Button {
-                            isPresented = false
-                        } label: {
-                            Text("Done")
-                                .frame(minWidth: 44, minHeight: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier(CalendarSampleAccessibilityID.done)
+
+                Picker("Day View", selection: $dayViewMode) {
+                    ForEach(SampleDayViewMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                            .accessibilityIdentifier(mode.accessibilityIdentifier)
                     }
-                    .padding(.horizontal)
                 }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier(CalendarSampleAccessibilityID.dayViewPicker)
             }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // Keep dismissal inside the presentation instead of merging an inspector toolbar
+            // into the calendar's navigation bar, where it can linger after dismissal.
+            HStack {
+                Spacer()
+                Button {
+                    isPresented = false
+                } label: {
+                    Text("Done")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(CalendarSampleAccessibilityID.done)
+            }
+            .padding(.horizontal)
+        }
+        .modifier(SettingsNavigation(isSheet: isSheet))
+    }
+}
+
+/// Gives a settings sheet its own navigation bar and title.
+///
+/// The regular-width inspector gets the bare form instead. SwiftUI merges a `NavigationStack` inside
+/// an inspector into the calendar's own stack, so its "Settings" title replaced "Calendar" in the
+/// calendar's bar on iPad, even with the inspector closed.
+private struct SettingsNavigation: ViewModifier {
+    let isSheet: Bool
+
+    func body(content: Content) -> some View {
+        if isSheet {
+            NavigationStack {
+                content.navigationTitle("Settings")
+            }
+        } else {
+            content
         }
     }
 }

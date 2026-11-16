@@ -1,3 +1,4 @@
+import Combine
 import OSLog
 import SwiftCommons
 import SwiftUI
@@ -78,14 +79,35 @@ import SwiftUI
     // isolated cache.
     @ObservationIgnored var renderCache: CalendarRenderCache = .shared
     private var calendar: Calendar { state.calendar }
+    private(set) var todayReference = Date()
+    @ObservationIgnored private var dayChangeSubscription: AnyCancellable?
+
+    func observeDayChanges(in center: NotificationCenter = .default) {
+        dayChangeSubscription = Publishers.Merge(
+            center.publisher(for: .NSCalendarDayChanged),
+            center.publisher(for: .NSSystemTimeZoneDidChange)
+        ).sink { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refreshToday()
+            }
+        }
+    }
+
+    func refreshToday(now: Date = Date()) {
+        todayReference = now
+    }
 
     /// Creates an observable owner for existing value state.
-    public init(state: CalendarState) { self.state = state }
+    public init(state: CalendarState) {
+        self.state = state
+        observeDayChanges()
+    }
 
     // A rendering projection forwards actions without mutating its snapshot.
     init(state: CalendarState, onAction: @escaping (CalendarAction) -> Void) {
         self.state = state
         self.onAction = onAction
+        observeDayChanges()
     }
 
     /// Updates an externally owned projection in place instead of replacing it.
@@ -102,6 +124,14 @@ import SwiftUI
             self.state = state
         }
         self.onAction = onAction
+    }
+
+    private func performLoggingFailure(_ action: CalendarAction, context: String) {
+        do {
+            try perform(action)
+        } catch {
+            logger.error("Calendar action rejected", error: error, context: context)
+        }
     }
 
     private func perform(_ action: CalendarAction) throws {
@@ -163,7 +193,7 @@ import SwiftUI
             calendar.year(from: currentDate)
         }
         set {
-            try? navigate(toYear: newValue)
+            performLoggingFailure(.navigateYear(newValue), context: "year \(newValue)")
         }
     }
 
@@ -172,7 +202,9 @@ import SwiftUI
             calendar.month(from: currentDate)
         }
         set {
-            try? navigate(toMonth: newValue, year: currentYear)
+            performLoggingFailure(
+                .navigateComponents(month: newValue, year: currentYear),
+                context: "month \(newValue), year \(currentYear)")
         }
     }
 
@@ -195,7 +227,7 @@ import SwiftUI
     /// ```
     public var selection: Selection {
         get { state.selection }
-        set { try? perform(.setSelection(newValue)) }
+        set { performLoggingFailure(.setSelection(newValue), context: "set selection") }
     }
 
     /// The date representing the currently visible month.
@@ -204,7 +236,7 @@ import SwiftUI
     /// is January 1, 1900 through December 31, 2100 in the Gregorian calendar.
     public internal(set) var currentDate: Date {
         get { state.currentDate }
-        set { try? perform(.navigate(newValue)) }
+        set { performLoggingFailure(.navigate(newValue), context: "navigate to date") }
     }
 
     /// Stable calendar components for the currently visible month.
@@ -307,6 +339,7 @@ import SwiftUI
         // The convenience initializer supplies today, clamped into the allowed dates.
         self.state = CalendarState(
             calendar: calendar, clamping: currentDate, selection: selection, dateRange: dateRange)
+        observeDayChanges()
     }
 
     func convertGregorianYearToCurrentCalendar(_ year: Int) throws -> Int {
@@ -334,7 +367,7 @@ import SwiftUI
     /// calendar.updateCalendar(identifier: .hebrew)
     /// ```
     public func updateCalendar(identifier: Calendar.Identifier) {
-        try? perform(.setCalendar(identifier))
+        performLoggingFailure(.setCalendar(identifier), context: "calendar \(identifier)")
     }
 
     func updateMonthToNextMonth() throws {
@@ -443,7 +476,7 @@ import SwiftUI
         return CalendarSignpost.rendering.measure("buildMonthSnapshot") {
             // Both predicates are hoisted out of the per-day loop: `startOfDay` and the selection
             // normalization are the same for every cell in the grid.
-            let today = calendar.startOfDay(for: Date())
+            let today = calendar.startOfDay(for: todayReference)
             let isSelected = selection.matcher(in: calendar)
             // Resolved once per grid, like `today`: availability is a plain `Date` comparison per day.
             let availableDays = engine.availableDayStarts
@@ -487,11 +520,13 @@ import SwiftUI
     }
 
     func isToday(_ day: Int) -> Bool {
-        date(for: day).map(calendar.isDateInToday) ?? false
+        date(for: day).map { calendar.isDate($0, inSameDayAs: todayReference) } ?? false
     }
 
     func isToday(day: Int, month: Int, year: Int) -> Bool {
-        date(for: day, month: month, year: year).map(calendar.isDateInToday) ?? false
+        date(for: day, month: month, year: year).map {
+            calendar.isDate($0, inSameDayAs: todayReference)
+        } ?? false
     }
 
     func isSelected(_ day: Int) -> Bool {
@@ -504,7 +539,7 @@ import SwiftUI
     }
 
     func select(_ date: Date, navigating: Bool = false) {
-        try? perform(.select(date, navigating: navigating))
+        performLoggingFailure(.select(date, navigating: navigating), context: "select day")
     }
 
     // MARK: - Today navigation
@@ -521,7 +556,7 @@ import SwiftUI
 
     /// Whether today falls inside ``dateRange``, so the Today control can navigate.
     var canGoToToday: Bool {
-        engine.containsDay(Date())
+        engine.containsDay(todayReference)
     }
 
     private static func locale(for identifier: Calendar.Identifier) -> Locale {

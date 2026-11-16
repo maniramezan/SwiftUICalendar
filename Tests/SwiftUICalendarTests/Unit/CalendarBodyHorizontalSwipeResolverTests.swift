@@ -184,6 +184,24 @@ struct HorizontalScrollPagingResolverTests {
         #expect(result.accumulated == 0)
     }
 
+    @Test("Zero-delta end events release a partial gesture")
+    func zeroDeltaEnd() {
+        let result = HorizontalScrollPagingResolver.resolve(
+            accumulated: -20, deltaX: 0, deltaY: 0, isMomentum: false,
+            didBegin: false, didEnd: true, threshold: threshold)
+        #expect(result.accumulated == 0)
+        #expect(result.pageDelta == nil)
+    }
+
+    @Test("A vertical gesture start clears the previous horizontal accumulation")
+    func verticalStart() {
+        let result = HorizontalScrollPagingResolver.resolve(
+            accumulated: -20, deltaX: 0, deltaY: 30, isMomentum: false,
+            didBegin: true, didEnd: false, threshold: threshold)
+        #expect(result.accumulated == 0)
+        #expect(result.pageDelta == nil)
+    }
+
     @Test("Zero horizontal delta is ignored")
     func zeroDeltaIgnored() {
         let result = HorizontalScrollPagingResolver.resolve(

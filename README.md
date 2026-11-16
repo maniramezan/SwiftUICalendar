@@ -178,19 +178,16 @@ Custom day views declare the room they need with
 
 ## iPhone Duo
 
-On a partially folded iPhone Duo the hinge divides the inner display, and the system reports a
-`division` reserved region where it crosses. Rather than straddle the fold, the calendar displaces
-itself into the widest band beside it, so a week still reads as one row and day cells keep their full
-touch targets. If that band is narrower than the grid's minimum width, it scrolls horizontally like
-any other narrow window.
-
-Nothing to configure. The displacement needs nothing newer than the package's own iOS 18 / macOS 15
-minimum.
+On a partially folded iPhone Duo, the calendar avoids the system's `division` reserved region.
+Book posture places consecutive months side by side in reading order; tabletop posture places them
+above and below the hinge. Both panels need room for navigation, weekday labels and at least three
+day rows. Otherwise the calendar uses the largest available panel and scrolls when needed.
+On a flat Duo, cells retain the same size ceiling as other iPhones.
 
 Build with Xcode 27.1 or later to read the hinge automatically on iOS 27.1 or later. The system
 reader uses `GeometryProxy.reservedRegions(kind: .division)` behind a SwiftUICore module-version gate
 and a runtime availability check. Older SDKs and operating systems keep the ordinary resizable
-layout. Tests inject blocked bands through the internal `calendarFoldRanges` environment value.
+layout. Tests inject fold rectangles through the internal `calendarFoldRegions` environment value.
 
 Fixed-month and horizontal calendars also scroll their rows vertically when the window is too short
 to show the whole month. Resizing preserves the displayed month and selection, and keyboard movement
@@ -267,6 +264,12 @@ system locale. Gregorian and other left-to-right calendars are unaffected.
 CalendarView(model: CalendarViewModel(calendarIdentifier: .hebrew))
 ```
 
+## Localization
+
+Controls and accessibility labels follow the calendar locale. English, German, Persian, Arabic
+and Hebrew translations are included; other languages fall back to English. Custom calendars
+created through `CalendarState(calendar:currentDate:)` retain their supplied locale and time zone.
+
 ## Documentation
 
 Build DocC locally:
@@ -328,7 +331,7 @@ let calendar = TCACalendarView(store: store)
 renders store state and sends actions; it does not synchronize a second mutable model.
 Parents can handle selection-change and rejected-navigation delegate actions.
 
-The adapter requires Swift 6.4+ and uses TCA 1.26.2..<1.27.0.
+The adapter requires Swift 6.4+ and uses TCA 1.26.2 or later, up to the next major version.
 See [Architecture](Sources/SwiftUICalendar/SwiftUICalendar.docc/Architecture.md) for constraints,
 state ownership, and integration details. Run `swift test` to validate both integrations.
 

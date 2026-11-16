@@ -3,6 +3,7 @@ import SwiftUI
 import SwiftUICalendarAccessibility
 
 struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
+    @Environment(\.locale) private var locale
     @Environment(\.calendarMetrics) private var metrics
 
     let items: [Item]
@@ -13,11 +14,12 @@ struct CalendarNavigationHeaderView<Item: CalendarHeaderItem>: View {
     var isNextDisabled: Bool = false
 
     var monthAccessibilityLabel: String {
-        "Calendar.Navigation.Month.Selected".localized(with: selectedItem.wrappedValue.title)
+        "Calendar.Navigation.Month.Selected".localized(
+            locale: locale, with: selectedItem.wrappedValue.title)
     }
 
     var monthAccessibilityHint: String {
-        "Calendar.Navigation.Month.ChangeHint".localized
+        "Calendar.Navigation.Month.ChangeHint".localized(locale: locale)
     }
 
     var body: some View {

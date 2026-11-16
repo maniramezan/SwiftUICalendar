@@ -13,6 +13,7 @@ public struct CalendarState: Equatable, Sendable {
     /// lookups per realized row. Building it per lookup (interpolating the calendar identifier goes
     /// through reflection) showed up as a measurable share of fast-scroll frame time.
     private(set) var renderSignature: String
+    private var firstWeekdayOverride: Int?
     public private(set) var currentDate: Date
     public private(set) var selection: CalendarSelection
     /// Half-open form of ``dateRange``, which is what every containment check reads.
@@ -83,6 +84,7 @@ public struct CalendarState: Equatable, Sendable {
             throw Calendar.CalendarError.cannotCalculateDate
         }
         self.calendar = calendar
+        self.firstWeekdayOverride = Self.weekdayOverride(in: calendar)
         self.renderSignature = CalendarRenderCache.signature(for: calendar)
         self.currentDate = currentDate
         self.selection = selection.normalized(in: calendar)
@@ -105,6 +107,7 @@ public struct CalendarState: Equatable, Sendable {
         }
         let supported = resolved ?? CalendarEngine.defaultSupportedDates(in: calendar.timeZone)
         self.calendar = calendar
+        self.firstWeekdayOverride = Self.weekdayOverride(in: calendar)
         self.renderSignature = CalendarRenderCache.signature(for: calendar)
         self.currentDate = max(
             min(date, supported.upperBound.previousInstant), supported.lowerBound)
@@ -170,6 +173,9 @@ public struct CalendarState: Equatable, Sendable {
             var updated = Calendar(identifier: identifier)
             updated.timeZone = calendar.timeZone
             updated.locale = Self.locale(for: identifier)
+            if let firstWeekdayOverride {
+                updated.firstWeekday = firstWeekdayOverride
+            }
             calendar = updated
         case .today:
             guard engine.containsDay(now) else {
@@ -178,6 +184,12 @@ public struct CalendarState: Equatable, Sendable {
             try navigate(to: engine.clamped(now))
             if case .single = selection { selection = .single(calendar.startOfDay(for: now)) }
         }
+    }
+
+    private static func weekdayOverride(in calendar: Calendar) -> Int? {
+        var defaults = Calendar(identifier: calendar.identifier)
+        defaults.locale = calendar.locale
+        return calendar.firstWeekday == defaults.firstWeekday ? nil : calendar.firstWeekday
     }
 
     private mutating func navigate(to date: Date) throws {

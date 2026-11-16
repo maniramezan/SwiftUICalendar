@@ -16,7 +16,6 @@
 
 ### Framework
 - Use Swift Testing (`import Testing`, `@Test`, `@Suite`) for all new tests.
-- Existing XCTest cases in `SwiftUICalendarTests.swift` remain valid; do not remove them.
 - All test suites must be decorated `@MainActor` (models are `@Observable`).
 - Use `CalendarViewModel.test(identifier:selection:)` for unit tests.
 - Use `CalendarViewModel.snapshot(identifier:selection:)` (pins to June 1 2025) for snapshot tests.
@@ -79,6 +78,9 @@ A `resolve*` interval firing on every frame means the cache is being defeated.
 - Package changes (`Sources/`, `Tests/`, `Package.swift`, or shared resources): run `swift test`.
 - Sample app changes (`Examples/SwiftUICalendarSample`): run the sample tests via Xcode build tooling (prefer `xcodebuild test`; fall back to `xcodebuild build` if no test scheme exists).
 - Cross-cutting changes: run both the package tests and the sample app build/tests.
+- CI runs the package tests on an iPad simulator in addition to macOS, including the iOS-only growth, multitasking-width and safe-area suites.
+- The sample Dynamic Type suite runs on iPhone SE (3rd generation), iPhone Pro Max and iPad, covering default and accessibility text sizes and rotation.
+- The coverage gate includes `SwiftUICalendar`, `SwiftUICalendarTCA` and `SwiftUICalendarAccessibility`; dependency sources are excluded.
 
 ## Snapshot Toolchain
 

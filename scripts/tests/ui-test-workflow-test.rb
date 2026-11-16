@@ -9,7 +9,7 @@ class UITestWorkflowTest < Minitest::Test
 
   def test_matrix_runs_every_default_suite_and_locale_exactly_once
     matrix = JOBS.fetch("ui-test-plans").fetch("strategy").fetch("matrix").fetch("include")
-    default = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSample" }
+    default = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSample" && !entry.key?("device") }
     classes = Dir.glob(File.join(ROOT, "Examples/SwiftUICalendarSample/UITests/*.swift"))
                  .flat_map { |path| File.read(path).scan(/class\s+(\w+)\s*:\s*SampleUITestCase\b/).flatten }
     default_plan = JSON.parse(File.read(File.join(ROOT,
@@ -30,23 +30,59 @@ class UITestWorkflowTest < Minitest::Test
     actual = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSampleLocales" }
                    .map { |entry| entry.fetch("configuration") }.sort
     assert_equal expected, actual
-    assert_equal expected.count + default.count, matrix.count
+    assert_equal expected.count + default.count + 3, matrix.count
     matrix.reject { |entry| entry.fetch("plan") == "SwiftUICalendarSample" }.each do |entry|
       assert_nil entry["suites"], "Locale jobs must run the complete locale plan"
     end
     assert_equal false, JOBS.fetch("ui-test-plans").fetch("strategy").fetch("fail-fast")
   end
 
-  def test_watchdog_leaves_time_for_cleanup_and_diagnostics_before_github_timeout
+  def test_device_matrix_exercises_dynamic_type_on_small_phone_large_phone_and_tablet
     plans = JOBS.fetch("ui-test-plans")
-    step = plans.fetch("steps").find { |entry| entry.fetch("name") == "Run UI test plan" }
-    command = step.fetch("run")
-    assert_includes command, "ruby ./scripts/test-watchdog.rb"
-    assert_includes command, "--diagnostics .build/results/watchdog"
-    seconds = command.match(/--timeout (\d+)/)[1].to_i
-    assert_operator seconds, :>, 0
-    assert_operator seconds + 120, :<, step.fetch("timeout-minutes") * 60
+    matrix = plans.fetch("strategy").fetch("matrix").fetch("include")
+    devices = matrix.select { |entry| entry.key?("device") }
+    assert_equal ["iPhone SE (3rd generation)", "iPhone 17 Pro Max", "iPad Pro 13-inch (M5)"],
+                 devices.map { |entry| entry.fetch("device") }
+    devices.each { |entry| assert_equal "DynamicTypeUITests", entry.fetch("suites") }
+    assert_includes plans.fetch("env").fetch("DEVICE_NAME"), "matrix.device"
+    job = JOBS.fetch("ios-package-tests")
+    commands = job.fetch("steps").map { |step| step.fetch("run", "") }.join("\n")
+    assert_includes commands, "xcodebuild build-for-testing -scheme SwiftUICalendar-Package"
+    assert_includes commands, "xcodebuild test-without-building"
+    assert_includes commands, "-destination \"id=$SIMULATOR_UDID\""
+    assert_includes commands, "ui-test-simulator.sh prepare"
+    assert_includes commands, "ui-test-simulator.sh delete"
+  end
+
+  # Both xcodebuild jobs reuse cached package checkouts, and the iPad job builds before it boots
+  # the simulator so the two never compete for the runner's CPU.
+  def test_xcodebuild_jobs_reuse_cached_packages_and_build_before_booting
+    %w[ui-test-build ios-package-tests].each do |name|
+      steps = JOBS.fetch(name).fetch("steps")
+      cache = steps.find { |entry| entry.fetch("uses", "").start_with?("actions/cache@") }
+      refute_nil cache, "#{name} has no package cache"
+      assert_equal "SwiftUICalendar/.build/xcode-packages", cache.fetch("with").fetch("path")
+      commands = steps.map { |entry| entry.fetch("run", "") }.join("\n")
+      assert_includes commands, "-clonedSourcePackagesDirPath .build/xcode-packages"
+    end
+    steps = JOBS.fetch("ios-package-tests").fetch("steps")
+    build = steps.index { |entry| entry.fetch("run", "").include?("build-for-testing") }
+    boot = steps.index { |entry| entry.fetch("run", "").include?("ui-test-simulator.sh prepare") }
+    run = steps.index { |entry| entry.fetch("run", "").include?("test-without-building") }
+    assert_operator build, :<, boot
+    assert_operator boot, :<, run
+  end
+
+  # GitHub's step timeout stops a hung test run; the job must outlast it by enough to delete the
+  # simulator and upload the result bundle, which runs even after a timeout.
+  def test_step_timeout_leaves_time_for_cleanup_and_upload
+    plans = JOBS.fetch("ui-test-plans")
+    steps = plans.fetch("steps")
+    step = steps.find { |entry| entry.fetch("name") == "Run UI test plan" }
+    refute_includes step.fetch("run"), "test-watchdog"
     assert_operator step.fetch("timeout-minutes") + 5, :<=, plans.fetch("timeout-minutes")
+    upload = steps.find { |entry| entry.fetch("name") == "Upload test results" }
+    assert_equal "always()", upload.fetch("if")
   end
 
   # Xcode clones and cold-boots its own devices for parallel testing, so warming the owned device only
@@ -68,6 +104,18 @@ class UITestWorkflowTest < Minitest::Test
     refute_match(/-(?:parallel-testing-worker-count|maximum-parallel-testing-workers)/, command)
   end
 
+  # A timed-out test is never rerun by xcodebuild, so the script owns the single retry; stacking
+  # xcodebuild's iterations on top would run a genuinely failing test four times.
+  def test_failed_tests_are_retried_by_the_script_not_by_xcodebuild
+    steps = JOBS.fetch("ui-test-plans").fetch("steps")
+    command = steps.find { |entry| entry.fetch("name") == "Run UI test plan" }.fetch("run")
+    refute_match(/^\s*-retry-tests-on-failure/, command)
+    refute_match(/^\s*-test-iterations/, command)
+    assert_includes command, "-test-timeouts-enabled YES"
+    script = File.read(File.join(ROOT, "scripts/ui-test-simulator.sh"))
+    assert_includes script, "-retry.xcresult"
+  end
+
   def test_ui_jobs_share_one_exported_build
     build = JOBS.fetch("ui-test-build").fetch("steps")
     plans = JOBS.fetch("ui-test-plans")
@@ -83,13 +131,13 @@ class UITestWorkflowTest < Minitest::Test
 
   def test_required_check_rejects_build_or_matrix_failures_and_skips
     gate = JOBS.fetch("ui-tests")
-    assert_equal %w[ui-test-build ui-test-plans], gate.fetch("needs")
+    assert_equal %w[ui-test-build ui-test-plans ios-package-tests], gate.fetch("needs")
     assert_includes gate.fetch("if"), "always()"
     command = gate.fetch("steps").first.fetch("run")
-    %w[success failure cancelled skipped].repeated_permutation(2) do |build, plans|
-      output, status = Open3.capture2e({"BUILD_RESULT" => build, "PLANS_RESULT" => plans},
+    %w[success failure cancelled skipped].repeated_permutation(3) do |build, plans, package|
+      output, status = Open3.capture2e({"BUILD_RESULT" => build, "PLANS_RESULT" => plans, "PACKAGE_RESULT" => package},
                                       "bash", "-c", command)
-      assert_equal build == "success" && plans == "success", status.success?,
+      assert_equal build == "success" && plans == "success" && package == "success", status.success?,
                    "build=#{build}, plans=#{plans}: #{output}"
     end
   end

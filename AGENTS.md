@@ -3,11 +3,11 @@
 ## Quick Reference
 
 ```bash
-swift package resolve         # after Package.swift or sibling repo changes
-swift build -c debug          # fast compile check
-swift test                    # all tests (unit + snapshot)
-swift test --filter Unit      # unit tests only
-swift test --filter Snapshot  # snapshot tests only
+swift package resolve
+swift build -c debug
+swift test
+swift test --filter CalendarViewModel
+swift test --filter Snapshot
 ```
 
 ## Local Dependencies
@@ -21,7 +21,7 @@ Run `swift package resolve` whenever either dependency changes.
 ```
 Sources/SwiftUICalendar/
   Views/         # SwiftUI views (Body/, Headers/, Day/)
-  Models/        # CalendarViewModel, Theme, Typography, SizingClass
+  Models/        # CalendarViewModel, Theme, Typography, CalendarMetrics
   Extensions/    # Calendar helpers, localization, logger
   Resources/     # Localizable.xcstrings (processed at build time)
 Tests/SwiftUICalendarTests/
@@ -206,7 +206,7 @@ All changes to `Sources/` require tests. `swift test` must pass before merge.
 - Use `CalendarViewModel.snapshot(identifier:selection:)` factory (defined in `SnapshotConfiguration.swift`, pins to June 1, 2025).
 - Use `assertCalendarStructure(model:configuration:theme:width:monthSpan:named:)`; day-cell tests use
   `assertDayContextStructure(_:rendererFor:named:)`. Renderer lives in `CalendarStructureRenderer.swift`.
-- **Recording flow**: `SNAPSHOT_RECORD_MODE=all swift test --filter Snapshot --traits TCA`, then run
+- **Recording flow**: `SNAPSHOT_RECORD_MODE=all swift test --filter Snapshot`, then run
   once more without the env var to verify. Commit the regenerated `.txt` files. Diffs are readable —
   review them.
 - Genuine view-layer behavior (LazyVStack anchor recovery, hit targets, glass fallbacks) belongs in a

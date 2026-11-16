@@ -1,0 +1,9 @@
+Calendar.Today: امروز
+Calendar.Done: انجام شد
+Calendar.Navigation.Month.ChangeHint: انتخاب ماه دیگر
+Calendar.Navigation.Year.ChangeHint: انتخاب سال دیگر
+Calendar.Day.Today: امروز
+Calendar.Day.Selected: انتخاب‌شده
+Calendar.Day.Range.start: آغاز بازه
+Calendar.Day.Range.end: پایان بازه
+Calendar.Day.Range.interior: در بازهٔ انتخاب‌شده

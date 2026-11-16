@@ -382,7 +382,7 @@ private struct CalendarTodayControl: View {
             Button {
                 viewModel.goToToday()
             } label: {
-                Text("Calendar.Today".localized)
+                Text("Calendar.Today".localized(locale: viewModel.locale))
                     .frame(minWidth: metrics.minimumHitTarget, minHeight: metrics.minimumHitTarget)
                     .contentShape(Rectangle())
             }

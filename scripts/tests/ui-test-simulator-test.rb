@@ -20,18 +20,29 @@ class UITestSimulatorTest < Minitest::Test
     executable = "#!#{RbConfig.ruby}\n" + <<~'RUBY'
       require "json"
       File.open(ENV.fetch("CALL_LOG"), "a") { |file| file.puts JSON.generate([File.basename($0, ".rb"), *ARGV]) }
+      if ARGV[0, 2] == ["simctl", "bootstatus"] && ENV["BOOT_LINGER"] == "1"
+        puts "Status=4294967295, isTerminal=YES, Elapsed=01:12."
+        STDOUT.flush
+        sleep 30
+      end
       if ARGV[0, 3] == ["simctl", "list", "runtimes"]
         puts ENV.fetch("RUNTIME_JSON")
       elsif ARGV[0, 2] == ["simctl", "create"]
         puts "owned-device"
       end
-      if File.basename($0, ".rb") == "xcodebuild" && ENV["TEST_HANG"] == "1"
-        trap("TERM") {}
-        puts "test runner stalled"
-        STDOUT.flush
-        sleep 30
+      if ARGV[0, 4] == ["xcresulttool", "get", "test-results", "tests"]
+        puts ENV.fetch("RESULTS_JSON", "{}")
+        exit 0
       end
-      exit ENV.fetch(File.basename($0, ".rb") == "xcodebuild" ? "TEST_EXIT" : "SIM_EXIT", "0").to_i
+      if File.basename($0, ".rb") == "xcodebuild"
+        # TEST_EXIT holds one exit status per xcodebuild session; the last one repeats.
+        statuses = ENV.fetch("TEST_EXIT", "0").split(",")
+        session = File.readlines(ENV.fetch("CALL_LOG")).count { |line| JSON.parse(line).first == "xcodebuild" }
+        bundle = ARGV[ARGV.index("-resultBundlePath") + 1]
+        Dir.mkdir(bundle) unless ENV["NO_RESULT_BUNDLE"] == "1" || Dir.exist?(bundle)
+        exit statuses.fetch(session - 1, statuses.last).to_i
+      end
+      exit ENV.fetch("SIM_EXIT", "0").to_i
     RUBY
     %w[xcrun xcodebuild].each do |name|
       path = File.join(@directory, name)
@@ -60,12 +71,8 @@ class UITestSimulatorTest < Minitest::Test
     FileUtils.remove_entry(@directory)
   end
 
-  def run_script(*arguments, watchdog_timeout: nil, **environment)
+  def run_script(*arguments, **environment)
     command = ["bash", SCRIPT, *arguments]
-    if watchdog_timeout
-      command = [RbConfig.ruby, File.expand_path("../test-watchdog.rb", __dir__),
-                 "--timeout", watchdog_timeout.to_s, "--diagnostics", "results/watchdog", "--", *command]
-    end
     Open3.capture2e(
       {"PATH" => "#{@directory}:#{ENV.fetch('PATH')}", "CALL_LOG" => @log,
        "RUNTIME_JSON" => JSON.generate(@inventory)}.merge(environment.transform_keys(&:to_s)),
@@ -130,6 +137,16 @@ class UITestSimulatorTest < Minitest::Test
     assert_equal [["xcrun", "simctl", "bootstatus", "owned-device", "-b"]], calls
   end
 
+  # bootstatus can linger for minutes after the device is ready; prepare must not wait for it.
+  def test_prepare_returns_at_the_terminal_status_without_waiting_for_bootstatus_to_exit
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    output, status = run_script("prepare", "owned-device", BOOT_LINGER: "1")
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+    assert status.success?, output
+    assert_includes output, "isTerminal=YES"
+    assert_operator elapsed, :<, 10
+  end
+
   def test_prepare_failure_fails_the_job_instead_of_testing_a_half_booted_device
     _, status = run_script("prepare", "owned-device", SIM_EXIT: "1")
     refute status.success?
@@ -138,7 +155,7 @@ class UITestSimulatorTest < Minitest::Test
   def test_tests_never_run_in_parallel_clones
     output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult")
     assert status.success?, output
-    arguments = calls.first
+    arguments = sessions.first
     assert_equal "NO", arguments[arguments.index("-parallel-testing-enabled") + 1]
   end
 
@@ -149,15 +166,66 @@ class UITestSimulatorTest < Minitest::Test
     assert_equal 1, calls.count
   end
 
-  def test_test_plan_reuses_products_and_preserves_flags_and_failure_without_retry
+  def failed_results(*identifiers)
+    cases = identifiers.map do |identifier|
+      {"nodeType" => "Test Case", "nodeIdentifier" => identifier, "result" => "Failed"}
+    end
+    passed = {"nodeType" => "Test Case", "nodeIdentifier" => "SelectionUITests/testPassed()", "result" => "Passed"}
+    JSON.generate("testNodes" => [{"nodeType" => "Test Plan", "result" => "Failed",
+                                   "children" => [{"nodeType" => "Test Suite", "result" => "Failed",
+                                                   "children" => cases + [passed]}]}])
+  end
+
+  def sessions
+    calls.select { |call| call.first == "xcodebuild" }
+  end
+
+  # A failure with no failed test to select (a build or device error) is reported as it is.
+  def test_test_plan_reuses_products_and_preserves_flags_and_failure_without_failed_tests
     output, status = run_script("test", "owned-device", "Locales", "results/locales.xcresult",
-                                "-test-timeouts-enabled", "YES", TEST_EXIT: "65", watchdog_timeout: 5)
+                                "-test-timeouts-enabled", "YES", TEST_EXIT: "65")
     assert_equal 65, status.exitstatus, output
     assert_equal [["xcodebuild", "test-without-building", "-testProductsPath",
                    ".build/SampleUITests.xctestproducts", "-testPlan", "Locales", "-destination",
                    "id=owned-device", "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "YES",
                    "-resultBundlePath",
-                   "results/locales.xcresult", "-resultStreamPath", "results/locales.events.jsonl"]], calls
+                   "results/locales.xcresult", "-resultStreamPath", "results/locales.events.jsonl"]], sessions
+  end
+
+  def test_failure_without_a_result_bundle_is_not_retried
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
+                                TEST_EXIT: "70", NO_RESULT_BUNDLE: "1",
+                                RESULTS_JSON: failed_results("SelectionUITests/testTimedOut()"))
+    assert_equal 70, status.exitstatus, output
+    assert_equal 1, sessions.count
+  end
+
+  # A timed-out test kills the runner, so xcodebuild's own retry never reruns it; the script does.
+  def test_failed_tests_are_rerun_once_in_a_second_session_that_decides_the_result
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
+                                "-test-timeouts-enabled", "YES",
+                                UI_TEST_SUITES: "SelectionUITests\nHeaderControlUITests\n",
+                                UI_TEST_CONFIGURATION: "English", TEST_EXIT: "65,0",
+                                RESULTS_JSON: failed_results("SelectionUITests/testTimedOut()",
+                                                             "HeaderControlUITests/testFailed()"))
+    assert status.success?, output
+    assert_equal 2, sessions.count
+    retry_session = sessions.last
+    assert_equal ["-only-testing:SwiftUICalendarSampleUITests/SelectionUITests/testTimedOut",
+                  "-only-testing:SwiftUICalendarSampleUITests/HeaderControlUITests/testFailed"],
+                 retry_session.select { |argument| argument.start_with?("-only-testing:") }
+    assert_equal "results/tests-retry.xcresult", retry_session[retry_session.index("-resultBundlePath") + 1]
+    assert_equal "English", retry_session[retry_session.index("-only-test-configuration") + 1]
+    assert_equal "YES", retry_session[retry_session.index("-test-timeouts-enabled") + 1]
+    assert_equal "NO", retry_session[retry_session.index("-parallel-testing-enabled") + 1]
+    assert File.file?(File.join(@directory, "results/tests-retry.events.jsonl"))
+  end
+
+  def test_a_test_that_fails_both_sessions_fails_the_job_without_a_third_session
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
+                                TEST_EXIT: "65", RESULTS_JSON: failed_results("SelectionUITests/testBroken()"))
+    assert_equal 65, status.exitstatus, output
+    assert_equal 2, sessions.count
   end
 
   def test_named_configuration_is_forwarded_as_one_argument
@@ -175,17 +243,6 @@ class UITestSimulatorTest < Minitest::Test
     filters = calls.first.select { |argument| argument.start_with?("-only-testing:") }
     assert_equal ["-only-testing:SwiftUICalendarSampleUITests/HeaderControlUITests",
                   "-only-testing:SwiftUICalendarSampleUITests/DynamicTypeUITests"], filters
-    assert File.file?(File.join(@directory, "results/tests.events.jsonl"))
-  end
-
-  def test_watchdog_stops_a_hung_test_command_and_retains_output_without_retry
-    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
-                                TEST_HANG: "1", watchdog_timeout: 2)
-    assert_equal 124, status.exitstatus, output
-    assert_equal 1, calls.count
-    assert_includes File.read(File.join(@directory, "results/watchdog/test-output.log")),
-                    "test runner stalled"
-    assert File.file?(File.join(@directory, "results/watchdog/processes.txt"))
     assert File.file?(File.join(@directory, "results/tests.events.jsonl"))
   end
 

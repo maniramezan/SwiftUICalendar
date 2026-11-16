@@ -171,7 +171,7 @@ struct CalendarBodyView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .background {
-                                if usesBuiltInRenderer, item.isSelected,
+                                if usesBuiltInRenderer, item.isSelected, item.isEnabled,
                                     let position = context.rangePosition
                                 {
                                     CalendarRangeBand(
@@ -190,7 +190,7 @@ struct CalendarBodyView: View {
                             // makes VoiceOver announce them as dimmed.
                             .foregroundStyle(
                                 item.isInDisplayedMonth && item.isEnabled
-                                    ? Color.primary : Color.gray
+                                    ? Color.primary : theme.day.unavailableForegroundColor
                             )
                             .disabled(!item.isEnabled)
                             .contentShape(Rectangle())

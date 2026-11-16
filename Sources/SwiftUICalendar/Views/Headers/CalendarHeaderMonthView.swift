@@ -40,7 +40,13 @@ struct CalendarHeaderMonthView: View {
                 },
                 set: { newItem in
                     if let month = newItem.month {
-                        try? model.navigateInVisibleEra(toMonth: month)
+                        do {
+                            try model.navigateInVisibleEra(toMonth: month)
+                        } catch {
+                            logger.error(
+                                "Failed to choose month", error: error,
+                                context: "month \(month.month), year \(month.year)")
+                        }
                     }
                 }
             ),
