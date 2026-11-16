@@ -246,7 +246,6 @@ jobs:
         timeout-minutes: 6
         run: |
           bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
-          xcrun simctl list devices booted
           vm_stat
 
       - name: Run UI test plan

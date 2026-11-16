@@ -92,6 +92,10 @@ case "${1:-}" in
     # but the command can linger long after that: 1.5 to 3 minutes on the CI runners, and once past
     # the 6-minute step limit. So stop at the terminal status. A bootstatus that exits without one
     # (a failed boot) fails the job with its own exit status.
+    #
+    # The lingering command is killed outright and never waited for, and nothing else here talks to
+    # CoreSimulator: in three jobs of one run the step printed the terminal status and then sat
+    # silent for four minutes, in the wait for a terminated bootstatus or the simctl call after it.
     log="$(mktemp)"
     xcrun simctl bootstatus "$2" -b >"$log" 2>&1 &
     pid=$!
@@ -101,9 +105,9 @@ case "${1:-}" in
     cat "$log"
     if grep -q "isTerminal=YES" "$log"; then
       rm -f "$log"
-      pkill -P "$pid" 2>/dev/null || true
-      kill "$pid" 2>/dev/null || true
-      wait "$pid" 2>/dev/null || true
+      disown "$pid" 2>/dev/null || true
+      pkill -KILL -P "$pid" 2>/dev/null || true
+      kill -KILL "$pid" 2>/dev/null || true
     else
       rm -f "$log"
       wait "$pid"

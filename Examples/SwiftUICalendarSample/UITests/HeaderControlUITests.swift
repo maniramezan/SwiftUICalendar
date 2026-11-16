@@ -34,10 +34,9 @@ final class HeaderControlUITests: SampleUITestCase {
         let app = sampleApplication()
         app.launch()
         app.chooseScrollMode(.horizontal)
-        let calendar = Calendar.current
-        let today = Date()
-        let selectedDate = try XCTUnwrap(calendar.date(bySetting: .day, value: 15, of: today))
-        let selected = app.buttons[app.dayIdentifier(for: selectedDate)]
+        // Built from the current month's components: `date(bySetting:value:of:)` searches forward,
+        // so after the 15th it returns next month's 15th, which is not on screen.
+        let selected = try currentMonthDay(15, in: app)
         XCTAssertTrue(selected.waitForExistence(timeout: 5))
         selected.tap()
         for _ in 0..<3 {
