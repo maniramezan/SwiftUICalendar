@@ -1,5 +1,5 @@
 {
-  "originHash" : "2f66cc7510ac90f66fd7bdc3903e3c2dd8c25b2fdcf0496c1afed60c70110095",
+  "originHash" : "1664803bbb81714867f8753e9a10a9363c2647c6e18ecce4d1a154a1079dffc2",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "114354e8c1667a2edc4993700fb9fa4f90157b56",
         "version" : "1.2.2"
+      }
+    },
+    {
+      "identity" : "opencombine",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/OpenCombine/OpenCombine.git",
+      "state" : {
+        "revision" : "8576f0d579b27020beccbccc3ea6844f3ddfc2c2",
+        "version" : "0.14.0"
       }
     },
     {
@@ -141,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftCommons",
       "state" : {
-        "revision" : "15242470c3d62ba7ec565e96ea2156c6e1ead15f",
-        "version" : "0.17.0"
+        "revision" : "bffb2cda57de7e924cd847bb79911ee50cb4374e",
+        "version" : "0.17.1"
       }
     },
     {
@@ -159,8 +168,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftUIComponents",
       "state" : {
-        "revision" : "4368cd7c382f8b20d8d7b86c1c138f0a01106903",
-        "version" : "0.21.3"
+        "revision" : "d67520bd669528a1740bb12b71465e2efee511f2",
+        "version" : "0.23.1"
       }
     }
   ],
