@@ -254,12 +254,12 @@ jobs:
         # The script runs one worker on the settled simulator; retain the existing individual test limits.
         # Full simulator diagnostics collection hangs here; keep XCTest result bundles instead.
         # The step timeout stops a hung run with time left in the job to upload the result bundle.
-        # A test that fails is rerun once: the loaded simulator sometimes cannot terminate the app at
-        # teardown, which fails whichever test happens to be running. A real failure fails both runs.
+        # The script reruns failed tests once in a second xcodebuild session: the loaded simulator
+        # sometimes cannot terminate the app at teardown or never reports a launch back, which fails
+        # or times out whichever test happens to be running. xcodebuild's -retry-tests-on-failure is
+        # not used because it never reruns a test that timed out. A real failure fails both sessions.
         run: |
           flags=(
-            -retry-tests-on-failure
-            -test-iterations 2
             -test-timeouts-enabled YES
             -default-test-execution-time-allowance 180
             -maximum-test-execution-time-allowance 300

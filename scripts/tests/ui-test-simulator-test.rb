@@ -30,7 +30,19 @@ class UITestSimulatorTest < Minitest::Test
       elsif ARGV[0, 2] == ["simctl", "create"]
         puts "owned-device"
       end
-      exit ENV.fetch(File.basename($0, ".rb") == "xcodebuild" ? "TEST_EXIT" : "SIM_EXIT", "0").to_i
+      if ARGV[0, 4] == ["xcresulttool", "get", "test-results", "tests"]
+        puts ENV.fetch("RESULTS_JSON", "{}")
+        exit 0
+      end
+      if File.basename($0, ".rb") == "xcodebuild"
+        # TEST_EXIT holds one exit status per xcodebuild session; the last one repeats.
+        statuses = ENV.fetch("TEST_EXIT", "0").split(",")
+        session = File.readlines(ENV.fetch("CALL_LOG")).count { |line| JSON.parse(line).first == "xcodebuild" }
+        bundle = ARGV[ARGV.index("-resultBundlePath") + 1]
+        Dir.mkdir(bundle) unless ENV["NO_RESULT_BUNDLE"] == "1" || Dir.exist?(bundle)
+        exit statuses.fetch(session - 1, statuses.last).to_i
+      end
+      exit ENV.fetch("SIM_EXIT", "0").to_i
     RUBY
     %w[xcrun xcodebuild].each do |name|
       path = File.join(@directory, name)
@@ -143,7 +155,7 @@ class UITestSimulatorTest < Minitest::Test
   def test_tests_never_run_in_parallel_clones
     output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult")
     assert status.success?, output
-    arguments = calls.first
+    arguments = sessions.first
     assert_equal "NO", arguments[arguments.index("-parallel-testing-enabled") + 1]
   end
 
@@ -154,7 +166,22 @@ class UITestSimulatorTest < Minitest::Test
     assert_equal 1, calls.count
   end
 
-  def test_test_plan_reuses_products_and_preserves_flags_and_failure_without_retry
+  def failed_results(*identifiers)
+    cases = identifiers.map do |identifier|
+      {"nodeType" => "Test Case", "nodeIdentifier" => identifier, "result" => "Failed"}
+    end
+    passed = {"nodeType" => "Test Case", "nodeIdentifier" => "SelectionUITests/testPassed()", "result" => "Passed"}
+    JSON.generate("testNodes" => [{"nodeType" => "Test Plan", "result" => "Failed",
+                                   "children" => [{"nodeType" => "Test Suite", "result" => "Failed",
+                                                   "children" => cases + [passed]}]}])
+  end
+
+  def sessions
+    calls.select { |call| call.first == "xcodebuild" }
+  end
+
+  # A failure with no failed test to select (a build or device error) is reported as it is.
+  def test_test_plan_reuses_products_and_preserves_flags_and_failure_without_failed_tests
     output, status = run_script("test", "owned-device", "Locales", "results/locales.xcresult",
                                 "-test-timeouts-enabled", "YES", TEST_EXIT: "65")
     assert_equal 65, status.exitstatus, output
@@ -162,7 +189,43 @@ class UITestSimulatorTest < Minitest::Test
                    ".build/SampleUITests.xctestproducts", "-testPlan", "Locales", "-destination",
                    "id=owned-device", "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "YES",
                    "-resultBundlePath",
-                   "results/locales.xcresult", "-resultStreamPath", "results/locales.events.jsonl"]], calls
+                   "results/locales.xcresult", "-resultStreamPath", "results/locales.events.jsonl"]], sessions
+  end
+
+  def test_failure_without_a_result_bundle_is_not_retried
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
+                                TEST_EXIT: "70", NO_RESULT_BUNDLE: "1",
+                                RESULTS_JSON: failed_results("SelectionUITests/testTimedOut()"))
+    assert_equal 70, status.exitstatus, output
+    assert_equal 1, sessions.count
+  end
+
+  # A timed-out test kills the runner, so xcodebuild's own retry never reruns it; the script does.
+  def test_failed_tests_are_rerun_once_in_a_second_session_that_decides_the_result
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
+                                "-test-timeouts-enabled", "YES",
+                                UI_TEST_SUITES: "SelectionUITests\nHeaderControlUITests\n",
+                                UI_TEST_CONFIGURATION: "English", TEST_EXIT: "65,0",
+                                RESULTS_JSON: failed_results("SelectionUITests/testTimedOut()",
+                                                             "HeaderControlUITests/testFailed()"))
+    assert status.success?, output
+    assert_equal 2, sessions.count
+    retry_session = sessions.last
+    assert_equal ["-only-testing:SwiftUICalendarSampleUITests/SelectionUITests/testTimedOut",
+                  "-only-testing:SwiftUICalendarSampleUITests/HeaderControlUITests/testFailed"],
+                 retry_session.select { |argument| argument.start_with?("-only-testing:") }
+    assert_equal "results/tests-retry.xcresult", retry_session[retry_session.index("-resultBundlePath") + 1]
+    assert_equal "English", retry_session[retry_session.index("-only-test-configuration") + 1]
+    assert_equal "YES", retry_session[retry_session.index("-test-timeouts-enabled") + 1]
+    assert_equal "NO", retry_session[retry_session.index("-parallel-testing-enabled") + 1]
+    assert File.file?(File.join(@directory, "results/tests-retry.events.jsonl"))
+  end
+
+  def test_a_test_that_fails_both_sessions_fails_the_job_without_a_third_session
+    output, status = run_script("test", "owned-device", "Default", "results/tests.xcresult",
+                                TEST_EXIT: "65", RESULTS_JSON: failed_results("SelectionUITests/testBroken()"))
+    assert_equal 65, status.exitstatus, output
+    assert_equal 2, sessions.count
   end
 
   def test_named_configuration_is_forwarded_as_one_argument

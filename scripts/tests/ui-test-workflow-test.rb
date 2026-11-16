@@ -104,6 +104,18 @@ class UITestWorkflowTest < Minitest::Test
     refute_match(/-(?:parallel-testing-worker-count|maximum-parallel-testing-workers)/, command)
   end
 
+  # A timed-out test is never rerun by xcodebuild, so the script owns the single retry; stacking
+  # xcodebuild's iterations on top would run a genuinely failing test four times.
+  def test_failed_tests_are_retried_by_the_script_not_by_xcodebuild
+    steps = JOBS.fetch("ui-test-plans").fetch("steps")
+    command = steps.find { |entry| entry.fetch("name") == "Run UI test plan" }.fetch("run")
+    refute_match(/^\s*-retry-tests-on-failure/, command)
+    refute_match(/^\s*-test-iterations/, command)
+    assert_includes command, "-test-timeouts-enabled YES"
+    script = File.read(File.join(ROOT, "scripts/ui-test-simulator.sh"))
+    assert_includes script, "-retry.xcresult"
+  end
+
   def test_ui_jobs_share_one_exported_build
     build = JOBS.fetch("ui-test-build").fetch("steps")
     plans = JOBS.fetch("ui-test-plans")

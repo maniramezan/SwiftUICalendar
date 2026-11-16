@@ -18,13 +18,12 @@ final class HeaderControlUITests: SampleUITestCase {
             app.launchArguments = SampleLaunchFixture.arguments(
                 architecture: .mvvm, selectionMode: .single, scrollMode: mode)
             app.launch()
-            let selected = try dayFifteen(in: app)
-            XCTAssertTrue(selected.waitForExistence(timeout: 10), "\(mode): day 15 missing")
-            let screenshot = try tapDrawnDayFifteen(in: app)
+            let tapped = try tapDrawnDay(in: app)
             XCTAssertTrue(
-                selected.isSelected, "\(mode): the physical day 15 tap selected a different date")
-            let attachment = XCTAttachment(screenshot: screenshot)
-            attachment.name = "fresh-\(mode)-ocr-day-15-tap"
+                tapped.day.isSelected,
+                "\(mode): the physical tap on day \(tapped.number) selected a different date")
+            let attachment = XCTAttachment(screenshot: tapped.screenshot)
+            attachment.name = "fresh-\(mode)-ocr-day-tap"
             attachment.lifetime = .keepAlways
             add(attachment)
         }
@@ -103,12 +102,14 @@ final class HeaderControlUITests: SampleUITestCase {
         let app = sampleApplication()
         app.launch()
 
-        let selected = try dayFifteen(in: app)
-        XCTAssertTrue(selected.waitForExistence(timeout: 5))
-        let screenshot = try tapDrawnDayFifteen(in: app)
+        let tapped = try tapDrawnDay(in: app)
+        let selected = tapped.day
+        let screenshot = tapped.screenshot
 
         XCTAssertTrue(selected.waitForExistence(timeout: 5))
-        XCTAssertTrue(selected.isSelected, "The physical day 15 tap selected a different date")
+        XCTAssertTrue(
+            selected.isSelected,
+            "The physical tap on day \(tapped.number) selected a different date")
         let monthButton = app.buttons[CalendarAccessibilityID.monthButton]
         let originalMonth = monthButton.label
         app.buttons[CalendarAccessibilityID.nextMonthButton].tap()
@@ -121,46 +122,79 @@ final class HeaderControlUITests: SampleUITestCase {
         XCTAssertTrue(selected.isSelected, "Returning to the month changed the selected date")
 
         let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = "fixed-month-ocr-day-15-tap"
+        attachment.name = "fixed-month-ocr-day-tap"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
 
     // MARK: - Helpers
 
-    /// Day 15 of the current month: never an overflow day, so its identifier is unique.
+    /// Days that are never another month's overflow in the current month's grid: a leading overflow
+    /// day is at least 23 and a trailing one sits below the month's own copy of the number.
+    private static let tappableDays = 10...22
+    private static let dayGridTimeout: TimeInterval = 10
+
+    private struct DrawnDayTap {
+        let number: Int
+        let day: XCUIElement
+        let screenshot: XCUIScreenshot
+    }
+
     @MainActor
-    private func dayFifteen(in app: XCUIApplication) throws -> XCUIElement {
-        let calendar = Calendar.current
-        let date = try XCTUnwrap(calendar.date(bySetting: .day, value: 15, of: Date()))
-        let components = calendar.dateComponents([.year, .month], from: date)
+    private func currentMonthDay(_ number: Int, in app: XCUIApplication) throws -> XCUIElement {
+        let components = Calendar.current.dateComponents([.year, .month], from: Date())
         return app.buttons[
             CalendarAccessibilityID.day(
                 year: try XCTUnwrap(components.year),
                 month: try XCTUnwrap(components.month),
-                day: 15)]
+                day: number)]
     }
 
-    /// Finds the drawn "15" in a screenshot and taps that screen position, so the tap goes wherever
-    /// the day is drawn rather than where the accessibility tree says it is. The topmost match is
-    /// the current month's when a following month is also on screen.
+    /// Finds a drawn day number in a screenshot and taps that screen position, so the tap goes
+    /// wherever the day is drawn rather than where the accessibility tree says it is.
+    ///
+    /// No single day can be relied on. Vision reads nothing inside the today marker, and in the
+    /// first or last column the sliver of the neighbouring month that the horizontal pager lets
+    /// peek in joins the number: a fixed "15" failed on the 15th of every month, and on other days
+    /// in a month whose 15th falls in the first column. So today is skipped and, of the days
+    /// Vision does read, the one nearest the horizontal centre is tapped. The topmost match for a
+    /// number is the current month's when a following month is also on screen.
     @MainActor
-    private func tapDrawnDayFifteen(in app: XCUIApplication) throws -> XCUIScreenshot {
+    private func tapDrawnDay(in app: XCUIApplication) throws -> DrawnDayTap {
+        let today = Calendar.current.component(.day, from: Date())
+        let anyDay = try currentMonthDay(Self.tappableDays.lowerBound, in: app)
+        XCTAssertTrue(
+            anyDay.waitForExistence(timeout: Self.dayGridTimeout), "the current month is missing")
         let screenshot = app.screenshot()
         let image = try XCTUnwrap(screenshot.image.cgImage)
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = false
         try VNImageRequestHandler(cgImage: image).perform([request])
-        let matches = (request.results ?? []).filter { observation in
-            observation.topCandidates(1).first?.string == "15"
-        }
         // Vision's normalized boxes have their origin at the bottom left.
-        let box = try XCTUnwrap(
-            matches.max { $0.boundingBox.midY < $1.boundingBox.midY },
-            "No visible day labeled 15"
-        ).boundingBox
+        var topmost: [Int: CGRect] = [:]
+        for observation in request.results ?? [] {
+            guard let text = observation.topCandidates(1).first?.string, let number = Int(text),
+                Self.tappableDays.contains(number), number != today
+            else { continue }
+            let box = observation.boundingBox
+            if let known = topmost[number], known.midY >= box.midY { continue }
+            topmost[number] = box
+        }
+        let read = topmost.keys.sorted().map(String.init).joined(separator: ", ")
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "ocr-input"
+        attachment.lifetime = .deleteOnSuccess
+        add(attachment)
+        let choice = try XCTUnwrap(
+            topmost.min { abs($0.value.midX - 0.5) < abs($1.value.midX - 0.5) },
+            "No drawn day between \(Self.tappableDays.lowerBound) and "
+                + "\(Self.tappableDays.upperBound) was recognized")
+        XCTContext.runActivity(named: "OCR read days \(read); tapping \(choice.key)") { _ in }
+        let box = choice.value
         app.coordinate(withNormalizedOffset: CGVector(dx: box.midX, dy: 1 - box.midY)).tap()
-        return screenshot
+        return DrawnDayTap(
+            number: choice.key, day: try currentMonthDay(choice.key, in: app),
+            screenshot: screenshot)
     }
 }
