@@ -80,7 +80,7 @@ all of their bodies, so uncached grids put ~2,500 calendar operations inside a s
 - Inject a private `CalendarRenderCache()` via `viewModel.renderCache` in tests; the shared
   instance persists across tests and would make entry-count assertions order-dependent.
 - Month titles are also memoized in `CalendarRenderCache` (`monthTitle(for:calendar:)`), not on
-  `CalendarViewModel` — moved there so a title warmed by background prefetch is visible to every
+  `CalendarViewModel`, so a title warmed by background prefetch is visible to every
   model instance reading the same calendar signature, not just the one that prefetched it.
 - **Background prefetch**: reuse caching cannot remove the cost of realizing a month the vertical
   scroll has never shown before — resolving its offset, building its grid, and formatting its
@@ -185,9 +185,9 @@ scroll mode, asserting columns fit the actual clip or are reachable through genu
 `CalendarDynamicTypeLayoutTests` for the Dynamic Type row; both hardcode their expected values so a
 wrong policy cannot agree with itself.
 
-## Planning Workflow
+## Development Workflow
 
-Read and follow `DEVELOPMENT.md` before starting any task. It contains the planning checklist and required test-run matrix.
+Read and follow `DEVELOPMENT.md` before starting any task. It contains the change checklist and required test-run matrix.
 
 ## Testing — Mandatory
 
