@@ -1,9 +1,7 @@
 # Planning & Testing Playbook
 
-## Planning Checklist
-- Confirm scope and impacted areas (Package sources/tests, sample app, tooling).
-- List the files or folders to touch before editing.
-- Decide which tests/builds to run based on the change area.
+## Change Checklist
+- Run the builds and tests that **Required Test Runs** lists for every area the change touches (package sources/tests, sample app, tooling).
 - Call out missing tests or assumptions in the final response.
 
 ## Build, Test, and Development Commands
