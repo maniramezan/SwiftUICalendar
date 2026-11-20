@@ -253,6 +253,22 @@ struct CalendarBodyHorizontalViewLayoutTests {
         #expect(!CalendarBodyHorizontalView.shouldHandleScrollPage(delta: 1, isNavigating: true))
     }
 
+    @Test("An external request cancels only a page that is still in flight")
+    func externalRequestCancelsInFlightPaging() {
+        #expect(CalendarBodyHorizontalView.shouldCancelPaging(onExternalRequestWhile: true))
+        #expect(!CalendarBodyHorizontalView.shouldCancelPaging(onExternalRequestWhile: false))
+    }
+
+    @Test("Today requests increment even when the committed month is already current")
+    func todayRequestFiresWithoutAMonthChange() {
+        let model = CalendarViewModel.test(selection: .single(nil))
+        let month = model.visibleMonth
+        let request = model.todayScrollRequest
+        model.goToToday()
+        #expect(model.visibleMonth == month)
+        #expect(model.todayScrollRequest == request &+ 1)
+    }
+
     @Test(
         "Paging preserves month identities as adjacent pages exchange positions",
         arguments: [Calendar.Identifier.gregorian, .persian])
