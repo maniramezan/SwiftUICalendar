@@ -79,13 +79,29 @@ class UITestWorkflowTest < Minitest::Test
   # GitHub's step timeout stops a hung test run; the job must outlast it by enough to delete the
   # simulator and upload the result bundle, which runs even after a timeout.
   def test_step_timeout_leaves_time_for_cleanup_and_upload
-    plans = JOBS.fetch("ui-test-plans")
-    steps = plans.fetch("steps")
-    step = steps.find { |entry| entry.fetch("name") == "Run UI test plan" }
-    refute_includes step.fetch("run"), "test-watchdog"
-    assert_operator step.fetch("timeout-minutes") + 5, :<=, plans.fetch("timeout-minutes")
-    upload = steps.find { |entry| entry.fetch("name") == "Upload test results" }
-    assert_equal "always()", upload.fetch("if")
+    {
+      "ui-test-plans" => ["Run UI test plan", 40, "Upload test results"],
+      "ios-package-tests" => ["Run iOS package tests", 30, "Upload iPad package results"]
+    }.each do |job_name, (test_step_name, test_timeout, upload_step_name)|
+      job = JOBS.fetch(job_name)
+      steps = job.fetch("steps")
+      test_index = steps.index { |entry| entry.fetch("name") == test_step_name }
+      assert_equal test_timeout, steps.fetch(test_index).fetch("timeout-minutes")
+      timed_steps = steps.take(test_index + 1).sum { |entry| entry.fetch("timeout-minutes", 0) }
+      assert_operator timed_steps + 5, :<=, job.fetch("timeout-minutes")
+      upload = steps.find { |entry| entry.fetch("name") == upload_step_name }
+      assert_equal "always()", upload.fetch("if")
+    end
+  end
+
+  def test_ipad_package_tests_capture_progress_without_verbose_diagnostics
+    steps = JOBS.fetch("ios-package-tests").fetch("steps")
+    command = steps.find { |entry| entry.fetch("name") == "Run iOS package tests" }.fetch("run")
+    stream = ".build/results/ipad-package.events.jsonl"
+    assert_includes command, "touch #{stream}"
+    assert_includes command, "-resultStreamPath #{stream}"
+    assert_includes command, "-resultBundlePath .build/results/ipad-package.xcresult"
+    assert_includes command, "-collect-test-diagnostics never"
   end
 
   # Xcode clones and cold-boots its own devices for parallel testing, so warming the owned device only
