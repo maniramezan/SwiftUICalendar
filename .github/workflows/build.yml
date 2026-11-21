@@ -140,7 +140,7 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     needs: ui-test-build
     runs-on: xcode-27
-    timeout-minutes: 30
+    timeout-minutes: 55
     permissions:
       contents: read
     strategy:
@@ -249,7 +249,7 @@ jobs:
           vm_stat
 
       - name: Run UI test plan
-        timeout-minutes: 20
+        timeout-minutes: 40
         # The script runs one worker on the settled simulator; retain the existing individual test limits.
         # Full simulator diagnostics collection hangs here; keep XCTest result bundles instead.
         # The step timeout stops a hung run with time left in the job to upload the result bundle.
@@ -283,7 +283,7 @@ jobs:
     name: iPad package tests
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: xcode-27
-    timeout-minutes: 30
+    timeout-minutes: 65
     permissions:
       contents: read
     defaults:
@@ -333,11 +333,15 @@ jobs:
         run: bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
 
       - name: Run iOS package tests
-        timeout-minutes: 15
-        run: >-
-          xcodebuild test-without-building -testProductsPath .build/iPadPackage.xctestproducts
-          -destination "id=$SIMULATOR_UDID" -parallel-testing-enabled NO
-          -resultBundlePath .build/results/ipad-package.xcresult
+        timeout-minutes: 30
+        run: |
+          mkdir -p .build/results
+          touch .build/results/ipad-package.events.jsonl
+          xcodebuild test-without-building -testProductsPath .build/iPadPackage.xctestproducts \
+            -destination "id=$SIMULATOR_UDID" -parallel-testing-enabled NO \
+            -collect-test-diagnostics never \
+            -resultBundlePath .build/results/ipad-package.xcresult \
+            -resultStreamPath .build/results/ipad-package.events.jsonl
 
       - name: Delete iPad simulator
         if: always() && env.SIMULATOR_UDID != ''
