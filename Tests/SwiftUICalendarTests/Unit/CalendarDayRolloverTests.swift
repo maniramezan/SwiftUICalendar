@@ -10,12 +10,18 @@ import Testing
 struct CalendarDayRolloverTests {
     @Test(
         "Midnight moves Today without navigating or changing selection",
-        arguments: [Calendar.Identifier.gregorian, .persian])
-    func midnight(identifier: Calendar.Identifier) throws {
+        arguments: [Calendar.Identifier.gregorian, .persian], [false, true])
+    func midnight(identifier: Calendar.Identifier, crossesMonth: Bool) throws {
         let model = CalendarViewModel.test(identifier: identifier)
         let calendar = model.engine.calendar
-        let first = calendar.startOfDay(for: model.currentDate)
-        let next = try #require(calendar.date(byAdding: .day, value: 1, to: first))
+        let interval = try #require(model.engine.interval(of: model.visibleMonth))
+        let first =
+            crossesMonth
+            ? calendar.startOfDay(for: interval.end.addingTimeInterval(-1))
+            : interval.start
+        let next = try #require(calendar.dateInterval(of: .day, for: first)?.end)
+        let nextMonth = model.engine.month(containing: next)
+        try model.navigate(to: first)
         model.selection = .single(first)
         let state = model.state
         model.refreshToday(now: first)
@@ -31,9 +37,11 @@ struct CalendarDayRolloverTests {
         model.refreshToday(now: next)
         #expect(invalidated.withLock { $0 })
         #expect(
-            model.monthSnapshot(for: model.visibleMonth)?.days.first(where: \.isToday)?.dayStart
+            model.monthSnapshot(for: nextMonth)?.days.first(where: \.isToday)?.dayStart
                 == next)
-        #expect(model.isToday(calendar.component(.day, from: next)))
+        let day = calendar.component(.day, from: next)
+        #expect(model.isToday(day: day, month: nextMonth.month, year: nextMonth.year))
+        #expect(model.isToday(day) == !crossesMonth)
         #expect(model.state == state)
     }
 
