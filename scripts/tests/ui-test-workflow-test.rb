@@ -30,7 +30,7 @@ class UITestWorkflowTest < Minitest::Test
     actual = matrix.select { |entry| entry.fetch("plan") == "SwiftUICalendarSampleLocales" }
                    .map { |entry| entry.fetch("configuration") }.sort
     assert_equal expected, actual
-    assert_equal expected.count + default.count + 3, matrix.count
+    assert_equal expected.count + default.count + 4, matrix.count
     matrix.reject { |entry| entry.fetch("plan") == "SwiftUICalendarSample" }.each do |entry|
       assert_nil entry["suites"], "Locale jobs must run the complete locale plan"
     end
@@ -41,9 +41,12 @@ class UITestWorkflowTest < Minitest::Test
     plans = JOBS.fetch("ui-test-plans")
     matrix = plans.fetch("strategy").fetch("matrix").fetch("include")
     devices = matrix.select { |entry| entry.key?("device") }
+    dynamic_type = devices.select { |entry| entry.fetch("suites") == "DynamicTypeUITests" }
     assert_equal ["iPhone SE (3rd generation)", "iPhone 17 Pro Max", "iPad Pro 13-inch (M5)"],
-                 devices.map { |entry| entry.fetch("device") }
-    devices.each { |entry| assert_equal "DynamicTypeUITests", entry.fetch("suites") }
+                 dynamic_type.map { |entry| entry.fetch("device") }
+    # Paging races surfaced only on large screens, so selection also runs on the tablet.
+    assert_equal [["iPad Pro 13-inch (M5)", "SelectionUITests"]],
+                 (devices - dynamic_type).map { |entry| [entry.fetch("device"), entry.fetch("suites")] }
     assert_includes plans.fetch("env").fetch("DEVICE_NAME"), "matrix.device"
     job = JOBS.fetch("ios-package-tests")
     commands = job.fetch("steps").map { |step| step.fetch("run", "") }.join("\n")

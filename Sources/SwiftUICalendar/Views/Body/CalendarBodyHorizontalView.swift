@@ -188,6 +188,15 @@ struct CalendarBodyHorizontalView: View {
         isNavigating
     }
 
+    /// Whether an external navigation request must abandon the page in flight.
+    ///
+    /// A page commits its month only when its animation completes. Today, requested while paging
+    /// away from the current month, targets the month that is still committed, so no observed month
+    /// changes; unless the page is cancelled, its completion overwrites the request.
+    static func shouldCancelPaging(onExternalRequestWhile isNavigating: Bool) -> Bool {
+        isNavigating
+    }
+
     var body: some View {
         VStack(spacing: metrics.rowSpacing) {
             // Static weekday header — does not scroll with the carousel
@@ -260,9 +269,10 @@ struct CalendarBodyHorizontalView: View {
             }
         }
         .onChange(of: currentMonth) { _, _ in
-            guard isNavigating else { return }
-            navigationGeneration += 1
-            resetNavigation()
+            cancelPaging(reason: "visible month changed")
+        }
+        .onChange(of: viewModel.todayScrollRequest) { _, _ in
+            cancelPaging(reason: "Today requested")
         }
         .onDisappear {
             navigationGeneration += 1
@@ -461,6 +471,13 @@ struct CalendarBodyHorizontalView: View {
             }
             resetNavigation()
         }
+    }
+
+    private func cancelPaging(reason: String) {
+        guard Self.shouldCancelPaging(onExternalRequestWhile: isNavigating) else { return }
+        logger.debug("Cancelling the page in flight: \(reason, privacy: .public)")
+        navigationGeneration += 1
+        resetNavigation()
     }
 
     private func resetNavigation() {
