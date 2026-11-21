@@ -7,6 +7,29 @@ import Testing
 @Suite("Month transition structural snapshots", .enabled(if: snapshotsEnabled))
 struct CalendarMonthTransitionSnapshotTests {
     @Test(
+        "The fixed grid follows the externally committed month after an overflow tap",
+        arguments: [Calendar.Identifier.gregorian, .persian])
+    func controlledOverflow(identifier: Calendar.Identifier) throws {
+        let initial = CalendarViewModel.snapshot(identifier: identifier, selection: .single(nil))
+            .state
+        var requestedAction: CalendarAction?
+        let recordAction: (CalendarAction) -> Void = { requestedAction = $0 }
+        let model = CalendarViewModel(state: initial, onAction: recordAction)
+        let view = CalendarFixedMonthView(
+            viewModel: model, layoutWidth: nil, keyboard: CalendarKeyboardCursor())
+        let next = try #require(model.monthIdentifier(offset: 1))
+        let date = try #require(model.engine.start(of: next))
+
+        view.selectOverflowDate(date)
+        assertCalendarStructure(model: model, named: "\(identifier)-uncommitted-overflow")
+
+        var committed = initial
+        try committed.apply(try #require(requestedAction))
+        model.sync(state: committed, onAction: recordAction)
+        assertCalendarStructure(model: model, named: "\(identifier)-committed-overflow")
+    }
+
+    @Test(
         "Shared dates retain their identity in outgoing and incoming month grids",
         arguments: [Calendar.Identifier.gregorian, .persian])
     func retainedMonthIdentity(identifier: Calendar.Identifier) throws {
