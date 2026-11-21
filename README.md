@@ -27,7 +27,7 @@ These images are generated from the package snapshot references for the actual `
 Add SwiftUICalendar with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "1.1.0")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar.git", from: "1.2.0")
 ```
 
 Then add the product to your target:
@@ -118,6 +118,9 @@ CalendarView(model: calendar, theme: theme, configuration: configuration)
 With range selection, the built-in cells join the selected days with a band. It uses a translucent
 `selectedBackgroundColor` unless you set `theme.day.rangeBackgroundColor`. Custom day views read
 `context.rangePosition` to draw their own; see the DocC article *Customizing Day Views*.
+
+Disabled dates and days outside the displayed month use `theme.day.unavailableForegroundColor`, and
+the decade year picker fills the selected year with `theme.selectedYearBackgroundColor`.
 
 ## Grid Sizing
 
@@ -312,7 +315,7 @@ Both MVVM and TCA are available without package traits. Link `SwiftUICalendar` f
 or `SwiftUICalendarTCA` for reducer-owned state:
 
 ```swift
-.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "1.1.0")
+.package(url: "https://github.com/maniramezan/SwiftUICalendar", from: "1.2.0")
 ```
 
 ```swift
