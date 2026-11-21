@@ -45,14 +45,9 @@ public struct CalendarView: View {
         case .owned(let model):
             return model
         case .external(let state, let onAction):
-            guard let externalViewModel else {
-                // Unreachable in practice: `init(state:onAction:)` always seeds `externalViewModel`
-                // via `State(initialValue:)` alongside `.external`. Falling back defensively rather
-                // than force-unwrapping.
-                return CalendarViewModel(state: state, onAction: onAction)
-            }
-            externalViewModel.sync(state: state, onAction: onAction)
-            return externalViewModel
+            let model = externalViewModel ?? CalendarViewModel(state: state, onAction: onAction)
+            model.sync(state: state, onAction: onAction)
+            return model
         }
     }
 

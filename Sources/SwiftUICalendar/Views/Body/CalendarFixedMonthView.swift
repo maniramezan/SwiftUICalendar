@@ -23,10 +23,7 @@ struct CalendarFixedMonthView: View {
             CalendarBodyView(
                 monthIdentifier: fade.displayedMonth,
                 layoutWidth: layoutWidth, keyboard: keyboard,
-                onOverflowSelection: { date in
-                    guard viewModel.engine.containsDay(date) else { return }
-                    transition(to: viewModel.engine.month(containing: date), selecting: date)
-                },
+                onOverflowSelection: selectOverflowDate,
                 showsSelection: fade.phase != .fadingIn
             )
             .id(fade.displayedMonth)
@@ -38,6 +35,15 @@ struct CalendarFixedMonthView: View {
         }
         .onDisappear {
             fade.cancel(showing: viewModel.visibleMonth)
+        }
+    }
+
+    func selectOverflowDate(_ date: Date) {
+        guard viewModel.engine.containsDay(date) else { return }
+        if viewModel.isExternallyOwned {
+            viewModel.select(date, navigating: true)
+        } else {
+            transition(to: viewModel.engine.month(containing: date), selecting: date)
         }
     }
 
