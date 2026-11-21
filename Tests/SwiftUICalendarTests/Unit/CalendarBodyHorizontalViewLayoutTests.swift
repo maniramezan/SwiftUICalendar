@@ -340,11 +340,14 @@ struct CalendarBodyHorizontalViewLayoutTests {
             try model.updateMonth(byAdding: delta)
             RunLoop.current.run(until: Date().addingTimeInterval(1.0 / 60))
         }
-        #expect(waitForStableRender(hosted.hosting))
+        // Three queued page transitions must finish before the frame compares. In a full parallel
+        // `swift test` every hosted suite shares the main run loop, which stretched this settle past
+        // the default budget once (all suites finished near 57s), so allow it more wall-clock time.
+        #expect(waitForStableRender(hosted.hosting, timeout: .seconds(20)))
         let actual = try #require(renderPNGData(hosted.hosting))
         let reference = hostView(view, size: size)
         defer { reference.window.contentView = nil }
-        #expect(waitForStableRender(reference.hosting))
+        #expect(waitForStableRender(reference.hosting, timeout: .seconds(20)))
         #expect(actual == renderPNGData(reference.hosting))
         #expect(model.visibleMonth == target)
         #expect(model.selection == .single(selected))
