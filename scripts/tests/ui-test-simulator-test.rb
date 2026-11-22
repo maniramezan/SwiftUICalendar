@@ -75,7 +75,7 @@ class UITestSimulatorTest < Minitest::Test
     command = ["bash", SCRIPT, *arguments]
     Open3.capture2e(
       {"PATH" => "#{@directory}:#{ENV.fetch('PATH')}", "CALL_LOG" => @log,
-       "RUNTIME_JSON" => JSON.generate(@inventory)}.merge(environment.transform_keys(&:to_s)),
+       "RUNTIME_JSON" => JSON.generate(@inventory), "SIMULATOR_QUIET_INTERVAL" => "0"}.merge(environment.transform_keys(&:to_s)),
       *command, chdir: @directory
     )
   end
@@ -135,6 +135,7 @@ class UITestSimulatorTest < Minitest::Test
     output, status = run_script("prepare", "owned-device")
     assert status.success?, output
     assert_equal [["xcrun", "simctl", "bootstatus", "owned-device", "-b"]], calls
+    assert_includes output, "Simulator went quiet"
   end
 
   # bootstatus can linger for minutes after the device is ready; prepare must not wait for it.

@@ -58,15 +58,19 @@ UI_TEST_TARGET="SwiftUICalendarSampleUITests"
 quiet_cpu="${SIMULATOR_QUIET_CPU:-50}"
 quiet_timeout="${SIMULATOR_QUIET_TIMEOUT:-600}"
 quiet_checks=3
-quiet_interval=5
+quiet_interval="${SIMULATOR_QUIET_INTERVAL:-5}"
 
-# Prints "<cpu> <process>" for the simulator's processes, busiest first. They run from the
-# simulator runtime's root or, for installed apps, from the device's own directory.
+# Prints "<cpu> <process>" for the device's processes, busiest first: its `launchd_sim` and the
+# services that launchd starts. Every booted simulator runs from the same runtime root, so the
+# device is told apart by its own launchd, whose arguments name the device's directory.
 simulator_processes() {
+  local root
+  root="$(pgrep -f "CoreSimulator/Devices/$1/data/var/run/launchd_bootstrap.plist" | head -1 || true)"
+  [[ -n "$root" ]] || return 0
   # `comm` is the full executable path, which can contain spaces ("iOS 27.2.simruntime").
-  ps -axo %cpu=,comm= | awk -v device="CoreSimulator/Devices/$1/" '
-    index($0, "CoreSimulator/Profiles/Runtimes/") || index($0, device) {
-      name = $0; sub(/.*\//, "", name); print $1, name
+  ps -axo pid=,ppid=,%cpu=,comm= | awk -v root="$root" '
+    $1 == root || $2 == root {
+      cpu = $3; name = $0; sub(/.*\//, "", name); print cpu, name
     }' | sort -rn
 }
 
