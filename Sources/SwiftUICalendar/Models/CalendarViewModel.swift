@@ -105,8 +105,13 @@ import SwiftUI
             center.publisher(for: .NSCalendarDayChanged),
             center.publisher(for: .NSSystemTimeZoneDidChange),
             center.publisher(for: .NSSystemClockDidChange)
-        ).sink { [weak self] _ in
+        )
+        // The system posts these on background threads. Without `@Sendable` the closure inherits
+        // main-actor isolation from this method, and Swift's runtime isolation check traps there.
+        .sink { @Sendable [weak self] notification in
+            let name = notification.name.rawValue
             Task { @MainActor [weak self] in
+                self?.logger.debug("Refreshing Today after \(name)")
                 self?.refreshTodayAndScheduleRollover?()
             }
         }

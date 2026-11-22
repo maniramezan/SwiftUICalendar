@@ -90,6 +90,29 @@ struct CalendarDayRolloverTests {
         #expect(controlled.todayReference > old)
     }
 
+    // The system posts these from background threads; a main-actor-isolated sink traps there.
+    @Test(
+        "System notifications posted off the main thread refresh Today without trapping",
+        arguments: [
+            Notification.Name.NSCalendarDayChanged, .NSSystemTimeZoneDidChange,
+            .NSSystemClockDidChange,
+        ])
+    func backgroundNotifications(name: Notification.Name) async {
+        let model = CalendarViewModel.test()
+        let center = NotificationCenter()
+        model.observeDayChanges(in: center)
+        let old = Date(timeIntervalSince1970: 0)
+        model.refreshToday(now: old)
+        await Task.detached {
+            center.post(name: name, object: nil)
+        }.value
+        for _ in 0..<100 {
+            if model.todayReference != old { break }
+            await Task.yield()
+        }
+        #expect(model.todayReference > old)
+    }
+
     @Test(
         "Today rolls over at the configured calendar's midnight",
         arguments: [Calendar.Identifier.gregorian, .persian])
