@@ -73,6 +73,7 @@ import SwiftUI
     // year, not on every month.
     private(set) var scrollPreviewYear: Int?
     @ObservationIgnored private var onAction: ((CalendarAction) -> Void)?
+    var isExternallyOwned: Bool { onAction != nil }
     // Grids, month offsets, month titles, and date formatters live in a cache keyed by calendar signature rather
     // than by model instance, so multiple calendar instances (and any that predate `sync`
     // adopting a persistent projection) still share the memoized work. Injectable so tests get an
@@ -81,16 +82,56 @@ import SwiftUI
     private var calendar: Calendar { state.calendar }
     private(set) var todayReference = Date()
     @ObservationIgnored private var dayChangeSubscription: AnyCancellable?
+    @ObservationIgnored private var dayRolloverTask: AnyCancellable?
+    @ObservationIgnored private var refreshTodayAndScheduleRollover: (@MainActor () -> Void)?
 
-    func observeDayChanges(in center: NotificationCenter = .default) {
-        dayChangeSubscription = Publishers.Merge(
-            center.publisher(for: .NSCalendarDayChanged),
-            center.publisher(for: .NSSystemTimeZoneDidChange)
-        ).sink { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.refreshToday()
+    func observeDayChanges(
+        in center: NotificationCenter = .default,
+        now: @escaping @MainActor () -> Date = Date.init,
+        schedule: @escaping @MainActor (Date, @escaping @MainActor () -> Void) -> AnyCancellable =
+            CalendarViewModel.scheduleDayRollover
+    ) {
+        refreshTodayAndScheduleRollover = { [weak self] in
+            guard let self else { return }
+            let date = now()
+            refreshToday(now: date)
+            dayRolloverTask = calendar.dateInterval(of: .day, for: date).map { day in
+                schedule(day.end) { [weak self] in
+                    self?.refreshTodayAndScheduleRollover?()
+                }
             }
         }
+        dayChangeSubscription = Publishers.Merge3(
+            center.publisher(for: .NSCalendarDayChanged),
+            center.publisher(for: .NSSystemTimeZoneDidChange),
+            center.publisher(for: .NSSystemClockDidChange)
+        )
+        // The system posts these on background threads. Without `@Sendable` the closure inherits
+        // main-actor isolation from this method, and Swift's runtime isolation check traps there.
+        .sink { @Sendable [weak self] notification in
+            let name = notification.name.rawValue
+            Task { @MainActor [weak self] in
+                self?.logger.debug("Refreshing Today after \(name)")
+                self?.refreshTodayAndScheduleRollover?()
+            }
+        }
+        refreshTodayAndScheduleRollover?()
+    }
+
+    private static func scheduleDayRollover(
+        at deadline: Date, refresh: @escaping @MainActor () -> Void
+    ) -> AnyCancellable {
+        let delay = max(0, deadline.timeIntervalSinceNow)
+        let task = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            refresh()
+        }
+        return AnyCancellable { task.cancel() }
     }
 
     func refreshToday(now: Date = Date()) {
@@ -107,7 +148,6 @@ import SwiftUI
     init(state: CalendarState, onAction: @escaping (CalendarAction) -> Void) {
         self.state = state
         self.onAction = onAction
-        observeDayChanges()
     }
 
     /// Updates an externally owned projection in place instead of replacing it.
@@ -121,9 +161,12 @@ import SwiftUI
     /// of `state` even when nothing changed, since `@Observable` does not skip redundant writes.
     func sync(state: CalendarState, onAction: @escaping (CalendarAction) -> Void) {
         if self.state != state {
+            let calendarChanged = self.state.renderSignature != state.renderSignature
             self.state = state
+            if calendarChanged { refreshTodayAndScheduleRollover?() }
         }
         self.onAction = onAction
+        if dayChangeSubscription == nil { observeDayChanges() }
     }
 
     private func performLoggingFailure(_ action: CalendarAction, context: String) {
@@ -135,7 +178,12 @@ import SwiftUI
     }
 
     private func perform(_ action: CalendarAction) throws {
-        if let onAction { onAction(action) } else { try state.apply(action) }
+        if let onAction {
+            onAction(action)
+        } else {
+            try state.apply(action)
+            if case .setCalendar = action { refreshTodayAndScheduleRollover?() }
+        }
     }
 
     /// Weekday titles in column order, starting from the locale's first weekday so they line up

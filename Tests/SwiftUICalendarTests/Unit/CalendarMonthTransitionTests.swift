@@ -53,6 +53,34 @@ struct CalendarMonthTransitionTests {
         #expect(model.selection == .single(target))
     }
 
+    @Test(
+        "Fixed-month overflow sends one atomic action to the host",
+        arguments: [Calendar.Identifier.gregorian, .persian],
+        [CalendarSelection.single(nil), .range(nil, nil), .multiple([])])
+    func controlledOverflowRequestsSelectionAndNavigation(
+        identifier: Calendar.Identifier, selection: CalendarSelection
+    ) throws {
+        let initial = CalendarViewModel.test(identifier: identifier, selection: selection).state
+        var actions: [CalendarAction] = []
+        let recordAction: (CalendarAction) -> Void = { actions.append($0) }
+        let model = CalendarViewModel(state: initial, onAction: recordAction)
+        let view = CalendarFixedMonthView(
+            viewModel: model, layoutWidth: nil, keyboard: CalendarKeyboardCursor())
+        let next = try #require(model.monthIdentifier(offset: 1))
+        let date = try #require(model.engine.start(of: next))
+
+        view.selectOverflowDate(date)
+        #expect(actions == [.select(date, navigating: true)])
+        #expect(model.state == initial)
+
+        var accepted = initial
+        try accepted.apply(try #require(actions.first))
+        model.sync(state: accepted, onAction: recordAction)
+        #expect(model.visibleMonth == next)
+        #expect(model.isSelected(date: date))
+        #expect(actions.count == 1)
+    }
+
     @Test("A same-month request does not start a fade")
     func sameMonthRequestIsSkipped() throws {
         let dates = try dates(identifier: .gregorian)
