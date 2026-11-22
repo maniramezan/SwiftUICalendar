@@ -12,7 +12,8 @@
 # matrix already spreads the plans across runners, so one worker per runner costs little.
 #
 #   ui-test-simulator.sh create <device name>     Print a fresh device's UDID on the newest supported runtime.
-#   ui-test-simulator.sh prepare <udid>           Boot and wait for first-boot setup to finish.
+#   ui-test-simulator.sh prepare <udid>           Boot, then wait for first-boot setup and its
+#                                                background work to finish.
 #   ui-test-simulator.sh test <udid> <plan> <result bundle> [xcodebuild flags...]
 #   ui-test-simulator.sh delete <udid>            Shut down and remove the owned device.
 #
@@ -47,6 +48,51 @@ create_device() {
 }
 
 UI_TEST_TARGET="SwiftUICalendarSampleUITests"
+
+# `bootstatus` reports a terminal status minutes before the simulator stops launching its own
+# services. On the 3-CPU runner run 44969416895 found 153 runnable simulator processes six minutes
+# after boot, still spawning; `top -l 1` took 5.5 minutes, `xcodebuild` printed nothing for 5 to 8
+# minutes, and three iPad package jobs were cancelled by GitHub in that stall with no reason given.
+# So `prepare` also holds until the simulator's processes stay under `quiet_cpu` percent of one
+# core. A settled CI simulator idles at 35-40%, mostly `diagnosticd` (run 38428942312).
+quiet_cpu="${SIMULATOR_QUIET_CPU:-50}"
+quiet_timeout="${SIMULATOR_QUIET_TIMEOUT:-600}"
+quiet_checks=3
+quiet_interval=5
+
+# Prints "<cpu> <process>" for the simulator's processes, busiest first. They run from the
+# simulator runtime's root or, for installed apps, from the device's own directory.
+simulator_processes() {
+  # `comm` is the full executable path, which can contain spaces ("iOS 27.2.simruntime").
+  ps -axo %cpu=,comm= | awk -v device="CoreSimulator/Devices/$1/" '
+    index($0, "CoreSimulator/Profiles/Runtimes/") || index($0, device) {
+      name = $0; sub(/.*\//, "", name); print $1, name
+    }' | sort -rn
+}
+
+wait_for_quiet() {
+  local udid="$1" started=$SECONDS quiet=0 total
+  while ((SECONDS - started < quiet_timeout)); do
+    total="$(simulator_processes "${udid}" | awk '{ sum += $1 } END { printf "%d", sum }')"
+    if ((total <= quiet_cpu)); then
+      quiet=$((quiet + 1))
+      if ((quiet >= quiet_checks)); then
+        echo "Simulator went quiet (${total}% CPU) after $((SECONDS - started))s"
+        return 0
+      fi
+    else
+      quiet=0
+      if (((SECONDS - started) % 30 < quiet_interval)); then
+        echo "Simulator still busy at ${total}% CPU after $((SECONDS - started))s; busiest processes:"
+        simulator_processes "${udid}" | head -5 | sed 's/^/  /'
+      fi
+    fi
+    sleep "${quiet_interval}"
+  done
+  # Testing a busy simulator is slower, not wrong, so carry on rather than fail the job.
+  echo "::warning::The simulator was still busy after ${quiet_timeout}s; testing anyway"
+  simulator_processes "${udid}" | head -5 | sed 's/^/  /'
+}
 
 # One xcodebuild session on the owned device: run_tests <result bundle> [xcodebuild flags...]
 run_tests() {
@@ -112,6 +158,7 @@ case "${1:-}" in
       rm -f "$log"
       wait "$pid"
     fi
+    wait_for_quiet "$2"
     ;;
   test)
     udid="$2" plan="$3" result="$4"
