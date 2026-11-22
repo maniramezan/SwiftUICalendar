@@ -140,7 +140,7 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     needs: ui-test-build
     runs-on: xcode-27
-    timeout-minutes: 55
+    timeout-minutes: 65
     permissions:
       contents: read
     strategy:
@@ -247,9 +247,10 @@ jobs:
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
       # Tests run on this one device with parallel testing off, so its first-boot work must finish
-      # here; otherwise the first test absorbs it and trips the per-test allowance.
+      # here; otherwise the first test absorbs it and trips the per-test allowance. `prepare` waits
+      # up to 10 minutes for the simulator to go quiet after bootstatus, then tests anyway.
       - name: Boot and settle UI test simulator
-        timeout-minutes: 6
+        timeout-minutes: 16
         run: |
           bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
           vm_stat
@@ -289,7 +290,7 @@ jobs:
     name: iPad package tests
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: xcode-27
-    timeout-minutes: 65
+    timeout-minutes: 75
     permissions:
       contents: read
     defaults:
@@ -334,8 +335,10 @@ jobs:
           udid="$(bash ./scripts/ui-test-simulator.sh create 'iPad Pro 13-inch (M5)')"
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
+      # The settle wait matters most here: without it xcodebuild sat silent for 5 to 8 minutes
+      # behind the simulator's background work, and GitHub cancelled the job in that stall.
       - name: Boot and settle iPad simulator
-        timeout-minutes: 6
+        timeout-minutes: 16
         run: bash ./scripts/ui-test-simulator.sh prepare "$SIMULATOR_UDID"
 
       - name: Run iOS package tests
