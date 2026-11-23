@@ -42,16 +42,17 @@ class UITestWorkflowTest < Minitest::Test
     matrix = plans.fetch("strategy").fetch("matrix").fetch("include")
     devices = matrix.select { |entry| entry.key?("device") }
     dynamic_type = devices.select { |entry| entry.fetch("suites") == "DynamicTypeUITests" }
-    assert_equal ["iPhone SE (3rd generation)", "iPhone 17 Pro Max", "iPad Pro 13-inch (M5)"],
+    assert_equal ["iPhone SE (3rd generation)", "iPhone 17 Pro Max", "iPad Pro 13-inch (M4)"],
                  dynamic_type.map { |entry| entry.fetch("device") }
     # Paging races surfaced only on large screens, so selection also runs on the tablet.
-    assert_equal [["iPad Pro 13-inch (M5)", "SelectionUITests"]],
+    assert_equal [["iPad Pro 13-inch (M4)", "SelectionUITests"]],
                  (devices - dynamic_type).map { |entry| [entry.fetch("device"), entry.fetch("suites")] }
     assert_includes plans.fetch("env").fetch("DEVICE_NAME"), "matrix.device"
     job = JOBS.fetch("ios-package-tests")
     commands = job.fetch("steps").map { |step| step.fetch("run", "") }.join("\n")
     assert_includes commands, "xcodebuild build-for-testing -scheme SwiftUICalendar-Package"
     assert_includes commands, "xcodebuild test-without-building"
+    assert_includes commands, "create 'iPad Pro 13-inch (M4)'"
     assert_includes commands, "-destination \"id=$SIMULATOR_UDID\""
     assert_includes commands, "ui-test-simulator.sh prepare"
     assert_includes commands, "ui-test-simulator.sh delete"
