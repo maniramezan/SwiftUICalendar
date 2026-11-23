@@ -1,5 +1,5 @@
 {
-  "originHash" : "1664803bbb81714867f8753e9a10a9363c2647c6e18ecce4d1a154a1079dffc2",
+  "originHash" : "7d2c0fd05122b2b6ab17f3f8cb078d7cfc8feeef83da01fbb90266077266672f",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -150,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftCommons",
       "state" : {
-        "revision" : "bffb2cda57de7e924cd847bb79911ee50cb4374e",
-        "version" : "0.17.1"
+        "revision" : "3a3c4729dadb6461b1f1624755cd1e3461b4ccf4",
+        "version" : "0.20.0"
       }
     },
     {
@@ -159,8 +159,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftTestCommons.git",
       "state" : {
-        "revision" : "3420590635e3c3bf869116679177051406d3b3a8",
-        "version" : "0.4.2"
+        "revision" : "efe30d0f3a5165e2906d435bbcc5748852a62c25",
+        "version" : "0.5.0"
       }
     },
     {
@@ -168,8 +168,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/maniramezan/SwiftUIComponents",
       "state" : {
-        "revision" : "d67520bd669528a1740bb12b71465e2efee511f2",
-        "version" : "0.23.1"
+        "revision" : "a26884647cd6259c954076540c797077f7a60529",
+        "version" : "0.27.0"
       }
     }
   ],
