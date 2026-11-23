@@ -175,8 +175,10 @@ jobs:
             configuration: ""
             suites: SelectionUITests
           # A Today tap during a swipe's page transition was lost only on iPad and Pro Max screens.
+          # The iPad jobs use the M4 model: same 1032x1376 pt screen as the M5, but its first boot
+          # swapped about half as much on the 7 GB runner (run 45042060070).
           - name: Selection iPad
-            device: iPad Pro 13-inch (M5)
+            device: iPad Pro 13-inch (M4)
             plan: SwiftUICalendarSample
             configuration: ""
             suites: SelectionUITests
@@ -191,7 +193,7 @@ jobs:
             configuration: ""
             suites: DynamicTypeUITests
           - name: Dynamic Type iPad
-            device: iPad Pro 13-inch (M5)
+            device: iPad Pro 13-inch (M4)
             plan: SwiftUICalendarSample
             configuration: ""
             suites: DynamicTypeUITests
@@ -330,9 +332,11 @@ jobs:
           -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution
           -derivedDataPath .build/iPadPackage -testProductsPath .build/iPadPackage.xctestproducts
 
+      # Same screen as the 13-inch M5; its first boot needs less memory on the 7 GB runner, where
+      # the M5 swapped about 2.8 GB and froze the machine for six minutes (run 45042060070).
       - name: Create iPad simulator
         run: |
-          udid="$(bash ./scripts/ui-test-simulator.sh create 'iPad Pro 13-inch (M5)')"
+          udid="$(bash ./scripts/ui-test-simulator.sh create 'iPad Pro 13-inch (M4)')"
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
       # The settle wait matters most here: without it xcodebuild sat silent for 5 to 8 minutes
